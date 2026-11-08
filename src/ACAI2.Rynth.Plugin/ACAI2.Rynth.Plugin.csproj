@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <PlatformTarget>x86</PlatformTarget>
+    <RuntimeIdentifier>win-x86</RuntimeIdentifier>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <PublishAot>false</PublishAot>
+    <SelfContained>false</SelfContained>
+    <GenerateRuntimeConfigurationFiles>false</GenerateRuntimeConfigurationFiles>
+    <AssemblyName>ACAI2.Rynth.Plugin</AssemblyName>
+    <RynthPluginName>ACAI2.Rynth</RynthPluginName>
+    <RynthPluginMinEngineApi>92</RynthPluginMinEngineApi>
+    <RynthPluginDescription>Read-only ACAI2 migration pilot: observations and optional local Bridge telemetry.</RynthPluginDescription>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\ACAI2.Rynth.Core\ACAI2.Rynth.Core.csproj" />
+    <ProjectReference Include="..\..\external\RynthCore\src\RynthCore.PluginSdk\RynthCore.PluginSdk.csproj" />
+    <ProjectReference Include="..\..\external\RynthCore\src\RynthCore.PluginCore\RynthCore.PluginCore.csproj" />
+  </ItemGroup>
+  <Import Project="..\..\external\RynthCore\src\RynthCore.PluginSdk\build\RynthCore.PluginSdk.targets" />
+  <!-- The SDK import runs before IntermediateOutputPath is populated. Keep its
+       generated sources under obj so subsequent builds do not glob them twice. -->
+  <PropertyGroup>
+    <_RynthPluginManifestJson>obj/$(Configuration)/$(TargetFramework)/$(RuntimeIdentifier)/rynth-plugin.json</_RynthPluginManifestJson>
+    <_RynthPluginManifestEmbedded>obj/$(Configuration)/$(TargetFramework)/$(RuntimeIdentifier)/rynth-plugin.embedded</_RynthPluginManifestEmbedded>
+    <_RynthPluginInfoSource>obj/$(Configuration)/$(TargetFramework)/$(RuntimeIdentifier)/RynthPluginInfo.g.cs</_RynthPluginInfoSource>
+  </PropertyGroup>
+</Project>

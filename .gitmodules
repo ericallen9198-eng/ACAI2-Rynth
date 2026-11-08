@@ -1,0 +1,3 @@
+[submodule "external/RynthCore"]
+	path = external/RynthCore
+	url = https://github.com/tombohar/RynthCore.git

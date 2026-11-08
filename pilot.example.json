@@ -1,0 +1,8 @@
+{
+  "BridgeEnabled": false,
+  "BridgeUrl": "http://127.0.0.1:5052",
+  "CapturePublicChat": false,
+  "MaxChatRecords": 128,
+  "MaxObjects": 128,
+  "TelemetrySeconds": 10
+}
