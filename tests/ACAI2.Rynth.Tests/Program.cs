@@ -109,6 +109,45 @@ await using (var worker = new BridgeWorker(networkOptions, blocked))
     Check(blocked.Calls.Count==6 && blocked.Calls.Last().Json.Contains("Latest-20") && !blocked.Calls.Last().Json.Contains("Latest-19"), "slow HTTP retains only the latest pending frame instead of growing an event backlog");
     worker.Stop(); Check(!worker.Submit(frame), "stopped workers refuse new frames");
 }
+// Combat aggregation and profiles are tested without loading ImGui or a game client.
+Check(!new CombatAppearance().Floating,"custom proc text defaults off to avoid duplicating Rynth Vision numbers");
+Check(CombatDisplay.Arc(2,2,true,50,100,100).X<0 && CombatDisplay.Arc(2,2,false,50,100,100).X>0,"maximum curvature cannot cross lanes through the character");
+var meter=new CombatDisplay();
+Check(meter.Observe("Your poison deals 1,221 additional points of damage to Dread Plaguefang!","Toe",100),"real poison log parses into combat totals");
+meter.Observe("Your poison deals 173 additional points of damage to Dread Plaguefang!","Toe",100.1);
+meter.Observe("Sneak Attack! You graze Dread Plaguefang for 69 points of bludgeoning damage!","Toe",100.2);
+var combatView=meter.Read(101,2.4f);
+Check(combatView.Damage==1463 && combatView.Sneaks==1 && combatView.SneakDamage==69 && combatView.DirectHits==1,"poison and sneak totals preserve actual damage and direct-hit denominator");
+Check(combatView.Components["Poison"]==1394 && combatView.Text.Any(x=>x.Kind=="Poison" && x.Amount==1394 && x.Count==2),"same-target poison burst groups with an explicit tick count");
+meter.Observe("Your poison deals 20 additional points of damage to Other Target!","Toe",100.12);
+Check(meter.Read(101,2.4f).Text.Count(x=>x.Kind=="Poison")==2,"different targets never merge into a fabricated single proc");
+Check(!meter.Observe("[Allegiance] Samm says, \"Your poison deals 9,999 additional points of damage to Dread Plaguefang!\"","Toe",101),"quoted chat is excluded from combat parsing");
+Check(meter.Read(161,2.4f).Dps==0 && meter.Read(161,2.4f).Damage==1483,"rolling damage expires while session totals remain intact");
+Check(meter.Read(161,2.4f).Text.Length==0,"expired floating events are not rendered");
+var freshMeter=new CombatDisplay();
+Check(freshMeter.Read(200,2.4f).Damage==0,"new character/session starts with clean combat totals");
+for(int i=0;i<100;i++)freshMeter.Observe($"Your poison deals 1 additional points of damage to Target {i}!","Toe",200+i*.001);
+Check(freshMeter.Read(201,2.4f).Text.Length<=16,"floating event retention remains bounded during a dense burst");
+var leftArc=CombatDisplay.Arc(1,2,true,100,40,100);var rightArc=CombatDisplay.Arc(1,2,false,100,40,100);
+Check(leftArc.X==-rightArc.X && Math.Abs(leftArc.X)<100 && leftArc.Y<0,"paired arcs rise and curve symmetrically inward");
+string profileRoot=Path.Combine(Path.GetTempPath(),"acai2-ui-tests-"+Guid.NewGuid().ToString("N"));
+try
+{
+    var toe=new GameIdentity("DreamWeave","Toe",1);var other=new GameIdentity("DreamWeave","Samm",2);
+    string toePath=CombatProfiles.PathFor(profileRoot,toe);
+    Check(toePath!=CombatProfiles.PathFor(profileRoot,other) && toePath==CombatProfiles.PathFor(profileRoot,toe with {PlayerId=999}),"profiles isolate server/character and survive changing object IDs");
+    var appearance=new CombatAppearance{Locked=true,Opacity=.25f,Curvature=62,X=424};
+    appearance.Colors["Poison"]=0x8844cc22;
+    CombatProfiles.Save(toePath,appearance);var restored=CombatProfiles.Load(toePath);
+    Check(restored.Locked && restored.X==424 && restored.Curvature==62 && restored.Colors["Poison"]==0x8844cc22,"atomic profile roundtrip retains lock, position, arc and RGBA customization");
+    Check(!Directory.GetFiles(Path.GetDirectoryName(toePath)!,"*.tmp").Any(),"successful profile save leaves no temporary files");
+    restored.Scale=float.NaN;restored.TextSize=900;restored.Validate();
+    Check(restored.Scale==1 && restored.TextSize==40,"invalid appearance values are normalized before rendering");
+    File.WriteAllText(toePath,"{\"Schema\":2}");
+    bool futureRejected=false;try{CombatProfiles.Load(toePath);}catch(InvalidDataException){futureRejected=true;}
+    Check(futureRejected && File.ReadAllText(toePath).Contains("2"),"future profile versions are rejected without overwriting their contents");
+}
+finally{if(Directory.Exists(profileRoot))Directory.Delete(profileRoot,true);}
 string? pluginPath = args.Length > 0 ? args[0] : null;
 if (pluginPath != null)
 {
@@ -133,15 +172,15 @@ if (pluginPath != null)
         var conventions=value.NamedArguments.FirstOrDefault(x=>x.Name=="CallConvs").Value;
         cdecl &= conventions is ImmutableArray<CustomAttributeTypedArgument<string>> values && values.Length==1 && values[0].Value?.ToString()?.Contains("CallConvCdecl")==true;
     }
-    var expected=new[]{"RynthPluginInit","RynthPluginShutdown","RynthPluginName","RynthPluginVersion","RynthPluginOnLoginComplete","RynthPluginOnLogout","RynthPluginTick","RynthPluginOnChatWindowText","RynthPluginOnChatBarEnter","RynthPluginOnCreateObject","RynthPluginOnDeleteObject","RynthPluginOnUpdateObject","RynthPluginOnUpdateObjectInventory"};
+    var expected=new[]{"RynthPluginRender","RynthPluginRenderOverlay","RynthPluginInit","RynthPluginShutdown","RynthPluginName","RynthPluginVersion","RynthPluginOnLoginComplete","RynthPluginOnLogout","RynthPluginTick","RynthPluginOnChatWindowText","RynthPluginOnChatBarEnter","RynthPluginOnCreateObject","RynthPluginOnDeleteObject","RynthPluginOnUpdateObject","RynthPluginOnUpdateObjectInventory"};
     Check(exports.Order().SequenceEqual(expected.Order()),"compiled lifecycle/chat/object exports match the real RynthCore ABI");
     Check(cdecl,"every compiled native entry point declares the required Cdecl calling convention");
     Check(minimumApi==92,"compiled manifest attribute requires the reviewed API 92 rather than silently loading an older host");
 }
 string sourceRoot=Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(),"src","ACAI2.Rynth.Plugin"));
 if(Directory.Exists(sourceRoot)) {
-    var allowed=new HashSet<string>{"Log","WriteToChat","GetScreenMode","GetPlayerId","TryGetWorldName","TryGetObjectName","TryGetObjectPosition","HasAppraisalData","GetLiveObjectIds"};
-    var used=Directory.GetFiles(sourceRoot,"*.cs").SelectMany(path=>System.Text.RegularExpressions.Regex.Matches(File.ReadAllText(path),@"Host\.(\w+)\s*\(").Select(m=>m.Groups[1].Value)).ToArray();
+    var allowed=new HashSet<string>{"Log","WriteToChat","GetScreenMode","GetPlayerId","TryGetWorldName","TryGetObjectName","TryGetObjectPosition","HasAppraisalData","GetLiveObjectIds","SetPanelOpen"};
+    var used=Directory.GetFiles(sourceRoot,"*.cs").SelectMany(path=>System.Text.RegularExpressions.Regex.Matches(File.ReadAllText(path),@"[Hh]ost\.(\w+)\s*\(").Select(m=>m.Groups[1].Value)).ToArray();
     Check(used.Length>0 && used.All(allowed.Contains),"pilot source uses only read APIs and local diagnostics, never native game action methods");
 }
 Console.WriteLine($"All {count} checks passed. Only fake HTTP handlers were used; no AI, game chat or production Bridge calls.");

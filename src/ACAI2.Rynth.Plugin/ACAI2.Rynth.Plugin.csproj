@@ -14,6 +14,7 @@
     <RynthPluginDescription>Read-only ACAI2 migration pilot: observations and optional local Bridge telemetry.</RynthPluginDescription>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="ImGui.NET" Version="1.91.6.1" />
     <ProjectReference Include="..\ACAI2.Rynth.Core\ACAI2.Rynth.Core.csproj" />
     <ProjectReference Include="..\..\external\RynthCore\src\RynthCore.PluginSdk\RynthCore.PluginSdk.csproj" />
     <ProjectReference Include="..\..\external\RynthCore\src\RynthCore.PluginCore\RynthCore.PluginCore.csproj" />

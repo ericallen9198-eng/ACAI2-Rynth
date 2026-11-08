@@ -10,6 +10,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Publish failed.' }
     Copy-Item external\RynthCore\LICENSE (Join-Path $Output 'RynthCore-LICENSE.txt')
     Copy-Item THIRD-PARTY-NOTICES.md $Output
+    Copy-Item THIRD-PARTY-NOTICES (Join-Path $Output 'THIRD-PARTY-NOTICES') -Recurse -Force
     Write-Host "Managed pilot package: $Output"
     Write-Host 'Requires RynthCore CoreCLR engine API 92+. Add ACAI2.Rynth.Plugin.dll to that launcher; keep this folder together.'
     Write-Host 'No files have been installed into the old ACAI2 tree or the game.'

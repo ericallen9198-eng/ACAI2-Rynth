@@ -5,6 +5,7 @@ namespace ACAI2.Rynth.Core;
 
 [JsonSourceGenerationOptions(WriteIndented = true, PropertyNameCaseInsensitive = true)]
 [JsonSerializable(typeof(PilotSettings))]
+[JsonSerializable(typeof(CombatAppearance))]
 [JsonSerializable(typeof(PilotSnapshot))]
 [JsonSerializable(typeof(BridgeAck))]
 [JsonSerializable(typeof(ClientRegistration))]

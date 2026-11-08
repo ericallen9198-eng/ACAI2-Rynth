@@ -3,8 +3,9 @@
 A separate migration project for ACAI2 on **RynthCore**, with the existing
 Samm-AI / ACAI2 project preserved as the working installation.
 
-**v0.1.0 is a read-only pilot.** It does not run Keyfer, arena games, combat automation,
-HUDs, Thread Gem prediction, or outgoing game commands yet. Those are future stages.
+**v0.2.0 adds an ImGui combat UI to the read-only pilot.** It does not run Keyfer,
+arena games, combat automation, Thread Gem prediction or outgoing game commands.
+The Windows renderer has not been run here; build/publish on Windows before testing.
 
 ## What works in this scaffold
 
@@ -16,7 +17,23 @@ HUDs, Thread Gem prediction, or outgoing game commands yet. Those are future sta
   and unknown/local chat formats are excluded. Raw text capture defaults off.
 - Optionally registers and sends heartbeat/perception to the existing local Bridge
   using protocol 2. **Telemetry defaults off.** It never uses Keyfer/chat/AI/prize routes.
-- Provides two local commands: `/acai2r status` and `/acai2r export`.
+- Provides `/acai2r status`, `/acai2r export` and `/acai2r ui` (appearance settings).
+- Parses incoming combat messages locally into session/component totals and a
+  bounded 60-second DPS meter; no full raw combat history is retained.
+- Draws a compact ImGui meter with expandable breakdown, sneak statistics and
+  explicitly labeled live/not-recording status.
+- Offers optional clear-background proc text with inward arcs, effect RGBA color
+  wheel/hex controls, black outline, scale/opacity/lifetime controls and isolated preview.
+- Saves meter position, lock and appearance per server/character under
+  `%LOCALAPPDATA%\ACAI2-Rynth\CombatProfiles`, separately from observation exports.
+- Opens Rynth's Settings panel for its existing power/height controls. This plugin
+  never restores power by issuing an attack and creates no competing power owner.
+
+Proc text defaults off because Rynth Vision already provides general combat text.
+Choose your preferred source for overlapping crit/heal numbers. Toon following,
+Thread height learning, world debuff markers, recording/export of combat history,
+custom font loading/weight and a DPS sparkline remain future work. See
+[combat UI usage](docs/COMBAT-UI-USAGE.md).
 
 Local observation data stays in memory until you explicitly export it. No existing
 Data/configuration directories are imported or modified. Names with no verified

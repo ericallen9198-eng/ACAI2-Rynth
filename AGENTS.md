@@ -23,3 +23,11 @@ Run scripts/test.sh (Linux) or scripts/Test.ps1 (Windows). Tests must not contac
 production Bridge, game client, AI provider or Discord. Do not broaden testing after
 checks pass unless another change/failure justifies it. Keep credentials, runtime
 histories, player exports, binaries and local configuration out of Git.
+
+The user has authorized an ImGui combat display and local appearance/profile
+controls. `/acai2r ui` and opening the engine's Settings panel are permitted local
+UI actions. Rynth remains the owner of melee/missile power and attack height;
+do not introduce a competing controller or make attacks to restore a slider.
+Combat parsing may consume incoming combat messages for local aggregate counters
+without retaining raw lines. New combat rendering must use the engine-owned
+ImGui context and the matching ImGui.NET version; never create a second context.

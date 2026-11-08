@@ -11,3 +11,9 @@ Bridge. It is a snapshot, not a dependency on a sibling checkout or old binaries
 No player Data directories, credentials, saved histories, runtime binaries or
 machine configuration were imported. The old repository is not modified by this
 new project. The existing Bridge remains separately installed and managed.
+
+The v0.2.0 combat port also carries `CombatParsing.cs` and the minimal `CombatComponents.IsDirect` helper from
+that snapshot. The parsing guard is localized to combat messages rather than
+importing Keyfer's GameChat routing; chat envelopes are rejected and the renderer
+retains aggregate values rather than raw logs. No Decal renderer or native power
+binding is copied.

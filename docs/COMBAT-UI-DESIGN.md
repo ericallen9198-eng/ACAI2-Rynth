@@ -1,6 +1,9 @@
 # Combat UI redesign proposal
 
-Status: source-reviewed proposal; no combat UI has been added to the pilot yet.
+Status: design proposal with a first ImGui implementation in v0.2.0. See
+[usage and implemented scope](COMBAT-UI-USAGE.md). Sparkline, font weight/loading,
+world anchoring and Thread learning remain pending. Power/height ownership stays
+with Rynth's existing controls rather than the initially proposed duplicate strip.
 The existing ACAI2 deployment is unchanged.
 
 ## Findings from the existing implementation

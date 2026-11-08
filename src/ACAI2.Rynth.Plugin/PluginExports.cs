@@ -25,6 +25,10 @@ public static unsafe class PluginExports
     public static void Logout() { try { Runtime.OnLogout(); } catch { } }
     [UnmanagedCallersOnly(EntryPoint="RynthPluginTick",CallConvs=[typeof(CallConvCdecl)])]
     public static void Tick() { try { Runtime.OnTick(); } catch { } }
+    [UnmanagedCallersOnly(EntryPoint="RynthPluginRender",CallConvs=[typeof(CallConvCdecl)])]
+    public static void Render() { try { Runtime.OnRender(); } catch { } }
+    [UnmanagedCallersOnly(EntryPoint="RynthPluginRenderOverlay",CallConvs=[typeof(CallConvCdecl)])]
+    public static void Overlay() { try { Runtime.OnRender(); } catch { } }
     [UnmanagedCallersOnly(EntryPoint="RynthPluginOnChatWindowText",CallConvs=[typeof(CallConvCdecl)])]
     public static void Chat(IntPtr text,int type,IntPtr eat) { try { Runtime.OnChatWindowText(text,type,eat); } catch { } }
     [UnmanagedCallersOnly(EntryPoint="RynthPluginOnChatBarEnter",CallConvs=[typeof(CallConvCdecl)])]
