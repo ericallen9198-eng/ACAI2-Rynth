@@ -2,17 +2,18 @@
 
 The immediate scope is now the [next-rollout integration plan](NEXT-ROLLOUT.md):
 validate the v0.2.0 Windows combat UI and reuse existing Rynth/DreamWeave features
-before extending the port. SootAC/rynth-dreamweave collaboration is authorized,
-but its source review is currently blocked by repository access. Soot-specific
-capabilities are unverified; no implementation is assumed from the project name.
+before extending the port. Soot's uploaded source snapshot has now been reviewed; see the
+[source comparison](SOOT-SOURCE-REVIEW.md). Its repaired press recorder, standalone
+run/effect tracker and pet-text fixes replace several proposed duplicate systems.
 
 1. **Next rollout: combat UI and redundancy review.** Validate native rendering,
-   combat totals and saved layout. Compare Soot's source when accessible; choose
+   combat totals and saved layout. Use the reviewed Soot snapshot and choose
    one owner for each parser, renderer and setting. Rynth owns power/manual height;
    Rynth Vision owns general combat text unless the user explicitly selects the
    optional ACAI2 proc overlay. Keep the overlay off by default.
-2. **Thread integration after compatibility checks.** Evaluate RynthThreads/Soot
-   recording, current imprint/examination formats and export/event interfaces.
+2. **Thread integration after compatibility checks.** Reuse the repaired RynthThreads recorder and standalone ThreadTracker where
+   interfaces permit. Fix imprint/examination correlation, dose structure and
+   unknown recipes before model training.
    Prefer an adapter to a second press store. Add missing recommendations and
    interaction analysis only after establishing trustworthy input data.
 3. **Distinct combat/HUD additions.** Integrate verified self/target debuff data,

@@ -1,5 +1,9 @@
 # DreamWeave Thread overlap review
 
+Historical public-release review. The later [Soot source review](SOOT-SOURCE-REVIEW.md)
+adds implementation evidence and supersedes the source-unavailable limitations
+for that uploaded local-repair snapshot.
+
 Reviewed public RynthSuite HEAD a32c80bed1dee2e319b776707ef4eb43605381c3 and
 pinned RynthCore cf7e0f21cefa9733060bacc7a5d3b73055cd82c1. No game execution.
 

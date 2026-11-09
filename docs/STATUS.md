@@ -49,8 +49,11 @@ see the [roadmap](ROADMAP.md).
 
 ## Next rollout planning
 
-See [NEXT-ROLLOUT.md](NEXT-ROLLOUT.md) for ownership, overlap, delivery order and
-acceptance checks. Collaboration with SootAC/rynth-dreamweave is authorized, but
-repository access currently prevents source review. That plan is provisional for
-Soot-specific integrations; no features are attributed to unseen code. This is a
-documentation update, not a new runtime test or implemented integration.
+The uploaded Soot DreamWeave source snapshot resolves the earlier review blocker.
+See [source findings](SOOT-SOURCE-REVIEW.md) and [NEXT-ROLLOUT.md](NEXT-ROLLOUT.md).
+Its press recorder/statistics, run/effect history and pet-text fixes are reuse
+candidates; no supplied plugin or patch was installed. Thirteen isolated checks
+against unchanged pure models verified behavior and reproduced imprint/recipe/dose
+gaps. No Windows/native gameplay verification was performed. This is a source
+review and planning update, not an implemented integration or a change to the
+prior 56-check ACAI2 application baseline.
