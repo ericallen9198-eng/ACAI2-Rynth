@@ -46,3 +46,11 @@ before enabling optional telemetry.
 
 Keyfer, Thread Gems, remaining combat/HUD features and automation remain migration work;
 see the [roadmap](ROADMAP.md).
+
+## Next rollout planning
+
+See [NEXT-ROLLOUT.md](NEXT-ROLLOUT.md) for ownership, overlap, delivery order and
+acceptance checks. Collaboration with SootAC/rynth-dreamweave is authorized, but
+repository access currently prevents source review. That plan is provisional for
+Soot-specific integrations; no features are attributed to unseen code. This is a
+documentation update, not a new runtime test or implemented integration.

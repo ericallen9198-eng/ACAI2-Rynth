@@ -104,7 +104,7 @@ fake handlers. There are no production Bridge, game, AI or Discord calls in test
 The plugin build checks real SDK references, and the tests inspect its compiled
 x86 managed assembly and exported lifecycle ABI.
 
-See [current status](docs/STATUS.md), [roadmap](docs/ROADMAP.md),
+See [current status](docs/STATUS.md), [next-rollout plan](docs/NEXT-ROLLOUT.md), [roadmap](docs/ROADMAP.md),
 [Windows validation](docs/WINDOWS-VALIDATION.md), [cloud development](docs/CLOUD-DEVELOPMENT.md),
 and [source provenance](origin/ACAI2-SOURCE.md).
 The archived [migration research](docs/MIGRATION-RESEARCH.md) includes follow-up
