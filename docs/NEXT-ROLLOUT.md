@@ -15,10 +15,9 @@ reporting before enabling the separately configured one-MMD payment template.
 No production game commands or AI requests were run during source validation.
 See [Keyfer setup](KEYFER-SETUP.md).
 
-Deferred: combat UI/scrolling text, Thread Gem prediction and the previously
-researched Soot Thread integration. Their previous research stays available in
-SOOT-SOURCE-REVIEW.md and RYNTH-THREADS-OVERLAP.md; this milestone does not deploy
-those features or duplicate Rynth's own systems. The Future combat assembly is
+Deferred from the Keyfer package: combat UI/scrolling text. Thread research and
+Soot-inspired preparation now have a separate standalone build described below.
+The earlier research remains in SOOT-SOURCE-REVIEW.md and RYNTH-THREADS-OVERLAP.md. The Future combat assembly is
 not a ready standalone plugin; extracting its renderer/manifest/package is later
 work if requested.
 
@@ -31,3 +30,16 @@ patches 139 Suite paths and 37 Core paths. Use existing versioned Rynth interfac
 keep the action owner in RynthAi, and propose engine/LOS/chat fixes upstream.
 First candidate is read-only Thread/survey data/UI with one authoritative recorder.
 Keyfer remains separate; combat stays excluded. No patch was applied or deployed.
+
+## Standalone Threads v0.1.0
+
+The user subsequently authorized native gem preparation in the separate plugin.
+Implemented compact per-character Thread run/press records, recipe prediction,
+an engine-owned ImGui panel and an explicitly started gem-prep controller using
+stock identify/vendor/item APIs. Optional shortage purchases are budgeted; each
+dose and press requires acknowledgment. No Lua/meta runner, engine patch, movement
+or automatic destruction is included. Keyfer remains separate.
+
+36 fake-world Thread checks and the existing 99 Keyfer checks pass locally.
+Windows packaging and an attended one-gem test are separate release gates.
+See [Thread setup](THREADS-SETUP.md); no live gem actions were made here.

@@ -25,3 +25,11 @@ failed with MissingMethodException. Reproduced under an engine-like collectible
 assembly loader: System.Net.Http.Json is shared, System.Text.Json is private.
 v0.3.1 uses ordinary HTTP with private JSON serialization and adds the isolated
 registration/tell regression. No host/runtime replacement is needed for this fix.
+
+## Independent Threads v0.1.0
+
+A separate `ACAI2.Threads` plugin now implements local Thread journaling, recipe
+research and user-started native preparation. It has its own package, entry point,
+ImGui panel, per-character storage and 36 controlled checks. It has no Keyfer,
+Bridge or combat dependency. See [Thread setup](THREADS-SETUP.md) for supported
+interfaces, retained-result behavior and the required attended first test.
