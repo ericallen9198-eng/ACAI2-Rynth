@@ -199,7 +199,7 @@ namespace ACAI2.Rynth.Threads.Core
                 var run = Data.Runs.FirstOrDefault(x => x.Id == Data.ActiveRunId && !x.EndedUtc.HasValue && x.Dungeon == dungeon && x.EnteredUtc == null && string.IsNullOrEmpty(x.RealmInstance) && now - x.OpenedUtc < TimeSpan.FromHours(4));
                 if (run == null)
                 {
-                    
+
                     run = new ThreadRunRecord { Id = Guid.NewGuid().ToString("N"), Server = Data.Server, Character = Data.Character, Dungeon = dungeon, OpenedUtc = now,
                         RollId = "", LinkBasis = "Unlinked: gem identity not observed" };
                     Data.Runs.Add(run); Data.ActiveRunId = run.Id;

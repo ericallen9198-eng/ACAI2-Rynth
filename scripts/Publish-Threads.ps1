@@ -10,7 +10,6 @@ try {
     dotnet publish src\ACAI2.Rynth.Threads.Plugin\ACAI2.Rynth.Threads.Plugin.csproj -c Release --no-self-contained -o $Output
     if ($LASTEXITCODE -ne 0) { throw 'Thread publish failed.' }
     Copy-Item docs\THREADS-SETUP.md $Output
-    Copy-Item LICENSE $Output
     Copy-Item external\RynthCore\LICENSE (Join-Path $Output 'RynthCore-LICENSE.txt')
     Copy-Item THIRD-PARTY-NOTICES.md $Output
     Copy-Item THIRD-PARTY-NOTICES $Output -Recurse -Force
