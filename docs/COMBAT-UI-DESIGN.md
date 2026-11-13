@@ -1,3 +1,6 @@
+> Historical v0.2 pilot notes. The v0.3 Keyfer rollout excludes combat.
+> Follow [Keyfer setup](KEYFER-SETUP.md) for the current package.
+
 # Combat UI redesign proposal
 
 Status: design proposal with a first ImGui implementation in v0.2.0. See

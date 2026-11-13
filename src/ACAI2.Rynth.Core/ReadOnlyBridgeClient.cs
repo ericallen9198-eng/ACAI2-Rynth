@@ -21,7 +21,7 @@ public sealed class ReadOnlyBridgeClient : IDisposable
         var s = frame.Snapshot; var identity = s.Identity;
         if (frame.Session.InstanceId != s.InstanceId || frame.Session.Identity != identity) throw new InvalidDataException("Telemetry session mismatch.");
         var register = new ClientRegistration { ProtocolVersion = "2", InstanceId = s.InstanceId, Server = identity.Server, Character = identity.Character,
-            RuntimeId = identity.RuntimeId, PluginVersion = "ACAI2.Rynth/0.1.0-readonly", StartedUtc = s.StartedUtc.ToString("O") };
+            RuntimeId = identity.RuntimeId, PluginVersion = "ACAI2.Rynth/0.3.0", StartedUtc = s.StartedUtc.ToString("O") };
         using (var response = await http.PostAsJsonAsync("v1/client/register", register, PilotJson.Default.ClientRegistration, deadline.Token)) await ConfirmAsync(response, deadline.Token);
         deadline.Token.ThrowIfCancellationRequested();
         var heartbeat = new ClientHeartbeat { ProtocolVersion = "2", InstanceId = s.InstanceId, Server = identity.Server, Character = identity.Character,
@@ -30,7 +30,8 @@ public sealed class ReadOnlyBridgeClient : IDisposable
         deadline.Token.ThrowIfCancellationRequested();
         // No inferred player/monster classification or guessed distance is sent by this pilot.
         var perception = new WorldPerception { ProtocolVersion = "2", InstanceId = s.InstanceId, Server = identity.Server, Character = identity.Character,
-            RuntimeId = identity.RuntimeId, CapturedUtc = s.CapturedUtc.ToString("O"), Objects = s.Objects.Select(x => x.Name).Distinct(StringComparer.Ordinal).ToList() };
+            RuntimeId = identity.RuntimeId, CapturedUtc = s.CapturedUtc.ToString("O"), Objects = s.Objects.Select(x => x.Name).Distinct(StringComparer.Ordinal).ToList(),
+            Players = s.Objects.Where(x=>x.Kind=="Player").Select(x=>x.Name).Distinct(StringComparer.Ordinal).ToList() };
         using (var response = await http.PostAsJsonAsync("v1/client/perception", perception, PilotJson.Default.WorldPerception, deadline.Token)) await ConfirmAsync(response, deadline.Token);
         return true;
     }

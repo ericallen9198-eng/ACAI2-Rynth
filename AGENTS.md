@@ -3,11 +3,17 @@
 This is the separate Rynth migration project. Do not modify the old Samm-AI checkout,
 installed C:\ACAI2 tree, player data, or configuration as part of this project.
 
-Current scope is a read-only pilot. No game chat, /tells, commands, attacks, casts,
-item use/identification requests, trading, movement, Keyfer asks, prize claims or AI
-calls may be added to the pilot. The only network routes are optional loopback
-Bridge registration, heartbeat and perception. Telemetry and raw-chat retention
-are off by default. Private tell text must never be exported or sent to Bridge.
+Current rollout scope is Keyfer chat migration. The user explicitly authorized restoring
+normal Keyfer functionality, including conversational tells, public replies, arena,
+emotes and existing event/treasure/leaderboard services through the local Bridge.
+Only the configured server/character may enable this adapter. Session cancellation,
+bounded queues and pump-only native dispatch are required. Private tells may reach
+only the existing local Keyfer ask route for that conversation; they must not be
+exported as telemetry or public observations. Prize transfers require a separately
+configured exact supported one-MMD template; they default disabled.
+No combat UI or combat parsing is included in the normal plugin package. Preserve
+its source for a possible separate future plugin. No attacks, casts, movement,
+item use/identification, equipment changes or competing Rynth automation.
 
 Use the genuine pinned RynthCore SDK/PluginCore dependency; never substitute a
 mock SDK assembly and claim native compatibility. Pure observation/HTTP interfaces

@@ -1,3 +1,6 @@
+> Historical v0.2 pilot notes. The v0.3 Keyfer rollout excludes combat.
+> Follow [Keyfer setup](KEYFER-SETUP.md) for the current package.
+
 # Read-only Windows check
 
 Use the new repository's Test/Publish scripts with .NET 10. Keep the old ACAI2

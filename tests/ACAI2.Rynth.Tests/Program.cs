@@ -154,7 +154,14 @@ if (pluginPath != null)
     using var file=File.OpenRead(pluginPath); using var pe=new PEReader(file); var reader=pe.GetMetadataReader();
     Check(pe.PEHeaders.CoffHeader.Machine==Machine.I386 && pe.PEHeaders.CorHeader!=null,"actual compiled plugin is a managed x86 assembly for the CoreCLR host");
     var assemblyRefs=reader.AssemblyReferences.Select(x=>reader.GetString(reader.GetAssemblyReference(x).Name)).ToArray();
+    Check(!assemblyRefs.Any(x=>x.Contains("ImGui")||x.Contains("Combat.Future")),"shipped Keyfer plugin excludes combat UI and future combat assembly references");
     Check(!assemblyRefs.Any(x=>x.Contains("Decal") || x.Contains("UtilityBelt") || x.Contains("uTank")),"compiled plugin has no legacy framework assembly dependency");
+    using(var coreFile=File.OpenRead(Path.Combine(Path.GetDirectoryName(pluginPath)!,"ACAI2.Rynth.Core.dll")))
+    using(var corePe=new PEReader(coreFile))
+    {
+        var coreReader=corePe.GetMetadataReader();
+        Check(!coreReader.TypeDefinitions.Any(t=>coreReader.GetString(coreReader.GetTypeDefinition(t).Name).StartsWith("Combat",StringComparison.Ordinal)),"published Core assembly contains no combat parser, aggregation or rendering types");
+    }
     var exports=new List<string>(); uint minimumApi=0; bool cdecl=true;
     foreach(var handle in reader.CustomAttributes)
     {
@@ -179,10 +186,11 @@ if (pluginPath != null)
 }
 string sourceRoot=Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(),"src","ACAI2.Rynth.Plugin"));
 if(Directory.Exists(sourceRoot)) {
-    var allowed=new HashSet<string>{"Log","WriteToChat","GetScreenMode","GetPlayerId","TryGetWorldName","TryGetObjectName","TryGetObjectPosition","HasAppraisalData","GetLiveObjectIds","SetPanelOpen"};
+    var allowed=new HashSet<string>{"Log","WriteToChat","GetScreenMode","GetPlayerId","TryGetWorldName","TryGetObjectName","TryGetObjectPosition","HasAppraisalData","GetLiveObjectIds","SetPanelOpen","InvokeChatParser","TryGetObjectBitfield"};
     var used=Directory.GetFiles(sourceRoot,"*.cs").SelectMany(path=>System.Text.RegularExpressions.Regex.Matches(File.ReadAllText(path),@"[Hh]ost\.(\w+)\s*\(").Select(m=>m.Groups[1].Value)).ToArray();
-    Check(used.Length>0 && used.All(allowed.Contains),"pilot source uses only read APIs and local diagnostics, never native game action methods");
+    Check(used.Length>0 && used.All(allowed.Contains),"plugin native calls are read APIs, local diagnostics and the guarded Keyfer chat dispatcher only");
 }
+await KeyferChecks.Run(Check);
 Console.WriteLine($"All {count} checks passed. Only fake HTTP handlers were used; no AI, game chat or production Bridge calls.");
 
 record Call(string Path,string Json,string Method);

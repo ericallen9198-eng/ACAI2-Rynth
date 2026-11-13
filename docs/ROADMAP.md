@@ -1,3 +1,6 @@
+> Current priority: Keyfer restoration, with combat deferred to a possible separate plugin.
+> See [next rollout](NEXT-ROLLOUT.md) and [Keyfer setup](KEYFER-SETUP.md).
+
 # Migration roadmap
 
 The immediate scope is now the [next-rollout integration plan](NEXT-ROLLOUT.md):

@@ -1,0 +1,1 @@
+<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup><ItemGroup><Compile Include="../ACAI2.Rynth.Core/Combat/*.cs" Link="%(Filename)%(Extension)" /><ProjectReference Include="../ACAI2.Rynth.Core/ACAI2.Rynth.Core.csproj" /></ItemGroup></Project>

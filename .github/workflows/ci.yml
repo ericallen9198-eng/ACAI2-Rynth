@@ -1,4 +1,4 @@
-name: Read-only pilot checks
+name: Keyfer adapter checks
 on: [push, pull_request]
 permissions:
   contents: read
@@ -25,5 +25,5 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: runner.os == 'Windows'
         with:
-          name: ACAI2-Rynth-readonly-pilot
-          path: artifacts/plugin-managed/
+          name: ACAI2-Rynth-Keyfer-Windows
+          path: artifacts/keyfer-managed/

@@ -1,59 +1,21 @@
-# Migration pilot status
+# Current status — v0.3.0 Keyfer adapter
 
-This repository starts a separate ACAI2 implementation on RynthCore. The existing
-ACAI2/Samm-AI deployment remains unchanged. This is a read-only foundation, not a
-complete feature migration or a replacement to deploy over the current client.
+User-approved scope: restore Keyfer on Rynth, exclude combat from rollout.
 
-## v0.2.0 combat display
+Implemented against the pinned genuine RynthCore SDK:
+- Session-scoped local Bridge registration and heartbeat, current identity and
+  cancellation; only the configured character enables Keyfer.
+- Ported original conversation, arena delivery, emotes, world events, leaderboard
+  client and treasure reporting/journal. Bridge v0.17 stays unchanged.
+- Local controls/configuration, Rynth-only ownership lock, bounded callback and
+  speech queues. Private questions only use the local ask route.
+- Native sends only on the pump, through a fixed speech/emote/top/prize catalog.
+  No attacks, casts, movement, equipment/loot automation or arbitrary AI commands.
+- Combat source retained in Future/test assembly; published plugin excludes it,
+  the renderer and ImGui package reference.
 
-An ImGui.NET 1.91.6.1 renderer now uses the pinned engine's own native ImGui context.
-It provides a live compact DPS meter, expandable component and sneak statistics,
-optional outlined proc text with inward arcs, advanced RGBA color wheel/hex inputs,
-an isolated sample preview and per-character saved layout/lock settings.
-`/acai2r ui` opens setup. Live combat events are parsed locally; raw combat lines
-are not retained or exported. Rynth owns existing power and height controls; the
-ACAI2 setup links to Rynth Settings and does not add a second action controller.
-
-Rynth Vision already has general combat text, so ACAI2 proc text defaults off.
-Character projection remains disabled pending reliable camera-frame coordinates;
-fixed-screen anchors use normalized viewport positions. Thread height learning,
-font weight/loading, charts and world debuffs are not connected in this version.
-
-## Implemented
-
-- Real RynthCore SDK and lifecycle exports, pinned to API 92.
-- Managed x86 plugin for the CoreCLR engine; no Decal, VTank or UtilityBelt references.
-- Bounded observations with character/session isolation and cancellation on logout.
-- Local status and JSON export commands; raw chat capture defaults off.
-- Optional loopback Bridge registration, heartbeat and perception only, disabled
-  by default. No AI requests, game commands, automated chat or prize actions.
-- Windows build/publish scripts, pinned dependency bootstrap for ZIP downloads,
-  and Linux/Windows CI definitions.
-
-## Validation and remaining work
-
-The Linux build against the real SDK and 56 automated checks pass. Checks cover
-session isolation, bounded buffers, configuration, fake HTTP transport, compiled
-x86 metadata, native export signatures and the read-only host API boundary.
-Tests contact no live Bridge, AI or game service.
-
-Linux cannot embed the Win32 plugin manifest and reports that expected warning.
-Publish on Windows using `scripts/Publish.ps1`; do not install the Linux build.
-The Windows client, native plugin loading, launcher setup and live observations
-have not been verified here. PowerShell scripts and the GitHub CI workflow still
-need execution on Windows. Follow [Windows validation](WINDOWS-VALIDATION.md)
-before enabling optional telemetry.
-
-Keyfer, Thread Gems, remaining combat/HUD features and automation remain migration work;
-see the [roadmap](ROADMAP.md).
-
-## Next rollout planning
-
-The uploaded Soot DreamWeave source snapshot resolves the earlier review blocker.
-See [source findings](SOOT-SOURCE-REVIEW.md) and [NEXT-ROLLOUT.md](NEXT-ROLLOUT.md).
-Its press recorder/statistics, run/effect history and pet-text fixes are reuse
-candidates; no supplied plugin or patch was installed. Thirteen isolated checks
-against unchanged pure models verified behavior and reproduced imprint/recipe/dose
-gaps. No Windows/native gameplay verification was performed. This is a source
-review and planning update, not an implemented integration or a change to the
-prior 56-check ACAI2 application baseline.
+98 controlled checks currently pass, including a real-SDK managed x86 plugin
+build. One expected Linux manifest-embedding warning remains: Windows
+UpdateResource is required. No Windows in-game loading or live Bridge/AI dispatch
+was performed here. See repository Actions for Windows publish results and
+[KEYFER-SETUP.md](KEYFER-SETUP.md) for the required attended checks.

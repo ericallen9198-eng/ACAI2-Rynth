@@ -17,3 +17,13 @@ that snapshot. The parsing guard is localized to combat messages rather than
 importing Keyfer's GameChat routing; chat envelopes are rejected and the renderer
 retains aggregate values rather than raw logs. No Decal renderer or native power
 binding is copied.
+
+## Keyfer port, v0.3.0
+
+`src/ACAI2.Rynth.Core/Keyfer` ports the original project's KeyferConversation,
+TreasureClient, LeaderboardClient and their portable protocol helpers from
+Samm-AI `ff44cc3`. The new adapter replaces System.Web JSON with System.Text.Json,
+uses session cancellation, bounded queues, isolated LOCALAPPDATA state, injected
+HTTP/clock tests and the native Rynth pump. It preserves the existing Bridge wire
+contracts and does not import the old installed state/config or Bridge source.
+The original project is MIT licensed; its existing bundled notice is retained.

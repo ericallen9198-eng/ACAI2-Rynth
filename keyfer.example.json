@@ -1,0 +1,11 @@
+{
+  "keyferEnabled": true,
+  "bridgeUrl": "http://127.0.0.1:5052",
+  "keyferServer": "DreamWeave",
+  "keyferCharacter": "Keyfer Sutherland",
+  "keyferPublicReplies": true,
+  "keyferWorldEvents": true,
+  "treasureEnabled": true,
+  "treasurePrizeCommand": "",
+  "keyferControllers": ["Samm", "Toe"]
+}

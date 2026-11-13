@@ -21,7 +21,7 @@ public sealed class SessionLease : IDisposable
     public SessionLease(GameIdentity identity, DateTime now) { identity.Validate(); Identity = identity; StartedUtc = now; Token = cancellation.Token; }
     public void Dispose() { if (Interlocked.Exchange(ref disposed,1)==0) { cancellation.Cancel(); cancellation.Dispose(); } }
 }
-public sealed record ObservedObject(uint Id, string Name, uint CellId, float X, float Y, float Z, bool HasAppraisal);
+public sealed record ObservedObject(uint Id, string Name, uint CellId, float X, float Y, float Z, bool HasAppraisal, string Kind = "Object");
 public sealed record PublicChatRecord(DateTime Utc, int NativeType, string Channel, string Text);
 public sealed record PilotSnapshot(string InstanceId, GameIdentity Identity, DateTime StartedUtc, DateTime CapturedUtc,
     long ChatEvents, long ObjectEvents, int DroppedChatRecords, ObservedObject[] Objects, PublicChatRecord[] PublicChat);

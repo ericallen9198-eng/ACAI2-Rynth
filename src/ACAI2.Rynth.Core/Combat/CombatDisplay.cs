@@ -56,14 +56,14 @@ public static class CombatProfiles
     {
         if(!File.Exists(path)) return new();
         if(new FileInfo(path).Length>32768) throw new InvalidDataException("Combat profile is too large.");
-        var settings=JsonSerializer.Deserialize(File.ReadAllText(path),PilotJson.Default.CombatAppearance) ?? throw new InvalidDataException("Empty combat profile.");
+        var settings=JsonSerializer.Deserialize(File.ReadAllText(path),CombatJson.Default.CombatAppearance) ?? throw new InvalidDataException("Empty combat profile.");
         settings.Validate(); return settings;
     }
     public static void Save(string path,CombatAppearance settings)
     {
         settings.Validate(); Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         string temporary=path+"."+Guid.NewGuid().ToString("N")+".tmp";
-        try { File.WriteAllText(temporary,JsonSerializer.Serialize(settings,PilotJson.Default.CombatAppearance)); File.Move(temporary,path,true); }
+        try { File.WriteAllText(temporary,JsonSerializer.Serialize(settings,CombatJson.Default.CombatAppearance)); File.Move(temporary,path,true); }
         finally { if(File.Exists(temporary)) File.Delete(temporary); }
     }
 }

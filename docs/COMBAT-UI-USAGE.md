@@ -1,3 +1,6 @@
+> Historical v0.2 pilot notes. The v0.3 Keyfer rollout excludes combat.
+> Follow [Keyfer setup](KEYFER-SETUP.md) for the current package.
+
 # ImGui combat display (v0.2.0)
 
 Publish on Windows with `scripts/Publish.ps1` and load through the RynthCore
