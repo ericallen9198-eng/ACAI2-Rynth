@@ -97,10 +97,29 @@ Check(!StationLocator.ExpectedApproach("Loading",playerPos,new(0x12340001,4,0,0)
 
 var bankPlan=new PrepPlan{Target=1,Reagent="",TaperCount=0,BuyMissing=true,Budget=10};
 var bankMachine=new PrepMachine();bankMachine.Start(bankPlan,World(scarab,herb,powder),"DreamWeave","Toe",now,0);bankMachine.Step(World(scarab,herb,powder),0);
-var bankWorld=World(scarab,herb,powder) with{OpenVendor=21,Stock=[new(999,bankPlan.BlankName,100,1,12345)]};
+var bankWorld=World(scarab,herb,powder,new(777,"Trade Notes (250,000)",1,"",true,12345)) with{OpenVendor=21,Stock=[new(999,bankPlan.BlankName,100,1,12345)]};
 bankMachine.Step(bankWorld,.1);
-Check(bankMachine.Step(bankWorld,.2) is{Kind:"Buy",Amount:1}&&bankMachine.Data.ReservedCurrency[12345]==1&&bankMachine.Data.ReservedSpend==0,"bank-backed vendor quotes pass unchanged without requiring or converting physical notes");
+Check(bankMachine.Step(bankWorld,.2) is{Kind:"Buy",Amount:1}&&bankMachine.Data.ReservedCurrency[12345]==1&&bankMachine.Data.ReservedSpend==0,"native vendor quotes remain in their original currency without denomination conversion");
 Check(StationLocator.ExpectedApproach("Awaiting press",playerPos,new(0x12340002,3,0,0)),"a cell transition during a short native press approach is not mistaken for leaving the batch");
+
+var note=new PrepItem(777,"Trade Notes (250,000)",1,"",true,12345);
+PrepWorld NoteWorld(int count)=>World(scarab,herb,powder,note with{Count=count}) with{OpenVendor=21,Stock=[new(999,"Raw Fragment (Level 325)",100,2,12345,"Trade Notes (250,000)")]};
+PrepMachine NoteMachine(bool auto)
+{
+ var m=new PrepMachine();m.Start(new(){BuyMissing=true,AutoWithdrawNotes=auto,Reagent="",TaperCount=0},NoteWorld(1),"DreamWeave","Toe",now,0);return m;
+}
+var noWithdraw=NoteMachine(false);Check(noWithdraw.Step(NoteWorld(1),0)==null&&noWithdraw.Data.Notice.Contains("Currency shortage")&&!noWithdraw.Running,"auto-withdraw off reports the shortage and sends no withdrawal or purchase");
+var withdraw=NoteMachine(true);Check(withdraw.Step(NoteWorld(1),0) is{Kind:"Withdraw notes",Amount:1}&&withdraw.Data.WithdrawalCount==1,"auto-withdraw requests only the single missing note, not the full purchase cost");
+withdraw.Observe("[Allegiance] Toe says, \"[BANK] Withdrew 1 trade note(s) worth 250,000 pyreals. Balance: 1,000,000\"");
+Check(withdraw.Step(NoteWorld(2),.1)==null&&withdraw.Data.State=="Awaiting bank withdrawal","a quoted bank message plus currency gain cannot spoof withdrawal confirmation");
+withdraw.Observe("[BANK] Withdrew 1 trade note(s) worth 250,000 pyreals. Balance: 1,000,000");
+Check(withdraw.Step(NoteWorld(1),.2)==null&&withdraw.Data.State=="Awaiting bank withdrawal","bank confirmation alone does not proceed before the note reaches inventory");
+withdraw.Step(NoteWorld(2),.3);Check(withdraw.Data.State=="Supply check"&&withdraw.Data.WithdrawalCount==0,"matching bank acknowledgment and inventory increase complete the withdrawal");
+Check(withdraw.Step(NoteWorld(2),1.4) is{Kind:"Buy",Amount:1},"confirmed withdrawal continues the original purchase without another bank command");
+var enough=NoteMachine(true);Check(enough.Step(NoteWorld(2),0) is{Kind:"Buy"},"enough carried notes skip auto-withdraw entirely");
+var withdrawalTimeout=NoteMachine(true);withdrawalTimeout.Step(NoteWorld(1),0);withdrawalTimeout.Step(NoteWorld(1),31);Check(!withdrawalTimeout.Running&&withdrawalTimeout.Step(NoteWorld(1),32)==null,"a missing bank reply times out without automatic withdrawal retry");
+var withdrawalRestart=new PrepMachine();withdrawalRestart.Restore(new(){State="Awaiting bank withdrawal",WithdrawalCount=1,WithdrawalCurrency=12345});Check(!withdrawalRestart.Running&&withdrawalRestart.Data.State=="Needs review","restart never repeats an interrupted withdrawal");
+var failedBank=NoteMachine(true);failedBank.Step(NoteWorld(1),0);failedBank.Observe("[BANK] Insufficient funds.");Check(!failedBank.Running&&failedBank.Data.Notice.Contains("Bank withdrawal refused"),"insufficient bank funds stop the batch with the bank's reason");
 
 string root=Path.Combine(Path.GetTempPath(),"threads-test-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);
 try

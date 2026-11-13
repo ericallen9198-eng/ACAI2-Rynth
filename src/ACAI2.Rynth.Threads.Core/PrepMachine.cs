@@ -1,8 +1,8 @@
 using System.Text.RegularExpressions;
 namespace ACAI2.Rynth.Threads.Core;
 
-public sealed record PrepItem(uint Id,string Name,int Count,string Description,bool Identified);
-public sealed record PrepStock(uint Id,string Name,int Amount,int UnitPrice,uint CurrencyId=0);
+public sealed record PrepItem(uint Id,string Name,int Count,string Description,bool Identified,uint Wcid=0);
+public sealed record PrepStock(uint Id,string Name,int Amount,int UnitPrice,uint CurrencyId=0,string CurrencyName="");
 public sealed record PrepWorld(uint PlayerId,bool Safe,bool Busy,PrepItem[] Inventory,uint PressId,uint FragmentVendor,uint ReagentVendor,uint OpenVendor,PrepStock[] Stock,string Problem="",string PressProblem="",string FragmentVendorProblem="",string ReagentVendorProblem="");
 public sealed record PrepAction(string Kind,uint Source=0,uint Target=0,int Amount=0,string Detail="");
 public sealed class PrepPlan
@@ -12,6 +12,7 @@ public sealed class PrepPlan
     public string BlankName=>"Raw Fragment (Level "+Level+")";
     public bool TopUp {get;set;}
     public bool BuyMissing {get;set;}
+    public bool AutoWithdrawNotes {get;set;}
     public int Budget {get;set;}=250000;
     public string Scarab {get;set;}="Lead Scarab";
     public string Herb {get;set;}="Hyssop";
@@ -43,6 +44,8 @@ public sealed class PrepCheckpoint
     public int Done {get;set;}
     public int Dose {get;set;}
     public uint Fragment {get;set;}
+    public int WithdrawalCount {get;set;}
+    public uint WithdrawalCurrency {get;set;}
     public int ReservedSpend {get;set;}
     public Dictionary<uint,int> ReservedCurrency {get;set;}=[];
     public List<uint> Finished {get;set;}=[];
@@ -59,7 +62,8 @@ public sealed class PrepMachine
     private double deadline,next;
     private int beforeCount;
     private string ingredient="",buyName="";
-    private bool loadAck,pressAck;
+    private bool loadAck,pressAck,bankAck;
+    private int notesBefore;
     private HashSet<uint> beforeGems=[];
     private uint newGem;
     public bool Start(PrepPlan plan,PrepWorld world,string server,string character,DateTime utc,double now)
@@ -84,6 +88,12 @@ public sealed class PrepMachine
         string line=raw.Trim();
         if(Data.State=="Awaiting dose"&&line.StartsWith("The fragment takes the "+ingredient+".",StringComparison.Ordinal))loadAck=true;
         if(Data.State=="Awaiting press"&&line=="Pressed. It holds.")pressAck=true;
+        if(Data.State=="Awaiting bank withdrawal"&&line.StartsWith("[BANK]",StringComparison.Ordinal))
+        {
+            var match=Regex.Match(line,@"^\[BANK\] Withdrew (?<n>\d+) trade note\(s\) worth (?<p>[\d,]+) pyreals\.(?:\s*Balance: [\d,]+\.?)?\s*$");
+            if(match.Success&&int.TryParse(match.Groups["n"].Value,out int n)&&n==Data.WithdrawalCount&&long.TryParse(match.Groups["p"].Value.Replace(",",""),out long value)&&value==(long)n*250000)bankAck=true;
+            else if(Regex.IsMatch(line,@"(?i)insufficient|not enough|cannot|failed|unable"))Refused("Bank withdrawal refused: "+line);
+        }
     }
     public void Refused(string message){if(Running){Data.State="Needs review";Data.Notice=message+"; no automatic retry of a possibly issued action.";}}
     public PrepAction? Step(PrepWorld w,double now)
@@ -93,6 +103,12 @@ public sealed class PrepMachine
         if(Data.Finished.Any(id=>!w.Inventory.Any(i=>i.Id==id&&i.Name=="Thread Gem"))){Refused("A completed batch gem left inventory");return null;}
         if(now<next)return null;
         if(now>deadline){Refused("Timed out in "+Data.State);return null;}
+        if(Data.State=="Awaiting bank withdrawal")
+        {
+            int notes=w.Inventory.Where(i=>i.Wcid==Data.WithdrawalCurrency).Sum(i=>i.Count);
+            if(bankAck&&notes>=notesBefore+Data.WithdrawalCount){Data.WithdrawalCount=0;Data.WithdrawalCurrency=0;Advance("Supply check",now,1);}
+            return null;
+        }
         if(Data.State=="Awaiting purchase")
         {
             if(Count(w,buyName)>=beforeCount+DataAmount){Advance("Supply check",now);return null;}
@@ -149,6 +165,19 @@ public sealed class PrepMachine
                 long cost=(long)stock.UnitPrice*amount;
                 int spent=stock.CurrencyId==0?Data.ReservedSpend:Data.ReservedCurrency.GetValueOrDefault(stock.CurrencyId);
                 if(stock.UnitPrice<=0||stock.Amount>=0&&stock.Amount<amount||cost>Data.Plan.Budget-spent){Refused("Price/stock/budget check failed for "+missing.Key);return null;}
+                if(stock.CurrencyId!=0)
+                {
+                    int have=w.Inventory.Where(i=>i.Wcid==stock.CurrencyId).Sum(i=>i.Count);
+                    if(cost>have)
+                    {
+                        int shortage=checked((int)(cost-have));
+                        if(!Data.Plan.AutoWithdrawNotes){Refused("Currency shortage: need "+cost+", have "+have+" "+stock.CurrencyName+". Enable Auto-withdraw notes or withdraw manually.");return null;}
+                        if(stock.CurrencyName is not ("Trade Notes (250,000)" or "Trade Note (250,000)")){Refused("Auto-withdraw supports only the confirmed 250,000-pyreal trade-note currency.");return null;}
+                        notesBefore=have;bankAck=false;Data.WithdrawalCount=shortage;Data.WithdrawalCurrency=stock.CurrencyId;
+                        Advance("Awaiting bank withdrawal",now);Data.Notice="Withdrawing exactly "+shortage+" missing trade note(s); waiting for bank and inventory confirmation.";
+                        return new("Withdraw notes",Amount:shortage);
+                    }
+                }
                 if(stock.CurrencyId==0)Data.ReservedSpend+=(int)cost;else Data.ReservedCurrency[stock.CurrencyId]=spent+(int)cost;buyName=missing.Key;beforeCount=Count(w,buyName);DataAmount=amount;Advance("Awaiting purchase",now);
                 return new("Buy",stock.Id,vendor,amount,buyName);
             }

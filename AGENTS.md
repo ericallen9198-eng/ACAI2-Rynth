@@ -65,3 +65,11 @@ user clarified DreamWeave bank funding is automatic: do not manage, exchange,
 require, or denomination-convert physical trade notes. Submit native vendor quotes
 unchanged and report native refusal reasons. Keep budget accounting separate for
 each quoted currency rather than combining incompatible denominations.
+
+The user explicitly authorized a per-character Auto-withdraw notes toggle. Default
+off: a physical vendor-currency shortage stops with an error. When enabled, only
+for the confirmed Trade Notes (250,000) currency, the Thread batch may issue the
+fixed `/b w n <positive integer shortage>` command on the pump after its durable
+checkpoint. Require matching native BANK withdrawal acknowledgment and a counted
+currency inventory increase before purchasing. No automatic retry, bank-balance
+guessing, exchanges, deposits, unrelated bank commands or replay after restart.

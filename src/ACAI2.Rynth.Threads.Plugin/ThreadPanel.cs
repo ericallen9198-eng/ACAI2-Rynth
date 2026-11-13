@@ -92,6 +92,8 @@ internal sealed class ThreadPanel
                             int target=plan.Target;if(ImGui.InputInt("Gems",ref target)){plan.Target=Math.Clamp(target,1,50);Dirty=true;}
                             bool topup=plan.TopUp;if(ImGui.Checkbox("Top up usable stock",ref topup)){plan.TopUp=topup;Dirty=true;}
                             bool buy=plan.BuyMissing;if(ImGui.Checkbox("Buy missing supplies",ref buy)){plan.BuyMissing=buy;Dirty=true;}
+                            bool withdraw=plan.AutoWithdrawNotes;if(ImGui.Checkbox("Auto-withdraw notes when needed",ref withdraw)){plan.AutoWithdrawNotes=withdraw;Dirty=true;}
+                            ImGui.TextDisabled("Off: stop on a note shortage. On: withdraw only missing notes.");
                             int cap=plan.Budget;if(ImGui.InputInt("Purchase cap (per quoted currency)",ref cap)){plan.Budget=Math.Clamp(cap,0,10000000);Dirty=true;}
                             string value=plan.Scarab;if(ImGui.InputText("Scarab",ref value,100)){plan.Scarab=value;Dirty=true;}
                             value=plan.Herb;if(ImGui.InputText("Herb",ref value,100)){plan.Herb=value;Dirty=true;}

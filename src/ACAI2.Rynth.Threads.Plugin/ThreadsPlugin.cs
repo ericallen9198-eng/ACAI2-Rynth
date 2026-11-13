@@ -7,7 +7,7 @@ namespace ACAI2.Rynth.Threads.Plugin;
 
 public sealed class ThreadsPlugin : RynthPluginBase
 {
-    public const string Version="0.1.3";
+    public const string Version="0.1.4";
     public override uint MinimumApiVersion=>92;
     private readonly ConcurrentQueue<string> commands=new();
     private readonly ConcurrentQueue<(string Text,int Type)> prepChat=new();
@@ -33,17 +33,18 @@ public sealed class ThreadsPlugin : RynthPluginBase
     private StationPosition? batchOrigin;
     private string Root=>Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"ACAI2-Threads");
     private static double Now=>System.Diagnostics.Stopwatch.GetTimestamp()/(double)System.Diagnostics.Stopwatch.Frequency;
-    public override int Initialize(){Host.Log("[ACAI2 Threads] v0.1.3. /acai2threads opens the standalone panel. Gem preparation starts only from the panel.");return 0;}
+    public override int Initialize(){Host.Log("[ACAI2 Threads] v0.1.4. /acai2threads opens the standalone panel. Gem preparation starts only from the panel.");return 0;}
     public override void OnLoginComplete(){waiting=false;Interlocked.Exchange(ref lifecycle,1);}
     public override void OnLogout(){waiting=true;journal?.Dispose();Interlocked.Exchange(ref lifecycle,1);}
     public override void OnChatWindowText(string? text,int type,ref int eat)
     {
         if(waiting||Volatile.Read(ref lifecycle)!=0||text==null||text.Length>4096||!ThreadText.Native(text,type))return;
         // Filter before queuing: ordinary combat chatter is never retained.
-        bool relevant=text.StartsWith("The fragment ",StringComparison.Ordinal)||text.StartsWith("Pressed.",StringComparison.Ordinal)||text.StartsWith("Components selected:",StringComparison.Ordinal)||text.StartsWith("The gem carries:",StringComparison.Ordinal)||text.StartsWith("Level ",StringComparison.Ordinal)||text.StartsWith("Remaining slots",StringComparison.Ordinal)||text.StartsWith("[REALM]",StringComparison.Ordinal)||text.StartsWith("The Thread Gem ",StringComparison.Ordinal)||text.StartsWith("Your Thread Gem ",StringComparison.Ordinal)||text.StartsWith("Monsters killed ",StringComparison.Ordinal)||text.Contains(" is cleared.",StringComparison.Ordinal)||text.Contains(" - ",StringComparison.Ordinal)||text is "You are dead!" or "You have died!";
+        bool bank=text.StartsWith("[BANK]",StringComparison.Ordinal)&&prep.Running;
+        bool relevant=bank||text.StartsWith("The fragment ",StringComparison.Ordinal)||text.StartsWith("Pressed.",StringComparison.Ordinal)||text.StartsWith("Components selected:",StringComparison.Ordinal)||text.StartsWith("The gem carries:",StringComparison.Ordinal)||text.StartsWith("Level ",StringComparison.Ordinal)||text.StartsWith("Remaining slots",StringComparison.Ordinal)||text.StartsWith("[REALM]",StringComparison.Ordinal)||text.StartsWith("The Thread Gem ",StringComparison.Ordinal)||text.StartsWith("Your Thread Gem ",StringComparison.Ordinal)||text.StartsWith("Monsters killed ",StringComparison.Ordinal)||text.Contains(" is cleared.",StringComparison.Ordinal)||text.Contains(" - ",StringComparison.Ordinal)||text is "You are dead!" or "You have died!";
         if(!relevant)return;
         uint bound=prep.Running&&prep.Data.State=="Awaiting press"?prep.Data.Fragment:0;
-        journal?.Submit(new("chat",text,DateTime.UtcNow,unchecked((int)bound),"",type));
+        if(!bank)journal?.Submit(new("chat",text,DateTime.UtcNow,unchecked((int)bound),"",type));
         if(Interlocked.Increment(ref queued)<=128)prepChat.Enqueue((text,type));else Interlocked.Decrement(ref queued);
     }
     public override void OnChatBarEnter(string? text,ref int eat)
@@ -136,7 +137,8 @@ public sealed class ThreadsPlugin : RynthPluginBase
                     identified=Host.TryGetObjectProperties(id,out var properties)&&properties is {HasIdData:true}&&properties.LastIdTime>prior;
                     if(identified)identifyAfter.Remove(id);
                 }
-                found.Add(new(id,name,count,Description(id),identified));
+                if(!Host.TryGetObjectWcid(id,out uint wcid))throw new InvalidOperationException("Inventory item type snapshot unavailable; cannot safely count currency.");
+                found.Add(new(id,name,count,Description(id),identified,wcid));
                 if(Host.GetNumContainedItems(id)>0)containers.Enqueue(id);
             }
         }
@@ -145,7 +147,7 @@ public sealed class ThreadsPlugin : RynthPluginBase
     }
     private PrepWorld World(bool skipBot=false)
     {
-        if(player==0||!Host.HasUseObjectOn||!Host.HasRequestId||!Host.HasGetContainerContents||!Host.HasGetObjectPosition||!Host.HasGetBusyState||!Host.HasGetPlayerVitals||!Host.HasGetObjectIntProperty||!Host.HasGetObjectProperties||!Host.HasGetPluginInterface||!Host.HasVendorTrade)
+        if(player==0||!Host.HasUseObjectOn||!Host.HasRequestId||!Host.HasGetContainerContents||!Host.HasGetObjectPosition||!Host.HasGetBusyState||!Host.HasGetPlayerVitals||!Host.HasGetObjectIntProperty||!Host.HasGetObjectProperties||!Host.HasGetObjectWcid||!Host.HasGetPluginInterface||!Host.HasVendorTrade)
             throw new InvalidOperationException("Required stock Rynth APIs are unavailable");
         if(!Host.TryGetObjectPosition(player,out uint cell,out float px,out float py,out float pz))throw new InvalidOperationException("Player position unavailable");
         var currentPosition=new StationPosition(cell,px,py,pz);
@@ -178,7 +180,7 @@ public sealed class ThreadsPlugin : RynthPluginBase
             vendor=info.VendorId;
             // Send the vendor's own quote/currency unchanged. DreamWeave and the
             // native client handle bank funding; this plugin never manages notes.
-            if(info.TradingAvailable&&!info.TradeInFlight)stock=Host.GetVendorItems().Select(i=>new PrepStock(i.ObjectId,i.Name,i.Amount,i.UnitPrice,info.AltCurrencyWcid)).ToArray();
+            if(info.TradingAvailable&&!info.TradeInFlight)stock=Host.GetVendorItems().Select(i=>new PrepStock(i.ObjectId,i.Name,i.Amount,i.UnitPrice,info.AltCurrencyWcid,info.AltCurrencyName)).ToArray();
         }
         return new(player,safe,Host.GetBusyState()!=0,Inventory(),press.Id,fragmentVendor.Id,reagentVendor.Id,vendor,stock,blocker,press.Problem,fragmentVendor.Problem,reagentVendor.Problem);
     }
@@ -262,6 +264,7 @@ public sealed class ThreadsPlugin : RynthPluginBase
         }
         bool ok=a.Kind switch {
             "Identify"=>Host.RequestId(a.Source),
+            "Withdraw notes"=>a.Amount>0&&prep.Data.Plan.AutoWithdrawNotes&&Host.HasInvokeChatParser&&Host.InvokeChatParser("/b w n "+a.Amount.ToString(System.Globalization.CultureInfo.InvariantCulture)),
             "Open vendor"=>Host.UseObject(a.Source),
             "Buy"=>(pendingPurchase=Host.VendorBuy(a.Target,[new VendorTradeEntryNative(a.Source,a.Amount)]))!=0,
             "Dose"=>Host.UseObjectOn(a.Source,a.Target),

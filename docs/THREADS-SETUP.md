@@ -19,6 +19,15 @@ preparation rather than guessing. No Bridge or AI subscription is needed.
 
 ## First test
 
+v0.1.4 adds **Auto-withdraw notes when needed**, saved per character and off by
+default. Off: a shortage stops with a clear error. On: before a fragment purchase,
+the builder counts carried notes matching the vendor's currency and sends only
+`/b w n <shortage>` for the confirmed 250,000-pyreal note currency. It waits for
+the matching native BANK confirmation and inventory increase before continuing.
+Insufficient funds, refusal or timeout stops without retry; a restarted batch
+never replays a possibly issued withdrawal. No automatic deposits or exchanges.
+This covers the quoted purchase shortage, not a guessed extra pressing fee.
+
 v0.1.3 supersedes the strict center-distance check from v0.1.2. The client/server
 handle reach and any normal short approach to the intended vendor or press.
 The three exact-name stations must be unique within 12m of the batch's original
@@ -28,8 +37,9 @@ or press use are allowed within that workspace, and the stationary anchor is
 updated after acknowledgment. No general navigation or route runner is added.
 
 Vendor quotes are sent unchanged through Rynth's native purchasing API. DreamWeave
-handles bank funding; the plugin never exchanges, requires, or denomination-converts
-physical notes. The purchase cap applies separately to each vendor's quoted
+handles bank funding. The native purchase helper still checks carried currency;
+the optional withdrawal toggle supplies that shortage. No denomination conversion
+or note exchange is performed. The purchase cap applies separately to each vendor's quoted
 currency units (pyreals remain pyreals); unlike denominations are never added
 together. Native purchase refusals are reported with their reason rather than
 silently waiting for a timeout.
