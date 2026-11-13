@@ -54,7 +54,7 @@ public sealed class KeyferSession : IDisposable
                     if(!stop.IsCancellationRequested){Volatile.Write(ref ready,1);connectionStatus="Bridge registered";}
                 }
                 catch(OperationCanceledException) when(stop.IsCancellationRequested){break;}
-                catch(Exception ex) {Volatile.Write(ref ready,0);connectionStatus="Bridge unavailable: "+ex.GetType().Name;}
+                catch(Exception ex) {Volatile.Write(ref ready,0);connectionStatus="Bridge unavailable: "+ex.GetType().Name+(ex is MissingMethodException?": "+new string(ex.Message.Where(c=>!char.IsControl(c)).Take(1024).ToArray()):"");}
                 await Task.Delay(TimeSpan.FromSeconds(10),stop.Token);
             }
         }

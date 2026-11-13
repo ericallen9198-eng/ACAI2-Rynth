@@ -1,6 +1,17 @@
 name: Publish verified Keyfer package
 on:
   workflow_dispatch:
+    inputs:
+      run_id:
+        description: Successful Windows verification run ID
+        required: true
+      version:
+        description: Package version (e.g. 0.3.1)
+        required: true
+        default: '0.3.1'
+      commit_sha:
+        description: Full tested source commit SHA
+        required: true
 permissions:
   actions: read
   contents: write
@@ -8,17 +19,33 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - name: Download Windows package from the verified v0.3.0 build
+      - name: Confirm the requested build succeeded for the exact source commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          BUILD_RUN: ${{ inputs.run_id }}
+          SOURCE_SHA: ${{ inputs.commit_sha }}
+          PACKAGE_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          [[ "$BUILD_RUN" =~ ^[0-9]+$ ]]
+          [[ "$SOURCE_SHA" =~ ^[a-f0-9]{40}$ ]]
+          [[ "$PACKAGE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          gh run view "$BUILD_RUN" --json conclusion,headSha > run.json
+          jq -e --arg sha "$SOURCE_SHA" '.conclusion == "success" and .headSha == $sha' run.json
+      - name: Download Windows package from the verified build
         uses: actions/download-artifact@v4
         with:
           name: ACAI2-Rynth-Keyfer-Windows
           path: package
-          run-id: 43420547592
+          run-id: ${{ inputs.run_id }}
           github-token: ${{ github.token }}
       - name: Package and publish
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
+          SOURCE_SHA: ${{ inputs.commit_sha }}
+          PACKAGE_VERSION: ${{ inputs.version }}
         shell: bash
         run: |
           set -euo pipefail
@@ -26,21 +53,23 @@ jobs:
           test -f package/keyfer.example.json
           test ! -e package/ImGui.NET.dll
           test ! -e package/ACAI2.Rynth.Combat.Future.dll
+          zip_name="ACAI2-Rynth-Keyfer-v${PACKAGE_VERSION}-Windows.zip"
+          tag="keyfer-v${PACKAGE_VERSION}"
           cd package
-          zip -qr "$RUNNER_TEMP/ACAI2-Rynth-Keyfer-v0.3.0-Windows.zip" .
+          zip -qr "$RUNNER_TEMP/$zip_name" .
           cd "$RUNNER_TEMP"
-          sha256sum ACAI2-Rynth-Keyfer-v0.3.0-Windows.zip > ACAI2-Rynth-Keyfer-v0.3.0-Windows.zip.sha256
-          cat > release-notes.md <<'NOTES'
-          Keyfer-only Rynth adapter, built and published on Windows from source commit 3c67ea6a0f3307c6f565e468ef08ace292e988c3. All 98 controlled checks passed. No live game/AI calls were used in testing; in-game verification remains.
+          sha256sum "$zip_name" > "$zip_name.sha256"
+          cat > release-notes.md <<NOTES
+          Keyfer-only Windows package, built and tested from source commit $SOURCE_SHA. No live game/AI calls were used in testing; in-game verification remains.
 
-          Download **ACAI2-Rynth-Keyfer-v0.3.0-Windows.zip** below. It contains the compiled plugin, dependencies, example configuration and setup instructions. No source rebuild is needed.
+          Download **$zip_name** below. It includes the compiled plugin, dependencies, example configuration and setup guide; no source rebuild is required.
 
-          Requires RynthCore CoreCLR managed x86 plugin support, API 92+. Engine release 2026.11.12.1 is API 97. Keep your existing ACAI2 Bridge v0.17 and its data/configuration. Combat rendering and tracking are excluded.
+          v0.3.1 fixes the Bridge MissingMethodException under Rynth's isolated JSON loading. This failure was reproduced with a Rynth-style collectible assembly context and now has a registration/tell-delivery regression check.
 
-          Extract the entire ZIP together. Add ACAI2.Rynth.Plugin.dll through RynthCore's Plugins tab. Copy keyfer.example.json to %LOCALAPPDATA%\ACAI2-Rynth\keyfer.json. Stop the old Keyfer responder before enabling this one. See KEYFER-SETUP.md inside the ZIP for complete instructions. Automatic treasure payments default disabled.
+          Requires RynthCore CoreCLR managed x86 support, API 92+. Keep the existing Bridge v0.17 and keyfer.json. Combat is excluded. Close the game before replacing all package DLLs together; do not overwrite your existing keyfer.json with the example. See KEYFER-SETUP.md in the ZIP.
           NOTES
-          if gh release view keyfer-v0.3.0 >/dev/null 2>&1; then
-            gh release upload keyfer-v0.3.0 ACAI2-Rynth-Keyfer-v0.3.0-Windows.zip ACAI2-Rynth-Keyfer-v0.3.0-Windows.zip.sha256 --clobber
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "$zip_name" "$zip_name.sha256" --clobber
           else
-            gh release create keyfer-v0.3.0 ACAI2-Rynth-Keyfer-v0.3.0-Windows.zip ACAI2-Rynth-Keyfer-v0.3.0-Windows.zip.sha256 --target 3c67ea6a0f3307c6f565e468ef08ace292e988c3 --title "Keyfer for Rynth v0.3.0 — Windows package" --notes-file release-notes.md
+            gh release create "$tag" "$zip_name" "$zip_name.sha256" --target "$SOURCE_SHA" --title "Keyfer for Rynth v$PACKAGE_VERSION — Windows package" --notes-file release-notes.md
           fi

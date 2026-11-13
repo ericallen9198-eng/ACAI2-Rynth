@@ -1,6 +1,6 @@
 # ACAI2-Rynth
 
-**v0.3.0 focuses on restoring Keyfer on RynthCore. Combat is excluded from this
+**v0.3.1 focuses on restoring Keyfer on RynthCore. Combat is excluded from this
 rollout**, with its source retained for a possible separate plugin.
 
 The adapter reconnects the existing local ACAI2 Bridge for conversation, private
@@ -13,7 +13,9 @@ project and installed ACAI2 files are not modified.
 
 ## Package and runtime
 
-Download [the compiled Keyfer Windows ZIP](https://github.com/ericallen9198-eng/ACAI2-Rynth/releases/download/keyfer-v0.3.0/ACAI2-Rynth-Keyfer-v0.3.0-Windows.zip). No source rebuild is needed. The same package remains available in Actions run 43420547592 as **ACAI2-Rynth-Keyfer-Windows** (GitHub sign-in required). Or build on Windows with .NET 10:
+v0.3.1 fixes the registration `MissingMethodException` caused by the host's private JSON assembly context.
+
+Download [the compiled Keyfer Windows ZIP](https://github.com/ericallen9198-eng/ACAI2-Rynth/releases/download/keyfer-v0.3.1/ACAI2-Rynth-Keyfer-v0.3.1-Windows.zip). No source rebuild is needed. The package is also available in its successful verification Actions run as **ACAI2-Rynth-Keyfer-Windows** (GitHub sign-in required). Or build on Windows with .NET 10:
 
 ```powershell
 git clone --recurse-submodules https://github.com/ericallen9198-eng/ACAI2-Rynth.git

@@ -190,6 +190,7 @@ if(Directory.Exists(sourceRoot)) {
     var used=Directory.GetFiles(sourceRoot,"*.cs").SelectMany(path=>System.Text.RegularExpressions.Regex.Matches(File.ReadAllText(path),@"[Hh]ost\.(\w+)\s*\(").Select(m=>m.Groups[1].Value)).ToArray();
     Check(used.Length>0 && used.All(allowed.Contains),"plugin native calls are read APIs, local diagnostics and the guarded Keyfer chat dispatcher only");
 }
+await IsolatedBridgeChecks.Run(Check);
 await KeyferChecks.Run(Check);
 Console.WriteLine($"All {count} checks passed. Only fake HTTP handlers were used; no AI, game chat or production Bridge calls.");
 
