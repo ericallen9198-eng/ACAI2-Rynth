@@ -3,7 +3,7 @@ namespace ACAI2.Rynth.Threads.Core;
 
 public sealed record PrepItem(uint Id,string Name,int Count,string Description,bool Identified);
 public sealed record PrepStock(uint Id,string Name,int Amount,int UnitPrice);
-public sealed record PrepWorld(uint PlayerId,bool Safe,bool Busy,PrepItem[] Inventory,uint PressId,uint FragmentVendor,uint ReagentVendor,uint OpenVendor,PrepStock[] Stock,string Problem="");
+public sealed record PrepWorld(uint PlayerId,bool Safe,bool Busy,PrepItem[] Inventory,uint PressId,uint FragmentVendor,uint ReagentVendor,uint OpenVendor,PrepStock[] Stock,string Problem="",string PressProblem="",string FragmentVendorProblem="",string ReagentVendorProblem="");
 public sealed record PrepAction(string Kind,uint Source=0,uint Target=0,int Amount=0,string Detail="");
 public sealed class PrepPlan
 {
@@ -140,7 +140,7 @@ public sealed class PrepMachine
             {
                 if(!Data.Plan.BuyMissing){Refused("Missing "+missing.Key+": need "+(missing.Value-Count(w,missing.Key)));return null;}
                 uint vendor=missing.Key.StartsWith("Raw Fragment",StringComparison.Ordinal)?w.FragmentVendor:w.ReagentVendor;
-                if(vendor==0){Refused("Stand beside the required named vendor");return null;}
+                if(vendor==0){Refused(missing.Key.StartsWith("Raw Fragment",StringComparison.Ordinal)?(w.FragmentVendorProblem.Length>0?w.FragmentVendorProblem:"Required fragment vendor missing"):(w.ReagentVendorProblem.Length>0?w.ReagentVendorProblem:"Required reagent vendor missing"));return null;}
                 if(w.OpenVendor!=vendor){waitingVendor=vendor;Advance("Awaiting vendor",now);return new("Open vendor",vendor);}
                 var rows=w.Stock.Where(s=>s.Name==missing.Key).ToArray();
                 if(rows.Length!=1){Refused("Vendor stock has no unique exact match for "+missing.Key);return null;}
@@ -160,7 +160,7 @@ public sealed class PrepMachine
         {
             if(Data.Dose>=Data.Plan.Doses().Length)
             {
-                if(w.PressId==0){Refused("Fragment Press missing");return null;}
+                if(w.PressId==0){Refused(w.PressProblem.Length>0?w.PressProblem:"Fragment Press missing");return null;}
                 beforeGems=w.Inventory.Where(i=>i.Name=="Thread Gem").Select(i=>i.Id).ToHashSet();pressAck=false;
                 Advance("Awaiting press",now);return new("Press",Data.Fragment,w.PressId);
             }

@@ -7,7 +7,7 @@ namespace ACAI2.Rynth.Threads.Plugin;
 
 public sealed class ThreadsPlugin : RynthPluginBase
 {
-    public const string Version="0.1.1";
+    public const string Version="0.1.2";
     public override uint MinimumApiVersion=>92;
     private readonly ConcurrentQueue<string> commands=new();
     private readonly ConcurrentQueue<(string Text,int Type)> prepChat=new();
@@ -32,7 +32,7 @@ public sealed class ThreadsPlugin : RynthPluginBase
     private (uint Cell,float X,float Y,float Z)? anchor;
     private string Root=>Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"ACAI2-Threads");
     private static double Now=>System.Diagnostics.Stopwatch.GetTimestamp()/(double)System.Diagnostics.Stopwatch.Frequency;
-    public override int Initialize(){Host.Log("[ACAI2 Threads] v0.1.1. /acai2threads opens the standalone panel. Gem preparation starts only from the panel.");return 0;}
+    public override int Initialize(){Host.Log("[ACAI2 Threads] v0.1.2. /acai2threads opens the standalone panel. Gem preparation starts only from the panel.");return 0;}
     public override void OnLoginComplete(){waiting=false;Interlocked.Exchange(ref lifecycle,1);}
     public override void OnLogout(){waiting=true;journal?.Dispose();Interlocked.Exchange(ref lifecycle,1);}
     public override void OnChatWindowText(string? text,int type,ref int eat)
@@ -148,17 +148,29 @@ public sealed class ThreadsPlugin : RynthPluginBase
         bool alive=Host.TryGetPlayerVitals(out uint hp,out _,out _,out _,out _,out _)&&hp>0;
         string blocker=journal?.Ready!=true?"Local journal is not ready":waiting||identity==null||Host.GetPlayerId()!=player?"Login identity changed":!alive?"Player vitals unavailable or health is zero":!peaceful?"Current combat mode is "+mode+"; switch to peace mode":moved?"Player moved away from the batch start":!Host.HasIsPortaling?"Portal-state API is unavailable":Host.IsPortaling()?"Player is portaling":skipBot?"":BotBlocker();
         bool safe=blocker.Length==0;
-        uint Nearby(string name)
+        var live=Host.GetLiveObjectIds();
+        StationMatch Nearby(string name)
         {
-            var ids=Host.GetLiveObjectIds().Where(id=>Host.TryGetObjectName(id,out string n)&&n==name&&Host.TryGetObjectPosition(id,out uint c,out float x,out float y,out float z)&&(c>>16)==(cell>>16)&&(x-px)*(x-px)+(y-py)*(y-py)<=6.25&&Math.Abs(z-pz)<=2.5).Take(2).ToArray();return ids.Length==1?ids[0]:0;
+            var candidates=new List<StationCandidate>();
+            foreach(uint id in live)
+            {
+                if(!Host.TryGetObjectName(id,out string n)||n!=name)continue;
+                StationPosition? pos=Host.TryGetObjectPosition(id,out uint c,out float x,out float y,out float z)?new(c,x,y,z):null;
+                double? radius=Host.HasGetObjectDoubleProperty&&Host.TryGetObjectDoubleProperty(id,54,out double r)?r:null;
+                candidates.Add(new(id,n,pos,radius));
+            }
+            return StationLocator.Find(name,new(cell,px,py,pz),candidates);
         }
+        var press=Nearby("Fragment Press");
+        var fragmentVendor=Nearby("Fragment-Clerk Maren Idswold");
+        var reagentVendor=Nearby("Reagent-Steward Aya Torimaru");
         uint vendor=0;PrepStock[] stock=[];
         if(Host.TryGetVendorInfo(out var info))
         {
             vendor=info.VendorId;
             if(!info.UsesAltCurrency&&info.TradingAvailable&&!info.TradeInFlight)stock=Host.GetVendorItems().Select(i=>new PrepStock(i.ObjectId,i.Name,i.Amount,i.UnitPrice)).ToArray();
         }
-        return new(player,safe,Host.GetBusyState()!=0,Inventory(),Nearby("Fragment Press"),Nearby("Fragment-Clerk Maren Idswold"),Nearby("Reagent-Steward Aya Torimaru"),vendor,stock,blocker);
+        return new(player,safe,Host.GetBusyState()!=0,Inventory(),press.Id,fragmentVendor.Id,reagentVendor.Id,vendor,stock,blocker,press.Problem,fragmentVendor.Problem,reagentVendor.Problem);
     }
     private unsafe IntPtr BotInterface(string name,int pointers)
     {
@@ -264,7 +276,7 @@ public sealed class ThreadsPlugin : RynthPluginBase
             if(!prepReadable)throw new InvalidOperationException("Existing local state could not be read; preserve it for review.");
             anchor=null;var world=World(skipBot:true);
             if(!world.Safe)throw new InvalidOperationException(world.Problem);
-            if(world.PressId==0)throw new InvalidOperationException("No unique Fragment Press within use range; move immediately beside it.");
+            if(world.PressId==0)throw new InvalidOperationException(world.PressProblem.Length>0?world.PressProblem:"Fragment Press could not be resolved.");
             Host.TryGetObjectPosition(player,out uint c,out float x,out float y,out float z);anchor=(c,x,y,z);
             Lease.Acquire();resumeAfterStop=false;held=HoldBot();waitingPlan=plan;pauseDeadline=Now+15;
             notice="Start received. RynthAi paused; waiting for outstanding actions to settle.";Local(notice);

@@ -76,6 +76,21 @@ macro=false;macroCalls.Clear();lease.Acquire();lease.Release(true);Check(!macro&
 macro=true;lease.Acquire();lease.Release(false);Check(!macro&&!lease.Active,"uncertainty or logout releases ownership without resuming");
 macroCalls.Clear();lease.Release(true);Check(macroCalls.Count==0,"a released runtime lease cannot resume from stale ownership");
 
+var playerPos=new StationPosition(0x12340001,0,0,0);
+StationCandidate Station(uint id,double x,double? radius=3)=>new(id,"Fragment Press",new(0x12340001,x,0,0),radius);
+Check(StationLocator.Find("Fragment Press",playerPos,[Station(1,2.8)]).Id==1,"Fragment Press uses its real 3m radius instead of the old 2.5m cutoff");
+Check(StationLocator.Find("Fragment Press",playerPos,[Station(1,3)]).Id==1&&StationLocator.Find("Fragment Press",playerPos,[Station(1,3.01)]).Id==0,"use radius boundary is respected without silently expanding server range");
+Check(StationLocator.Find("Fragment Press",playerPos,[Station(1,2.8,2)]).Id==0,"a smaller advertised station radius is respected");
+Check(StationLocator.Find("Fragment Press",playerPos,[Station(1,2.8,null)]).Id==1,"missing radius uses an explicit 3m fallback");
+Check(StationLocator.Find("Fragment Press",playerPos,[Station(1,1),Station(2,2)]).Problem.Contains("multiple"),"multiple reachable presses are diagnosed without guessing");
+Check(StationLocator.Find("Fragment Press",playerPos,[Station(1,1),Station(2,50)]).Id==1,"a distant duplicate does not block the unique reachable press");
+Check(StationLocator.Find("Fragment Press",playerPos,[]).Problem.Contains("live object list"),"missing live object is distinguished from out of range");
+Check(StationLocator.Find("Fragment Press",playerPos,[new(1,"Fragment Press",null,3)]).Problem.Contains("position snapshots"),"missing cached position is reported separately");
+Check(StationLocator.Find("Fragment Press",playerPos,[Station(1,4)]).Problem.Contains("4.00m away; use radius 3.00m"),"out-of-range diagnostics include measured distance and actual radius");
+Check(StationLocator.Distance(new(0x12340001,191,0,0),new(0x13340001,1,0,0))==2,"adjacent outdoor landblocks use common world coordinates");
+Check(StationLocator.Distance(new(0x12340100,0,0,0),new(0x13340100,0,0,0))==null,"unrelated interior landblocks are never treated as adjacent");
+Check(StationLocator.Find("Fragment Press",playerPos,[new(1,"Fragment Press",new(0x12340001,0,0,4),3)]).Id==0,"station use range includes vertical distance");
+
 string root=Path.Combine(Path.GetTempPath(),"threads-test-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);
 try
 {

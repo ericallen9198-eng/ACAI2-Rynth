@@ -19,7 +19,13 @@ preparation rather than guessing. No Bridge or AI subscription is needed.
 
 ## First test
 
-v0.1.1 adds exact Start diagnostics, automatic macro pause/resume and selectable
+v0.1.2 corrects station detection to use the object's advertised UseRadius
+(property 54), with a conservative 3m fallback when unavailable. It accepts the
+Fragment Press regardless of Monster/NPC classification, handles adjacent outdoor
+landblocks, and distinguishes missing objects, missing position snapshots, multiple
+reachable matches and measured out-of-range distances.
+
+v0.1.1 added exact Start diagnostics, automatic macro pause/resume and selectable
 300/325/350/375 blanks. Start reports refusals directly in game chat and the Gem
 Maker tab; `/acai2threads status` includes the latest diagnostic.
 
