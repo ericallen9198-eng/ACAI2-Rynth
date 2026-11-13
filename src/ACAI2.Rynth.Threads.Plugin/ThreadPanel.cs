@@ -76,10 +76,11 @@ internal sealed class ThreadPanel
                     }
                     if(ImGui.BeginTabItem("Gem Maker"))
                     {
-                        ImGui.TextWrapped("Pause RynthAi and other crafting. Stand still beside the Fragment Press and both vendors, in peace mode. Only level-325 untouched blanks are used.");
+                        ImGui.TextWrapped("Start pauses RynthAi automatically. Stand still beside the Fragment Press, in peace mode. Buying requires the nearby vendors.");
                         var data=machine.Data;
                         ImGui.TextColored(new(.38f,.9f,.77f,1),data.State+" | "+data.Done+" / "+data.Needed);
                         ImGui.TextWrapped(data.Notice);
+                        if(notice.Length>0)ImGui.TextWrapped(notice);
                         if(machine.Running)
                         {
                             ImGui.TextUnformatted("Dose "+data.Dose+" | fragment "+data.Fragment.ToString("X8"));
@@ -87,6 +88,7 @@ internal sealed class ThreadPanel
                         }
                         else
                         {
+                            if(ImGui.BeginCombo("Blank level",plan.Level.ToString())){foreach(int level in new[]{300,325,350,375})if(ImGui.Selectable(level.ToString(),plan.Level==level)){plan.Level=level;Dirty=true;}ImGui.EndCombo();}
                             int target=plan.Target;if(ImGui.InputInt("Gems",ref target)){plan.Target=Math.Clamp(target,1,50);Dirty=true;}
                             bool topup=plan.TopUp;if(ImGui.Checkbox("Top up usable stock",ref topup)){plan.TopUp=topup;Dirty=true;}
                             bool buy=plan.BuyMissing;if(ImGui.Checkbox("Buy missing supplies",ref buy)){plan.BuyMissing=buy;Dirty=true;}

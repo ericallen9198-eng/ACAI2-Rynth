@@ -9,7 +9,7 @@ public sealed record ThreadIdentity(string Server,string Character)
     public string Folder(string root)=>Path.Combine(root,Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Server+"\n"+Character))));
     public void Validate(){if(string.IsNullOrWhiteSpace(Server)||string.IsNullOrWhiteSpace(Character)||Server.Length>128||Character.Length>128||Server.Any(char.IsControl)||Character.Any(char.IsControl))throw new InvalidDataException("A known server and character are required.");}
 }
-public sealed record ThreadInput(string Kind,string Text,DateTime Utc,int ObjectId=0,string Name="",int NativeType=0);
+public sealed record ThreadInput(string Kind,string Text,DateTime Utc,int ObjectId=0,string Name="",int NativeType=0,int StartingLevel=0);
 public sealed record ThreadView(string Identity,string[] Current,string[] History,string[] Research,string[] Goals,string Notice,int Runs,int Presses,bool Capturing)
 {
     public static ThreadView Empty=new("Loading",[],[],[],[],"Loading journal...",0,0,false);
@@ -39,7 +39,7 @@ public sealed class ThreadWorker : IDisposable
         ThreadGemStore? store=null;ThreadGemCapture? capture=null;ThreadRuns? runs=null;FileStream? owner=null;
         string notice="Local journal only; no combat or automation.",goal="lum";DateTime saved=DateTime.MinValue;
         bool dirty=false;string selectedRun="",selectedRoll="";
-        var prepRecipes=new Dictionary<int,string>();
+        var prepRecipes=new Dictionary<int,(string Recipe,int Level)>();
         try
         {
             Directory.CreateDirectory(folder);owner=new(Path.Combine(folder,"owner.lock"),FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.None);
@@ -59,16 +59,16 @@ public sealed class ThreadWorker : IDisposable
                         if(input.Text.TrimStart().StartsWith("The Thread Gem opens a way into ",StringComparison.Ordinal))runs.Pause(input.Utc);
                         dirty|=capture.Observe(input.Text,input.Utc,input.ObjectId,input.Name);
                         dirty|=runs.Observe(input.Text,input.Utc);
-                        if(input.Text.Trim()=="Pressed. It holds."&&input.ObjectId!=0&&prepRecipes.Remove(input.ObjectId,out string? recipe))
+                        if(input.Text.Trim()=="Pressed. It holds."&&input.ObjectId!=0&&prepRecipes.Remove(input.ObjectId,out var recipe))
                         {
                             var roll=capture.Data.Current();
-                            roll.Components=capture.ParseRecipe(recipe);roll.PrepRecipeConfirmed=true;roll.RecipeSource="Native prep doses: server and inventory confirmed";
-                            roll.FragmentLevel=325;roll.FragmentType="Raw Fragment";roll.FragmentObjectId=input.ObjectId;roll.FragmentLevelBasis="Item data matched native prep press";
+                            roll.Components=capture.ParseRecipe(recipe.Recipe);roll.PrepRecipeConfirmed=true;roll.RecipeSource="Native prep doses: server and inventory confirmed";
+                            roll.FragmentLevel=recipe.Level;roll.FragmentType="Raw Fragment";roll.FragmentObjectId=input.ObjectId;roll.FragmentLevelBasis="Item data matched native prep press";
                             roll.RecipeControl=ThreadGemCapture.Control(roll.Components,false);
                             roll.Forecast=ThreadGemPrediction.Build(capture.Data.Rolls,roll,input.Utc);roll.Forecast.BeforeOutcome=true;
                         }
                     }
-                    else if(input.Kind=="prep-recipe"){prepRecipes[input.ObjectId]=input.Text;}
+                    else if(input.Kind=="prep-recipe"){if(input.StartingLevel is 300 or 325 or 350 or 375)prepRecipes[input.ObjectId]=(input.Text,input.StartingLevel);}
                     else if(input.Kind=="fragment")
                     {
                         var level=ThreadFragmentInspection.Read(input.Name,[input.Text],null);

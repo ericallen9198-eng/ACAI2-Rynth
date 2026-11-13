@@ -8,6 +8,8 @@ public sealed record PrepAction(string Kind,uint Source=0,uint Target=0,int Amou
 public sealed class PrepPlan
 {
     public int Target {get;set;}=1;
+    public int Level {get;set;}=325;
+    public string BlankName=>"Raw Fragment (Level "+Level+")";
     public bool TopUp {get;set;}
     public bool BuyMissing {get;set;}
     public int Budget {get;set;}=250000;
@@ -21,6 +23,7 @@ public sealed class PrepPlan
     public string[] Doses()=>new[]{Scarab,Herb,Powder,Reagent,Talisman}.Where(s=>s.Length>0).Concat(Enumerable.Repeat(Taper,TaperCount)).ToArray();
     public void Validate()
     {
+        if(Level is not (300 or 325 or 350 or 375))throw new InvalidDataException("Choose blank level 300, 325, 350 or 375.");
         if(Target is <1 or >50||Budget is <0 or >10000000||TaperCount is <0 or >4)throw new InvalidDataException("Batch 1..50, tapers 0..4, budget 0..10,000,000.");
         var doses=Doses();
         if(doses.Length is <1 or >9||new[]{Scarab,Herb,Powder,Reagent,Talisman,Taper}.Any(n=>n.Length>100||n.Any(char.IsControl)||n.Contains(',')||n.Contains('`'))||Scarab.Length==0||TaperCount>0&&Taper.Length==0)
@@ -125,14 +128,14 @@ public sealed class PrepMachine
         {
             var fragment=w.Inventory.SingleOrDefault(i=>i.Id==Data.Fragment);
             if(fragment is not {Identified:true})return null;
-            if(!Blank(fragment)){Refused("Fragment is not a verified untouched level-325 blank");return null;}
+            if(!Blank(fragment,Data.Plan.Level)){Refused("Fragment is not a verified untouched level-"+Data.Plan.Level+" blank");return null;}
             Advance("Loading",now,1);return null;
         }
         if(w.Busy)return null;
         if(Data.State=="Supply check")
         {
             var need=Data.Plan.Doses().GroupBy(x=>x).ToDictionary(x=>x.Key,x=>x.Count()*(Data.Needed-Data.Done));
-            need["Raw Fragment (Level 325)"]=Data.Needed-Data.Done;
+            need[Data.Plan.BlankName]=Data.Needed-Data.Done;
             foreach(var missing in need.Where(p=>Count(w,p.Key)<p.Value))
             {
                 if(!Data.Plan.BuyMissing){Refused("Missing "+missing.Key+": need "+(missing.Value-Count(w,missing.Key)));return null;}
@@ -147,9 +150,9 @@ public sealed class PrepMachine
                 Data.ReservedSpend+=(int)cost;buyName=missing.Key;beforeCount=Count(w,buyName);DataAmount=amount;Advance("Awaiting purchase",now);
                 return new("Buy",stock.Id,vendor,amount,buyName);
             }
-            var blanks=w.Inventory.Where(i=>i.Name=="Raw Fragment (Level 325)"&&!usedFragments.Contains(i.Id)).ToArray();
-            if(blanks.Length==0){Refused("No unused level-325 blank remains");return null;}
-            var selected=blanks.FirstOrDefault(Blank)??blanks.FirstOrDefault(i=>!i.Identified);
+            var blanks=w.Inventory.Where(i=>i.Name==Data.Plan.BlankName&&!usedFragments.Contains(i.Id)).ToArray();
+            if(blanks.Length==0){Refused("No unused level-"+Data.Plan.Level+" blank remains");return null;}
+            var selected=blanks.FirstOrDefault(i=>Blank(i,Data.Plan.Level))??blanks.FirstOrDefault(i=>!i.Identified);
             if(selected==null){Refused("Only altered fragments remain; no redosing");return null;}
             Data.Fragment=selected.Id;usedFragments.Add(selected.Id);Advance("Inspecting fragment",now);return new("Identify",selected.Id);
         }
@@ -174,6 +177,6 @@ public sealed class PrepMachine
     private uint waitingVendor;
     private void Advance(string state,double now,double settle=0){Data.State=state;deadline=now+30;next=now+settle;}
     private static int Count(PrepWorld w,string name)=>w.Inventory.Where(i=>i.Name==name).Sum(i=>i.Count);
-    public static bool Blank(PrepItem i)=>i.Identified&&i.Name=="Raw Fragment (Level 325)"&&i.Description.Contains("Level: 325",StringComparison.Ordinal)&&i.Description.Contains("Modifiers: none",StringComparison.Ordinal)&&i.Description.Contains("Pressed: nothing",StringComparison.Ordinal)&&i.Description.Contains("Unpressed.",StringComparison.Ordinal);
+    public static bool Blank(PrepItem i,int level=325)=>i.Identified&&i.Name=="Raw Fragment (Level "+level+")"&&Regex.IsMatch(i.Description,@"(?m)^Level: "+level+@"\s*$")&&i.Description.Contains("Modifiers: none",StringComparison.Ordinal)&&i.Description.Contains("Pressed: nothing",StringComparison.Ordinal)&&i.Description.Contains("Unpressed.",StringComparison.Ordinal);
     private static bool Usable(PrepItem i)=>i.Identified&&!Regex.IsMatch(i.Description,@"(?m)^Stalwart\s*:")&&Regex.IsMatch(i.Description,@"(?m)^Entries: [1-9]\d* of \d+\s*$");
 }

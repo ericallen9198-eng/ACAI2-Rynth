@@ -7,7 +7,7 @@ namespace ACAI2.Rynth.Threads.Plugin;
 
 public sealed class ThreadsPlugin : RynthPluginBase
 {
-    public const string Version="0.1.0";
+    public const string Version="0.1.1";
     public override uint MinimumApiVersion=>92;
     private readonly ConcurrentQueue<string> commands=new();
     private readonly ConcurrentQueue<(string Text,int Type)> prepChat=new();
@@ -19,7 +19,11 @@ public sealed class ThreadsPlugin : RynthPluginBase
     private string folder="",notice="Waiting for DreamWeave login",previousCheckpoint="";
     private DateTime probe,saveUi;
     private bool prepReadable=true;
-    private double nextStep;
+    private double nextStep,pauseDeadline,settleAfter;
+    private PrepPlan? waitingPlan;
+    private bool held,resumeAfterStop;
+    private BotPauseLease? botLease;
+    private BotPauseLease Lease=>botLease??=new(ReadMacro,SetMacro,ReleaseHold);
     private int lifecycle,queued;
     private uint player,pendingIdentify;
     private readonly Dictionary<uint,long> identifyAfter=new();
@@ -28,7 +32,7 @@ public sealed class ThreadsPlugin : RynthPluginBase
     private (uint Cell,float X,float Y,float Z)? anchor;
     private string Root=>Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"ACAI2-Threads");
     private static double Now=>System.Diagnostics.Stopwatch.GetTimestamp()/(double)System.Diagnostics.Stopwatch.Frequency;
-    public override int Initialize(){Host.Log("[ACAI2 Threads] v0.1.0. /acai2threads opens the standalone panel. Gem preparation starts only from the panel.");return 0;}
+    public override int Initialize(){Host.Log("[ACAI2 Threads] v0.1.1. /acai2threads opens the standalone panel. Gem preparation starts only from the panel.");return 0;}
     public override void OnLoginComplete(){waiting=false;Interlocked.Exchange(ref lifecycle,1);}
     public override void OnLogout(){waiting=true;journal?.Dispose();Interlocked.Exchange(ref lifecycle,1);}
     public override void OnChatWindowText(string? text,int type,ref int eat)
@@ -72,8 +76,8 @@ public sealed class ThreadsPlugin : RynthPluginBase
         {
             if(cmd is "show" or "" or "setup"){panel.Visible=true;renderFailed=false;}
             else if(cmd=="hide")panel.Visible=false;
-            else if(cmd=="stop"){prep.Stop();SavePrep();}
-            else if(cmd=="status")Local((journal?.View.Notice??notice)+" | prep "+prep.Data.State+" "+prep.Data.Notice);
+            else if(cmd=="stop"){resumeAfterStop=waitingPlan!=null||prep.Data.State is "Supply check" or "Loading" or "Idle" or "Completed";waitingPlan=null;prep.Stop();settleAfter=Now+2;notice=resumeAfterStop?"Stopped; waiting for the client to settle before releasing RynthAi.":"Stopped during an outstanding request; RynthAi stays paused for review.";SavePrep();Local(notice);}
+            else if(cmd=="status")Local("v"+Version+" | prep "+prep.Data.State+" "+prep.Data.Notice+" | "+notice);
             else if(cmd=="export")journal?.Submit(new("command","export",DateTime.UtcNow));
         }
         if(starts.TryDequeue(out var requested))StartPrep(requested);
@@ -84,6 +88,8 @@ public sealed class ThreadsPlugin : RynthPluginBase
             nextStep=Now+.2;
             try
             {
+                if(Lease.Active)held=HoldBot();
+                if(waitingPlan!=null)AdvanceStart();
                 if(prep.Running)
                 {
                     var world=World();
@@ -91,6 +97,7 @@ public sealed class ThreadsPlugin : RynthPluginBase
                     {uint pending=pendingIdentify;pendingIdentify=0;if(!Host.RequestId(pending))prep.Refused("Rynth refused identification");}
                     var action=prep.Step(world,Now);SavePrep();
                     if(action!=null)Dispatch(action);
+                    if(!prep.Running){settleAfter=Now+2;Local("Gem maker: "+prep.Data.State+" — "+prep.Data.Notice);}
                 }
                 else if(Host.HasGetSelectedItemId)
                 {
@@ -99,7 +106,8 @@ public sealed class ThreadsPlugin : RynthPluginBase
                     {string desc=Description(selected);journal?.Submit(new("fragment",desc,DateTime.UtcNow,unchecked((int)selected),itemName));}
                 }
             }
-            catch(Exception ex){prep.Refused(ex.GetType().Name+": "+ex.Message);notice=prep.Data.Notice;try{SavePrep();}catch{};}
+            catch(Exception ex){waitingPlan=null;prep.Refused(ex.GetType().Name+": "+ex.Message);notice=ex.Message;Local("Gem maker: "+notice);try{SavePrep();}catch{};if(Lease.Active)Lease.Release(false);held=false;}
+            if(Lease.Active&&waitingPlan==null&&!prep.Running&&Now>=settleAfter)FinishPause();
         }
         if(panel.Dirty&&DateTime.UtcNow>=saveUi)
         {saveUi=DateTime.UtcNow.AddSeconds(2);try{panel.Save(Path.Combine(folder,"ui.json"));panel.Dirty=false;}catch(Exception ex){notice="UI save failed: "+ex.GetType().Name;}}
@@ -129,15 +137,17 @@ public sealed class ThreadsPlugin : RynthPluginBase
         if(seen.Count>=2048)throw new InvalidOperationException("Inventory snapshot exceeded its bound");
         return found.ToArray();
     }
-    private PrepWorld World()
+    private PrepWorld World(bool skipBot=false)
     {
         if(player==0||!Host.HasUseObjectOn||!Host.HasRequestId||!Host.HasGetContainerContents||!Host.HasGetObjectPosition||!Host.HasGetBusyState||!Host.HasGetPlayerVitals||!Host.HasGetObjectIntProperty||!Host.HasGetObjectProperties||!Host.HasGetPluginInterface||!Host.HasVendorTrade)
             throw new InvalidOperationException("Required stock Rynth APIs are unavailable");
         if(!Host.TryGetObjectPosition(player,out uint cell,out float px,out float py,out float pz))throw new InvalidOperationException("Player position unavailable");
         bool moved=anchor.HasValue&&(anchor.Value.Cell!=cell||Math.Abs(anchor.Value.X-px)>.5||Math.Abs(anchor.Value.Y-py)>.5||Math.Abs(anchor.Value.Z-pz)>.5);
-        bool peaceful=Host.TryGetObjectIntProperty(player,40,out int mode)&&mode==1;
+        int mode=Host.HasGetCurrentCombatMode?Host.GetCurrentCombatMode():0;
+        bool peaceful=mode==1;
         bool alive=Host.TryGetPlayerVitals(out uint hp,out _,out _,out _,out _,out _)&&hp>0;
-        bool safe=journal?.Ready==true&&!waiting&&identity!=null&&Host.GetPlayerId()==player&&alive&&peaceful&&!moved&&Host.HasIsPortaling&&!Host.IsPortaling()&&MacroStopped();
+        string blocker=journal?.Ready!=true?"Local journal is not ready":waiting||identity==null||Host.GetPlayerId()!=player?"Login identity changed":!alive?"Player vitals unavailable or health is zero":!peaceful?"Current combat mode is "+mode+"; switch to peace mode":moved?"Player moved away from the batch start":!Host.HasIsPortaling?"Portal-state API is unavailable":Host.IsPortaling()?"Player is portaling":skipBot?"":BotBlocker();
+        bool safe=blocker.Length==0;
         uint Nearby(string name)
         {
             var ids=Host.GetLiveObjectIds().Where(id=>Host.TryGetObjectName(id,out string n)&&n==name&&Host.TryGetObjectPosition(id,out uint c,out float x,out float y,out float z)&&(c>>16)==(cell>>16)&&(x-px)*(x-px)+(y-py)*(y-py)<=6.25&&Math.Abs(z-pz)<=2.5).Take(2).ToArray();return ids.Length==1?ids[0]:0;
@@ -148,23 +158,75 @@ public sealed class ThreadsPlugin : RynthPluginBase
             vendor=info.VendorId;
             if(!info.UsesAltCurrency&&info.TradingAvailable&&!info.TradeInFlight)stock=Host.GetVendorItems().Select(i=>new PrepStock(i.ObjectId,i.Name,i.Amount,i.UnitPrice)).ToArray();
         }
-        return new(player,safe,Host.GetBusyState()!=0,Inventory(),Nearby("Fragment Press"),Nearby("Fragment-Clerk Maren Idswold"),Nearby("Reagent-Steward Aya Torimaru"),vendor,stock,safe?"":"Pause RynthAi, stand still in peace mode, remain alive/outside portals and stop other crafting.");
+        return new(player,safe,Host.GetBusyState()!=0,Inventory(),Nearby("Fragment Press"),Nearby("Fragment-Clerk Maren Idswold"),Nearby("Reagent-Steward Aya Torimaru"),vendor,stock,blocker);
     }
-    private unsafe bool MacroStopped()
+    private unsafe IntPtr BotInterface(string name,int pointers)
     {
-        // Official RynthAi.Script v1: header Version, StructSize, then Evaluate,
-        // GetSetting, SetSetting, GetSettingNames, IsMacroRunning. Re-query each use.
-        IntPtr ptr=Host.GetPluginInterface("RynthAi","RynthAi.Script",1);
+        IntPtr ptr=Host.GetPluginInterface("RynthAi",name,1);
+        if(ptr==IntPtr.Zero)throw new InvalidOperationException("RynthAi interface "+name+" v1 is unavailable; enable/update RynthAi.");
+        uint* header=(uint*)ptr;
+        if(header[0]<1||header[1]<8+pointers*IntPtr.Size)throw new InvalidOperationException("RynthAi interface "+name+" has an unsupported layout.");
+        return ptr;
+    }
+    private unsafe bool ReadMacro()
+    {
+        var fn=*(delegate* unmanaged[Cdecl]<int>*)((byte*)BotInterface("RynthAi.Script",5)+8+4*IntPtr.Size);
+        if(fn==null)throw new InvalidOperationException("RynthAi macro-state function is unavailable.");
+        return fn()!=0;
+    }
+    private unsafe void SetMacro(bool running)
+    {
+        var fn=*(delegate* unmanaged[Cdecl]<int,void>*)((byte*)BotInterface("RynthAi.Script",6)+8+5*IntPtr.Size);
+        if(fn==null)throw new InvalidOperationException("RynthAi macro-control function is unavailable.");
+        fn(running?1:0);
+    }
+    private unsafe bool HoldBot()
+    {
+        IntPtr ptr=Host.GetPluginInterface("RynthAi","RynthAi.Yield",1);
         if(ptr==IntPtr.Zero)return false;
-        uint* header=(uint*)ptr;int required=8+5*IntPtr.Size;
-        if(header[0]<1||header[1]<required)return false;
-        var fn=*(delegate* unmanaged[Cdecl]<int>* )((byte*)ptr+8+4*IntPtr.Size);
-        if(fn==null||fn()!=0)return false;
-        ptr=Host.GetPluginInterface("RynthAi","RynthAi.Activity",1);if(ptr==IntPtr.Zero)return false;
-        header=(uint*)ptr;if(header[0]<1||header[1]<8+IntPtr.Size)return false;
-        var activity=*(delegate* unmanaged[Cdecl]<uint*,int>*)((byte*)ptr+8);uint flags=0;
-        // ServerAction may reflect this batch's own native busy count; all other owners must be idle.
-        return activity!=null&&activity(&flags)==1&&(flags&~64u)==0;
+        uint* header=(uint*)ptr;if(header[0]<1||header[1]<8+2*IntPtr.Size)return false;
+        var fn=*(delegate* unmanaged[Cdecl]<uint,int>*)((byte*)ptr+8);
+        return fn!=null&&fn(3000)==1;
+    }
+    private unsafe void ReleaseHold()
+    {
+        if(waiting)return; // An expiring hold is safe across logout; never resume another login.
+        IntPtr ptr=Host.GetPluginInterface("RynthAi","RynthAi.Yield",1);if(ptr==IntPtr.Zero)return;
+        uint* header=(uint*)ptr;if(header[0]<1||header[1]<8+2*IntPtr.Size)return;
+        var fn=*(delegate* unmanaged[Cdecl]<int>*)((byte*)ptr+8+IntPtr.Size);if(fn!=null)fn();
+    }
+    private unsafe string BotBlocker()
+    {
+        if(ReadMacro())return "RynthAi macro is running; it was restarted while this batch owned the pause.";
+        var fn=*(delegate* unmanaged[Cdecl]<uint*,int>*)((byte*)BotInterface("RynthAi.Activity",1)+8);
+        uint flags=0;if(fn==null||fn(&flags)!=1)return "RynthAi activity is not ready.";
+        // AutoCram reports its enabled setting, even with the macro stopped.
+        // Ignore that setting only while an acknowledged expiring Yield prevents item moves.
+        uint blocked=flags&~(64u|(held?256u:0u));
+        if(blocked==0)return "";
+        string[] names=["MacroRunning","Buffing","Combat","Looting","Salvaging","Navigating","ServerAction","Crafting","AutoCram","PacedAction"];
+        return "RynthAi is not idle: "+string.Join(", ",Enumerable.Range(0,names.Length).Where(i=>(blocked&(1u<<i))!=0).Select(i=>names[i]))+((blocked&256)!=0?". Yield is unavailable; disable AutoCram for this batch.":".");
+    }
+    private void AdvanceStart()
+    {
+        var world=World();
+        if(Now>pauseDeadline){waitingPlan=null;resumeAfterStop=true;settleAfter=Now+2;notice="Start refused: "+(world.Problem.Length>0?world.Problem:"client remained busy")+". No gem action issued.";Local(notice);return;}
+        if(!world.Safe||world.Busy){notice="Waiting for RynthAi/client to settle: "+(world.Problem.Length>0?world.Problem:"client busy");return;}
+        var plan=waitingPlan!;waitingPlan=null;
+        if(prep.Start(plan,world,identity!.Server,identity.Character,DateTime.UtcNow,Now))
+        {pendingIdentify=0;identifyAfter.Clear();SavePrep();notice="Batch started; RynthAi is held until preparation finishes.";Local(notice);}
+    }
+    private void FinishPause()
+    {
+        try
+        {
+            if(Host.GetBusyState()!=0)return;
+            bool canResume=prep.Data.State!="Needs review"&&(prep.Data.State=="Completed"||resumeAfterStop)&&World(skipBot:true).Safe;
+            Lease.Release(canResume);held=false;
+            if(!canResume)Local("RynthAi pause released without resuming the macro; review the stopped/uncertain batch first.");
+            resumeAfterStop=false;
+        }
+        catch(Exception ex){Lease.Release(false);held=false;Local("RynthAi left paused: "+ex.Message);}
     }
     private void Dispatch(PrepAction a)
     {
@@ -184,7 +246,7 @@ public sealed class ThreadsPlugin : RynthPluginBase
             "Press"=>Host.UseObjectOn(a.Source,a.Target),
             _=>false};
         if(!ok){prep.Refused("Rynth refused the "+a.Kind+" request");SavePrep();}
-        if(a.Kind=="Press")journal?.Submit(new("prep-recipe",string.Join(", ",prep.Data.Plan.Doses()),DateTime.UtcNow,unchecked((int)a.Source)));
+        if(a.Kind=="Press")journal?.Submit(new("prep-recipe",string.Join(", ",prep.Data.Plan.Doses()),DateTime.UtcNow,unchecked((int)a.Source),StartingLevel:prep.Data.Plan.Level));
     }
     private void SavePrep()
     {
@@ -197,14 +259,17 @@ public sealed class ThreadsPlugin : RynthPluginBase
     {
         try
         {
-            if(prep.Running)return;
-            if(!prepReadable)throw new InvalidOperationException("Existing local state could not be read; preserve it for review before starting another batch.");
-            if(journal?.Ready!=true)throw new InvalidOperationException("Wait for the local journal or resolve its ownership/error first.");
-            anchor=null;var world=World();
+            if(prep.Running||waitingPlan!=null||Lease.Active){Local("A batch is already active or settling.");return;}
+            plan.Validate();
+            if(!prepReadable)throw new InvalidOperationException("Existing local state could not be read; preserve it for review.");
+            anchor=null;var world=World(skipBot:true);
+            if(!world.Safe)throw new InvalidOperationException(world.Problem);
+            if(world.PressId==0)throw new InvalidOperationException("No unique Fragment Press within use range; move immediately beside it.");
             Host.TryGetObjectPosition(player,out uint c,out float x,out float y,out float z);anchor=(c,x,y,z);
-            if(prep.Start(plan,world,identity!.Server,identity.Character,DateTime.UtcNow,Now)){pendingIdentify=0;identifyAfter.Clear();SavePrep();notice="Batch explicitly started. No automatic destruction or uncertain-action retry.";}
+            Lease.Acquire();resumeAfterStop=false;held=HoldBot();waitingPlan=plan;pauseDeadline=Now+15;
+            notice="Start received. RynthAi paused; waiting for outstanding actions to settle.";Local(notice);
         }
-        catch(Exception ex){notice=ex.Message;}
+        catch(Exception ex){waitingPlan=null;notice="Start refused: "+ex.Message;Local(notice);if(Lease.Active){resumeAfterStop=true;settleAfter=Now+2;}}
     }
     public override void OnRender()
     {
@@ -214,6 +279,7 @@ public sealed class ThreadsPlugin : RynthPluginBase
     }
     private void End()
     {
+        waitingPlan=null;resumeAfterStop=false;if(botLease?.Active==true){try{botLease.Release(false);}catch{}}held=false;
         prep.Stop("Login ended");try{SavePrep();}catch{};
         if(journal!=null){journal.Dispose();closing=journal.Completion;}journal=null;identity=null;player=0;pendingIdentify=0;identifyAfter.Clear();folder="";anchor=null;previousCheckpoint="";prep.Restore(new());
         while(starts.TryDequeue(out _)){}while(commands.TryDequeue(out _)){}

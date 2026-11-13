@@ -48,3 +48,10 @@ uncertainty, logout, combat, movement or a competing macro, and never redose/rep
 a possibly issued action. No automatic gem destruction, movement or broad dialog
 acceptance is authorized in this first standalone implementation. Keep it separate
 from Keyfer and preserve private source archives out of Git.
+
+The user additionally authorized automatic RynthAi pause/resume for an explicit
+Thread gem batch. Use its versioned Script API on the pump, remember runtime
+ownership, wait for idle, and restore only a macro this batch paused after a
+normal completion or settled user stop. Use an acknowledged expiring Yield hold
+to prevent background item moves without editing saved AutoCram settings. Never
+resume on uncertainty, death, identity change, logout, restart or stale ownership.

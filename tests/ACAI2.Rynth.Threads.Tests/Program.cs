@@ -54,6 +54,28 @@ var top=new PrepMachine();top.Start(new(){TopUp=true,Target=1},World(gem),"Dream
 var buy=new PrepMachine();var shopping=plan;shopping.BuyMissing=true;buy.Start(shopping,World(),"DreamWeave","Toe",now,0);var openVendor=buy.Step(World(),0);Check(openVendor is{Kind:"Open vendor",Source:22}||openVendor is{Kind:"Open vendor",Source:21},"missing supplies open only the required known vendor");
 var expensive=World() with{OpenVendor=openVendor!.Source,Stock=[new(99,openVendor.Source==21?"Raw Fragment (Level 325)":"Lead Scarab",100,9999999)]};buy.Step(expensive,.1);Check(buy.Step(expensive,.2)==null&&buy.Data.State=="Needs review","purchase cap rejects excessive quotes before any buy request");
 
+foreach(int level in new[]{300,325,350,375})
+{
+ var levelPlan=new PrepPlan{Level=level,Reagent="",TaperCount=0};
+ var matching=blank with{Id=(uint)level,Name="Raw Fragment (Level "+level+")",Description=blank.Description.Replace("325",level.ToString())};
+ var levelMachine=new PrepMachine();levelMachine.Start(levelPlan,World(blank,matching,scarab,herb,powder),"DreamWeave","Toe",now,0);
+ Check(levelMachine.Step(World(blank,matching,scarab,herb,powder),0)?.Source==(level==325?10u:(uint)level),"selected level "+level+" identifies only the matching inventory blank");
+ Check(PrepMachine.Blank(matching,level)&&!PrepMachine.Blank(matching with{Description=matching.Description.Replace("Level: "+level,"Level: 999")},level),"level "+level+" must match the fresh appraisal exactly");
+ var levelBuyer=new PrepMachine();levelPlan.BuyMissing=true;levelBuyer.Start(levelPlan,World(scarab,herb,powder),"DreamWeave","Toe",now,0);
+ levelBuyer.Step(World(scarab,herb,powder),0);
+ var vendorWorld=World(scarab,herb,powder) with{OpenVendor=21,Stock=[new(999,levelPlan.BlankName,100,100)]};
+ levelBuyer.Step(vendorWorld,.1);
+ Check(levelBuyer.Step(vendorWorld,.2) is{Kind:"Buy",Source:999,Amount:1},"vendor shortages buy the chosen level "+level+" blank");
+}
+try{new PrepPlan{Level=400}.Validate();Check(false,"unsupported level rejected");}catch(InvalidDataException){Check(true,"vendor level cap rejects unsupported 400 blanks");}
+bool macro=true;var macroCalls=new List<bool>();int releases=0;
+var lease=new BotPauseLease(()=>macro,v=>{macro=v;macroCalls.Add(v);},()=>releases++);
+lease.Acquire();Check(!macro&&lease.OwnsResume,"acquiring the batch lease pauses a running macro");
+lease.Release(true);Check(macro&&macroCalls.SequenceEqual(new[]{false,true})&&releases==1,"normal completion restores only the macro this lease paused");
+macro=false;macroCalls.Clear();lease.Acquire();lease.Release(true);Check(!macro&&macroCalls.Count==0,"an already paused macro remains paused after a normal batch");
+macro=true;lease.Acquire();lease.Release(false);Check(!macro&&!lease.Active,"uncertainty or logout releases ownership without resuming");
+macroCalls.Clear();lease.Release(true);Check(macroCalls.Count==0,"a released runtime lease cannot resume from stale ownership");
+
 string root=Path.Combine(Path.GetTempPath(),"threads-test-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);
 try
 {
@@ -65,10 +87,13 @@ try
  var worker=new ThreadWorker(who,root);
  for(int i=0;!worker.Ready&&i<300;i++)await Task.Delay(10);
  Check(worker.Ready,"standalone managed journal starts without Bridge or Keyfer");
+ worker.Submit(new("prep-recipe",recipe,now,321,StartingLevel:375));worker.Submit(new("chat","Pressed. It holds.",now,321));
  worker.Submit(new("chat",open,now));worker.Submit(new("chat","[REALM] id=0 inst=99 eph=1 name=Base World",now.AddSeconds(1)));
  for(int i=0;worker.View.Runs==0&&i<300;i++)await Task.Delay(10);
  worker.Dispose();await worker.Completion;
  Check(worker.View.Runs==1,"background worker records a scoped run and flushes on shutdown");
+ var scoped=new ThreadGemStore(who.Folder(root),who.Server,who.Character,v=>JsonSerializer.Serialize(v),(t,type)=>JsonSerializer.Deserialize(t,type)!);
+ Check(scoped.Load().Rolls.Any(r=>r.FragmentLevel==375&&r.PrepRecipeConfirmed),"native prep records the actual selected starting level rather than hardcoding 325");
 }
 finally{Directory.Delete(root,true);}
 Console.WriteLine($"All {count} Thread checks passed; no native game actions or network calls were made.");

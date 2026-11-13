@@ -13,9 +13,10 @@ project and installed ACAI2 files are not modified.
 
 ## Standalone Threads app
 
-The separate **ACAI2.Threads v0.1.0** plugin combines a compact Thread journal,
+The separate **ACAI2.Threads v0.1.1** plugin combines a compact Thread journal,
 recipe research and an explicitly started native gem maker. It does not replace
-RynthCore/RynthAi or require Keyfer/Bridge. All results are retained; uncertain
+RynthCore/RynthAi or require Keyfer/Bridge. Choose 300/325/350/375 blanks; Start temporarily pauses RynthAi and reports exact
+blockers. All results are retained; uncertain
 actions never automatically retry. See [Thread setup and first test](docs/THREADS-SETUP.md).
 Build on Windows with `scripts/Publish-Threads.ps1`; pure checks use
 `scripts/test-threads.sh`. The independent package excludes combat and Keyfer.

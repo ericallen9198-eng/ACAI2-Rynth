@@ -9,6 +9,8 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Thread checks failed.' }
     dotnet publish src\ACAI2.Rynth.Threads.Plugin\ACAI2.Rynth.Threads.Plugin.csproj -c Release --no-self-contained -o $Output
     if ($LASTEXITCODE -ne 0) { throw 'Thread publish failed.' }
+    # Bindings resolve the engine-owned cimgui; never ship a second native module.
+    Remove-Item (Join-Path $Output "cimgui.dll") -Force -ErrorAction SilentlyContinue
     Copy-Item docs\THREADS-SETUP.md $Output
     Copy-Item external\RynthCore\LICENSE (Join-Path $Output 'RynthCore-LICENSE.txt')
     Copy-Item THIRD-PARTY-NOTICES.md $Output
