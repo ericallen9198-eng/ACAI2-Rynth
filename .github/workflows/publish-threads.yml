@@ -1,0 +1,73 @@
+name: Publish verified Threads package
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Successful Windows verification run ID
+        required: true
+      version:
+        description: Package version (e.g. 0.1.0)
+        required: true
+        default: '0.1.0'
+      commit_sha:
+        description: Full tested source commit SHA
+        required: true
+permissions:
+  actions: read
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Confirm the requested build succeeded for the exact source commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          BUILD_RUN: ${{ inputs.run_id }}
+          SOURCE_SHA: ${{ inputs.commit_sha }}
+          PACKAGE_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          [[ "$BUILD_RUN" =~ ^[0-9]+$ ]]
+          [[ "$SOURCE_SHA" =~ ^[a-f0-9]{40}$ ]]
+          [[ "$PACKAGE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          gh run view "$BUILD_RUN" --json conclusion,headSha > run.json
+          jq -e --arg sha "$SOURCE_SHA" '.conclusion == "success" and .headSha == $sha' run.json
+      - name: Download Windows package from the verified build
+        uses: actions/download-artifact@v4
+        with:
+          name: ACAI2-Threads-Windows
+          path: package
+          run-id: ${{ inputs.run_id }}
+          github-token: ${{ github.token }}
+      - name: Package and publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          SOURCE_SHA: ${{ inputs.commit_sha }}
+          PACKAGE_VERSION: ${{ inputs.version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f package/ACAI2.Rynth.Threads.Plugin.dll
+          test -f package/THREADS-SETUP.md
+          test ! -e package/ImGui.NET.dll
+          test ! -e package/ACAI2.Rynth.Combat.Future.dll
+          zip_name="ACAI2-Threads-v${PACKAGE_VERSION}-Windows.zip"
+          tag="threads-v${PACKAGE_VERSION}"
+          cd package
+          zip -qr "$RUNNER_TEMP/$zip_name" .
+          cd "$RUNNER_TEMP"
+          sha256sum "$zip_name" > "$zip_name.sha256"
+          cat > release-notes.md <<NOTES
+          Standalone Thread journal, research and explicitly started gem-preparation plugin. Built from $SOURCE_SHA using the genuine Rynth SDK and Windows manifest tooling.
+
+          Requires managed CoreCLR RynthCore API 92+; preparation additionally requires the stock RynthAi Script/Activity interfaces. No Rynth engine replacement, Keyfer update or combat plugin is included. Extract all DLLs together and follow THREADS-SETUP.md. First test one gem with buying off and RynthAi paused.
+
+          Automated tests use fake world snapshots; live in-game verification remains. All gems are retained. Interrupted/uncertain actions never automatically resume or retry.
+          NOTES
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "$zip_name" "$zip_name.sha256" --clobber
+          else
+            gh release create "$tag" "$zip_name" "$zip_name.sha256" --target "$SOURCE_SHA" --title "Threads for Rynth v$PACKAGE_VERSION — Windows package" --notes-file release-notes.md
+          fi

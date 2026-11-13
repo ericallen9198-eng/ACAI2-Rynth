@@ -1,0 +1,32 @@
+name: Standalone Thread app checks
+on:
+  push:
+    paths: ['src/ACAI2.Rynth.Threads.*/**', 'tests/ACAI2.Rynth.Threads.Tests/**', 'scripts/*Threads*', 'scripts/test-threads.sh', 'docs/THREADS-SETUP.md', '.github/workflows/threads.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Linux Thread build and checks
+        if: runner.os == 'Linux'
+        run: scripts/test-threads.sh
+      - name: Windows Thread publish and checks
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: scripts/Publish-Threads.ps1
+      - uses: actions/upload-artifact@v4
+        if: runner.os == 'Windows'
+        with:
+          name: ACAI2-Threads-Windows
+          path: artifacts/threads-managed/

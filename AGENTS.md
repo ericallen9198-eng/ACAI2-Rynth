@@ -37,3 +37,14 @@ do not introduce a competing controller or make attacks to restore a slider.
 Combat parsing may consume incoming combat messages for local aggregate counters
 without retaining raw lines. New combat rendering must use the engine-owned
 ImGui context and the matching ImGui.NET version; never create a second context.
+
+The user additionally authorized a separate standalone Thread-handling plugin,
+including an explicitly started native gem-preparation workflow adapted from the
+provided ThreadPrep meta. This does not broaden Keyfer's action surface. The Thread
+plugin may request identification, buy shortages within an explicit batch budget,
+and apply components/press only for its bound batch, on the pump, with durable
+pre-action checkpoints and inventory/server acknowledgments. It must stop on
+uncertainty, logout, combat, movement or a competing macro, and never redose/repress
+a possibly issued action. No automatic gem destruction, movement or broad dialog
+acceptance is authorized in this first standalone implementation. Keep it separate
+from Keyfer and preserve private source archives out of Git.

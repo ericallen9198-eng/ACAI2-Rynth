@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <PlatformTarget>x86</PlatformTarget>
+    <RuntimeIdentifier>win-x86</RuntimeIdentifier>
+    <Version>0.1.0</Version>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <PublishAot>false</PublishAot>
+    <SelfContained>false</SelfContained>
+    <GenerateRuntimeConfigurationFiles>false</GenerateRuntimeConfigurationFiles>
+    <AssemblyName>ACAI2.Rynth.Threads.Plugin</AssemblyName>
+    <RynthPluginName>ACAI2.Threads</RynthPluginName>
+    <RynthPluginMinEngineApi>92</RynthPluginMinEngineApi>
+    <RynthPluginDescription>Standalone Thread journal, gem research and explicitly started preparation.</RynthPluginDescription>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="ImGui.NET" Version="1.91.6.1" ExcludeAssets="runtime" />
+    <ProjectReference Include="..\ACAI2.Rynth.Threads.Core\ACAI2.Rynth.Threads.Core.csproj" />
+    <ProjectReference Include="..\..\external\RynthCore\src\RynthCore.PluginSdk\RynthCore.PluginSdk.csproj" />
+    <ProjectReference Include="..\..\external\RynthCore\src\RynthCore.PluginCore\RynthCore.PluginCore.csproj" />
+  </ItemGroup>
+  <Import Project="..\..\external\RynthCore\src\RynthCore.PluginSdk\build\RynthCore.PluginSdk.targets" />
+  <!-- The SDK import runs before IntermediateOutputPath is populated. Keep its
+       generated sources under obj so subsequent builds do not glob them twice. -->
+  <PropertyGroup>
+    <_RynthPluginManifestJson>obj/$(Configuration)/$(TargetFramework)/$(RuntimeIdentifier)/rynth-plugin.json</_RynthPluginManifestJson>
+    <_RynthPluginManifestEmbedded>obj/$(Configuration)/$(TargetFramework)/$(RuntimeIdentifier)/rynth-plugin.embedded</_RynthPluginManifestEmbedded>
+    <_RynthPluginInfoSource>obj/$(Configuration)/$(TargetFramework)/$(RuntimeIdentifier)/RynthPluginInfo.g.cs</_RynthPluginInfoSource>
+  </PropertyGroup>
+</Project>

@@ -19,3 +19,10 @@ binding version: https://github.com/ImGuiNET/ImGui.NET . Managed plugins resolve
 `cimgui` to the engine-owned native module; this plugin does not initialize a
 second renderer/context. See the retained license in
 `THIRD-PARTY-NOTICES/ImGui.NET-LICENSE.txt`.
+
+The standalone Thread journal adapts this project's original ACAI2 Thread capture,
+reporting and empirical prediction code from the user's Samm-AI source. The native
+prep controller is new code informed by the user-supplied SootAC DreamWeave
+ThreadPrep workflow. No supplied meta, Lua script, patched engine or private
+archive is redistributed. See docs/THREADS-SETUP.md for the deliberately narrower
+attended workflow and retained-result policy.
