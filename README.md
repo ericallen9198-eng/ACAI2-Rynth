@@ -13,8 +13,7 @@ project and installed ACAI2 files are not modified.
 
 ## Package and runtime
 
-Download **ACAI2-Rynth-Keyfer-Windows** from a successful repository Actions run,
-or build on Windows with .NET 10:
+Download [the compiled Keyfer Windows ZIP](https://github.com/ericallen9198-eng/ACAI2-Rynth/releases/download/keyfer-v0.3.0/ACAI2-Rynth-Keyfer-v0.3.0-Windows.zip). No source rebuild is needed. The same package remains available in Actions run 43420547592 as **ACAI2-Rynth-Keyfer-Windows** (GitHub sign-in required). Or build on Windows with .NET 10:
 
 ```powershell
 git clone --recurse-submodules https://github.com/ericallen9198-eng/ACAI2-Rynth.git

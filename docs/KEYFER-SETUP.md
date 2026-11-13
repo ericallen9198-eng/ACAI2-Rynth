@@ -47,8 +47,7 @@ Windows installation. No native Windows/game run is claimed from those tests.
 1. Keep the current Bridge process/config/data. Stop the old Decal Keyfer responder
    before enabling the new one. The Rynth ownership lock prevents duplicate Rynth
    responders on this PC, but the old Decal adapter does not share that lock.
-2. Download the latest successful **ACAI2-Rynth-Keyfer-Windows** artifact from this
-   repository's Actions run. Alternatively build on Windows with the .NET 10 SDK:
+2. Download [the compiled Windows ZIP](https://github.com/ericallen9198-eng/ACAI2-Rynth/releases/download/keyfer-v0.3.0/ACAI2-Rynth-Keyfer-v0.3.0-Windows.zip) from the normal GitHub release. No source rebuild is needed. The same verified package is also available as **ACAI2-Rynth-Keyfer-Windows** in Actions run 43420547592 (requires GitHub sign-in). Alternatively build on Windows with the .NET 10 SDK:
    `scripts\Bootstrap-RynthCore.ps1` (GitHub source ZIP only), then
    `scripts\Publish.ps1`. It runs controlled tests and writes `artifacts\keyfer-managed`.
 3. Extract the entire package into its own directory, keeping its dependencies
