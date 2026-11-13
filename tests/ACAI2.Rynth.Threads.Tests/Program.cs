@@ -121,6 +121,10 @@ var withdrawalTimeout=NoteMachine(true);withdrawalTimeout.Step(NoteWorld(1),0);w
 var withdrawalRestart=new PrepMachine();withdrawalRestart.Restore(new(){State="Awaiting bank withdrawal",WithdrawalCount=1,WithdrawalCurrency=12345});Check(!withdrawalRestart.Running&&withdrawalRestart.Data.State=="Needs review","restart never repeats an interrupted withdrawal");
 var failedBank=NoteMachine(true);failedBank.Step(NoteWorld(1),0);failedBank.Observe("[BANK] Insufficient funds.");Check(!failedBank.Running&&failedBank.Data.Notice.Contains("Bank withdrawal refused"),"insufficient bank funds stop the batch with the bank's reason");
 
+var tenWorld=World(scarab with{Count=20},herb with{Count=20},powder with{Count=20},note with{Count=3}) with{OpenVendor=21,Stock=[new(999,"Raw Fragment (Level 325)",100,2,12345,"Trade Notes (250,000)")]};
+var tenBatch=new PrepMachine();tenBatch.Start(new(){Target=10,BuyMissing=true,AutoWithdrawNotes=true,Reagent="",TaperCount=0},tenWorld,"DreamWeave","Toe",now,0);
+Check(tenBatch.Step(tenWorld,0) is{Kind:"Withdraw notes",Amount:17},"ten gems at two notes each with three carried notes withdraw exactly seventeen once");
+
 string root=Path.Combine(Path.GetTempPath(),"threads-test-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);
 try
 {
