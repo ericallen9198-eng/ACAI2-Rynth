@@ -2,7 +2,7 @@ using System.Text.RegularExpressions;
 namespace ACAI2.Rynth.Threads.Core;
 
 public sealed record PrepItem(uint Id,string Name,int Count,string Description,bool Identified);
-public sealed record PrepStock(uint Id,string Name,int Amount,int UnitPrice);
+public sealed record PrepStock(uint Id,string Name,int Amount,int UnitPrice,uint CurrencyId=0);
 public sealed record PrepWorld(uint PlayerId,bool Safe,bool Busy,PrepItem[] Inventory,uint PressId,uint FragmentVendor,uint ReagentVendor,uint OpenVendor,PrepStock[] Stock,string Problem="",string PressProblem="",string FragmentVendorProblem="",string ReagentVendorProblem="");
 public sealed record PrepAction(string Kind,uint Source=0,uint Target=0,int Amount=0,string Detail="");
 public sealed class PrepPlan
@@ -44,6 +44,7 @@ public sealed class PrepCheckpoint
     public int Dose {get;set;}
     public uint Fragment {get;set;}
     public int ReservedSpend {get;set;}
+    public Dictionary<uint,int> ReservedCurrency {get;set;}=[];
     public List<uint> Finished {get;set;}=[];
     public DateTime StartedUtc {get;set;}
 }
@@ -146,8 +147,9 @@ public sealed class PrepMachine
                 if(rows.Length!=1){Refused("Vendor stock has no unique exact match for "+missing.Key);return null;}
                 int amount=missing.Value-Count(w,missing.Key);var stock=rows[0];
                 long cost=(long)stock.UnitPrice*amount;
-                if(stock.UnitPrice<=0||stock.Amount>=0&&stock.Amount<amount||cost>Data.Plan.Budget-Data.ReservedSpend){Refused("Price/stock/budget check failed for "+missing.Key);return null;}
-                Data.ReservedSpend+=(int)cost;buyName=missing.Key;beforeCount=Count(w,buyName);DataAmount=amount;Advance("Awaiting purchase",now);
+                int spent=stock.CurrencyId==0?Data.ReservedSpend:Data.ReservedCurrency.GetValueOrDefault(stock.CurrencyId);
+                if(stock.UnitPrice<=0||stock.Amount>=0&&stock.Amount<amount||cost>Data.Plan.Budget-spent){Refused("Price/stock/budget check failed for "+missing.Key);return null;}
+                if(stock.CurrencyId==0)Data.ReservedSpend+=(int)cost;else Data.ReservedCurrency[stock.CurrencyId]=spent+(int)cost;buyName=missing.Key;beforeCount=Count(w,buyName);DataAmount=amount;Advance("Awaiting purchase",now);
                 return new("Buy",stock.Id,vendor,amount,buyName);
             }
             var blanks=w.Inventory.Where(i=>i.Name==Data.Plan.BlankName&&!usedFragments.Contains(i.Id)).ToArray();

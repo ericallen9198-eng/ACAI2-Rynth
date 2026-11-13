@@ -76,7 +76,7 @@ internal sealed class ThreadPanel
                     }
                     if(ImGui.BeginTabItem("Gem Maker"))
                     {
-                        ImGui.TextWrapped("Start pauses RynthAi automatically. Stand still beside the Fragment Press, in peace mode. Buying requires the nearby vendors.");
+                        ImGui.TextWrapped("Start pauses RynthAi automatically. Stay in the local station area in peace mode. The client may approach the intended nearby vendor or press.");
                         var data=machine.Data;
                         ImGui.TextColored(new(.38f,.9f,.77f,1),data.State+" | "+data.Done+" / "+data.Needed);
                         ImGui.TextWrapped(data.Notice);
@@ -92,7 +92,7 @@ internal sealed class ThreadPanel
                             int target=plan.Target;if(ImGui.InputInt("Gems",ref target)){plan.Target=Math.Clamp(target,1,50);Dirty=true;}
                             bool topup=plan.TopUp;if(ImGui.Checkbox("Top up usable stock",ref topup)){plan.TopUp=topup;Dirty=true;}
                             bool buy=plan.BuyMissing;if(ImGui.Checkbox("Buy missing supplies",ref buy)){plan.BuyMissing=buy;Dirty=true;}
-                            int cap=plan.Budget;if(ImGui.InputInt("Purchase cap (pyreals)",ref cap)){plan.Budget=Math.Clamp(cap,0,10000000);Dirty=true;}
+                            int cap=plan.Budget;if(ImGui.InputInt("Purchase cap (per quoted currency)",ref cap)){plan.Budget=Math.Clamp(cap,0,10000000);Dirty=true;}
                             string value=plan.Scarab;if(ImGui.InputText("Scarab",ref value,100)){plan.Scarab=value;Dirty=true;}
                             value=plan.Herb;if(ImGui.InputText("Herb",ref value,100)){plan.Herb=value;Dirty=true;}
                             value=plan.Powder;if(ImGui.InputText("Powder",ref value,100)){plan.Powder=value;Dirty=true;}

@@ -55,3 +55,13 @@ ownership, wait for idle, and restore only a macro this batch paused after a
 normal completion or settled user stop. Use an acknowledged expiring Yield hold
 to prevent background item moves without editing saved AutoCram settings. Never
 resume on uncertainty, death, identity change, logout, restart or stale ownership.
+
+The user has now authorized short client-controlled approach movement between the
+three named nearby Thread stations. Do not gate native use on a center-distance
+comparison with UseRadius. Bind stations to the original local batch area (12m),
+allow positional/cell changes only while the intended vendor/press use is pending,
+then re-anchor after acknowledgment. No route runner or general navigation. The
+user clarified DreamWeave bank funding is automatic: do not manage, exchange,
+require, or denomination-convert physical trade notes. Submit native vendor quotes
+unchanged and report native refusal reasons. Keep budget accounting separate for
+each quoted currency rather than combining incompatible denominations.

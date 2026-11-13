@@ -7,7 +7,7 @@ namespace ACAI2.Rynth.Threads.Plugin;
 
 public sealed class ThreadsPlugin : RynthPluginBase
 {
-    public const string Version="0.1.2";
+    public const string Version="0.1.3";
     public override uint MinimumApiVersion=>92;
     private readonly ConcurrentQueue<string> commands=new();
     private readonly ConcurrentQueue<(string Text,int Type)> prepChat=new();
@@ -25,14 +25,15 @@ public sealed class ThreadsPlugin : RynthPluginBase
     private BotPauseLease? botLease;
     private BotPauseLease Lease=>botLease??=new(ReadMacro,SetMacro,ReleaseHold);
     private int lifecycle,queued;
-    private uint player,pendingIdentify;
+    private uint player,pendingIdentify,pendingPurchase;
     private readonly Dictionary<uint,long> identifyAfter=new();
     private bool waiting,renderFailed;
     private Task closing=Task.CompletedTask;
     private (uint Cell,float X,float Y,float Z)? anchor;
+    private StationPosition? batchOrigin;
     private string Root=>Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"ACAI2-Threads");
     private static double Now=>System.Diagnostics.Stopwatch.GetTimestamp()/(double)System.Diagnostics.Stopwatch.Frequency;
-    public override int Initialize(){Host.Log("[ACAI2 Threads] v0.1.2. /acai2threads opens the standalone panel. Gem preparation starts only from the panel.");return 0;}
+    public override int Initialize(){Host.Log("[ACAI2 Threads] v0.1.3. /acai2threads opens the standalone panel. Gem preparation starts only from the panel.");return 0;}
     public override void OnLoginComplete(){waiting=false;Interlocked.Exchange(ref lifecycle,1);}
     public override void OnLogout(){waiting=true;journal?.Dispose();Interlocked.Exchange(ref lifecycle,1);}
     public override void OnChatWindowText(string? text,int type,ref int eat)
@@ -93,9 +94,14 @@ public sealed class ThreadsPlugin : RynthPluginBase
                 if(prep.Running)
                 {
                     var world=World();
+                    if(pendingPurchase!=0&&prep.Data.State=="Awaiting purchase"&&Host.TryGetVendorTradeStatus(out var trade)&&trade.RequestId==pendingPurchase&&trade.IsFinished&&!trade.Succeeded)
+                    {prep.Refused("Native vendor purchase: "+trade.Message+" ("+trade.Result+")");pendingPurchase=0;}
                     if(world.Safe&&!world.Busy&&pendingIdentify!=0&&DateTimeOffset.UtcNow.ToUnixTimeSeconds()>identifyAfter[pendingIdentify])
                     {uint pending=pendingIdentify;pendingIdentify=0;if(!Host.RequestId(pending))prep.Refused("Rynth refused identification");}
-                    var action=prep.Step(world,Now);SavePrep();
+                    string previousState=prep.Data.State;
+                    var action=prep.Step(world,Now);
+                    if(previousState is "Awaiting vendor" or "Awaiting press"&&prep.Data.State!=previousState&&Host.TryGetObjectPosition(player,out uint ac,out float ax,out float ay,out float az))anchor=(ac,ax,ay,az);
+                    SavePrep();
                     if(action!=null)Dispatch(action);
                     if(!prep.Running){settleAfter=Now+2;Local("Gem maker: "+prep.Data.State+" — "+prep.Data.Notice);}
                 }
@@ -142,7 +148,9 @@ public sealed class ThreadsPlugin : RynthPluginBase
         if(player==0||!Host.HasUseObjectOn||!Host.HasRequestId||!Host.HasGetContainerContents||!Host.HasGetObjectPosition||!Host.HasGetBusyState||!Host.HasGetPlayerVitals||!Host.HasGetObjectIntProperty||!Host.HasGetObjectProperties||!Host.HasGetPluginInterface||!Host.HasVendorTrade)
             throw new InvalidOperationException("Required stock Rynth APIs are unavailable");
         if(!Host.TryGetObjectPosition(player,out uint cell,out float px,out float py,out float pz))throw new InvalidOperationException("Player position unavailable");
-        bool moved=anchor.HasValue&&(anchor.Value.Cell!=cell||Math.Abs(anchor.Value.X-px)>.5||Math.Abs(anchor.Value.Y-py)>.5||Math.Abs(anchor.Value.Z-pz)>.5);
+        var currentPosition=new StationPosition(cell,px,py,pz);
+        bool expectedApproach=prep.Running&&batchOrigin!=null&&StationLocator.ExpectedApproach(prep.Data.State,batchOrigin,currentPosition);
+        bool moved=!expectedApproach&&anchor.HasValue&&(StationLocator.Distance(new(anchor.Value.Cell,anchor.Value.X,anchor.Value.Y,anchor.Value.Z),currentPosition) is not double travel||travel>.5);
         int mode=Host.HasGetCurrentCombatMode?Host.GetCurrentCombatMode():0;
         bool peaceful=mode==1;
         bool alive=Host.TryGetPlayerVitals(out uint hp,out _,out _,out _,out _,out _)&&hp>0;
@@ -159,7 +167,7 @@ public sealed class ThreadsPlugin : RynthPluginBase
                 double? radius=Host.HasGetObjectDoubleProperty&&Host.TryGetObjectDoubleProperty(id,54,out double r)?r:null;
                 candidates.Add(new(id,n,pos,radius));
             }
-            return StationLocator.Find(name,new(cell,px,py,pz),candidates);
+            return StationLocator.Find(name,batchOrigin??new(cell,px,py,pz),candidates);
         }
         var press=Nearby("Fragment Press");
         var fragmentVendor=Nearby("Fragment-Clerk Maren Idswold");
@@ -168,7 +176,9 @@ public sealed class ThreadsPlugin : RynthPluginBase
         if(Host.TryGetVendorInfo(out var info))
         {
             vendor=info.VendorId;
-            if(!info.UsesAltCurrency&&info.TradingAvailable&&!info.TradeInFlight)stock=Host.GetVendorItems().Select(i=>new PrepStock(i.ObjectId,i.Name,i.Amount,i.UnitPrice)).ToArray();
+            // Send the vendor's own quote/currency unchanged. DreamWeave and the
+            // native client handle bank funding; this plugin never manages notes.
+            if(info.TradingAvailable&&!info.TradeInFlight)stock=Host.GetVendorItems().Select(i=>new PrepStock(i.ObjectId,i.Name,i.Amount,i.UnitPrice,info.AltCurrencyWcid)).ToArray();
         }
         return new(player,safe,Host.GetBusyState()!=0,Inventory(),press.Id,fragmentVendor.Id,reagentVendor.Id,vendor,stock,blocker,press.Problem,fragmentVendor.Problem,reagentVendor.Problem);
     }
@@ -226,7 +236,7 @@ public sealed class ThreadsPlugin : RynthPluginBase
         if(!world.Safe||world.Busy){notice="Waiting for RynthAi/client to settle: "+(world.Problem.Length>0?world.Problem:"client busy");return;}
         var plan=waitingPlan!;waitingPlan=null;
         if(prep.Start(plan,world,identity!.Server,identity.Character,DateTime.UtcNow,Now))
-        {pendingIdentify=0;identifyAfter.Clear();SavePrep();notice="Batch started; RynthAi is held until preparation finishes.";Local(notice);}
+        {pendingIdentify=0;pendingPurchase=0;identifyAfter.Clear();SavePrep();notice="Batch started; RynthAi is held until preparation finishes.";Local(notice);}
     }
     private void FinishPause()
     {
@@ -253,11 +263,11 @@ public sealed class ThreadsPlugin : RynthPluginBase
         bool ok=a.Kind switch {
             "Identify"=>Host.RequestId(a.Source),
             "Open vendor"=>Host.UseObject(a.Source),
-            "Buy"=>Host.VendorBuy(a.Target,[new VendorTradeEntryNative(a.Source,a.Amount)])!=0,
+            "Buy"=>(pendingPurchase=Host.VendorBuy(a.Target,[new VendorTradeEntryNative(a.Source,a.Amount)]))!=0,
             "Dose"=>Host.UseObjectOn(a.Source,a.Target),
             "Press"=>Host.UseObjectOn(a.Source,a.Target),
             _=>false};
-        if(!ok){prep.Refused("Rynth refused the "+a.Kind+" request");SavePrep();}
+        if(!ok){string reason="Rynth refused the "+a.Kind+" request";if(a.Kind=="Buy"&&Host.TryGetVendorTradeStatus(out var status)&&status.Message.Length>0)reason+=": "+status.Message;prep.Refused(reason);SavePrep();}
         if(a.Kind=="Press")journal?.Submit(new("prep-recipe",string.Join(", ",prep.Data.Plan.Doses()),DateTime.UtcNow,unchecked((int)a.Source),StartingLevel:prep.Data.Plan.Level));
     }
     private void SavePrep()
@@ -274,10 +284,10 @@ public sealed class ThreadsPlugin : RynthPluginBase
             if(prep.Running||waitingPlan!=null||Lease.Active){Local("A batch is already active or settling.");return;}
             plan.Validate();
             if(!prepReadable)throw new InvalidOperationException("Existing local state could not be read; preserve it for review.");
-            anchor=null;var world=World(skipBot:true);
+            anchor=null;batchOrigin=null;var world=World(skipBot:true);
             if(!world.Safe)throw new InvalidOperationException(world.Problem);
             if(world.PressId==0)throw new InvalidOperationException(world.PressProblem.Length>0?world.PressProblem:"Fragment Press could not be resolved.");
-            Host.TryGetObjectPosition(player,out uint c,out float x,out float y,out float z);anchor=(c,x,y,z);
+            Host.TryGetObjectPosition(player,out uint c,out float x,out float y,out float z);anchor=(c,x,y,z);batchOrigin=new(c,x,y,z);
             Lease.Acquire();resumeAfterStop=false;held=HoldBot();waitingPlan=plan;pauseDeadline=Now+15;
             notice="Start received. RynthAi paused; waiting for outstanding actions to settle.";Local(notice);
         }
@@ -293,7 +303,7 @@ public sealed class ThreadsPlugin : RynthPluginBase
     {
         waitingPlan=null;resumeAfterStop=false;if(botLease?.Active==true){try{botLease.Release(false);}catch{}}held=false;
         prep.Stop("Login ended");try{SavePrep();}catch{};
-        if(journal!=null){journal.Dispose();closing=journal.Completion;}journal=null;identity=null;player=0;pendingIdentify=0;identifyAfter.Clear();folder="";anchor=null;previousCheckpoint="";prep.Restore(new());
+        if(journal!=null){journal.Dispose();closing=journal.Completion;}journal=null;identity=null;player=0;pendingIdentify=0;pendingPurchase=0;identifyAfter.Clear();folder="";anchor=null;batchOrigin=null;previousCheckpoint="";prep.Restore(new());
         while(starts.TryDequeue(out _)){}while(commands.TryDequeue(out _)){}
         while(prepChat.TryDequeue(out _))Interlocked.Decrement(ref queued);
     }

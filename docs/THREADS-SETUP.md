@@ -19,11 +19,20 @@ preparation rather than guessing. No Bridge or AI subscription is needed.
 
 ## First test
 
-v0.1.2 corrects station detection to use the object's advertised UseRadius
-(property 54), with a conservative 3m fallback when unavailable. It accepts the
-Fragment Press regardless of Monster/NPC classification, handles adjacent outdoor
-landblocks, and distinguishes missing objects, missing position snapshots, multiple
-reachable matches and measured out-of-range distances.
+v0.1.3 supersedes the strict center-distance check from v0.1.2. The client/server
+handle reach and any normal short approach to the intended vendor or press.
+The three exact-name stations must be unique within 12m of the batch's original
+position; this is a local workspace boundary, not a claim about use radius.
+Turning does not count as travel. Position/cell changes during a pending vendor
+or press use are allowed within that workspace, and the stationary anchor is
+updated after acknowledgment. No general navigation or route runner is added.
+
+Vendor quotes are sent unchanged through Rynth's native purchasing API. DreamWeave
+handles bank funding; the plugin never exchanges, requires, or denomination-converts
+physical notes. The purchase cap applies separately to each vendor's quoted
+currency units (pyreals remain pyreals); unlike denominations are never added
+together. Native purchase refusals are reported with their reason rather than
+silently waiting for a timeout.
 
 v0.1.1 added exact Start diagnostics, automatic macro pause/resume and selectable
 300/325/350/375 blanks. Start reports refusals directly in game chat and the Gem
@@ -46,7 +55,7 @@ The builder identifies the fragment, applies each selected dose once, requires
 native acknowledgment plus inventory consumption, presses once, and freshly
 identifies the resulting gem. It does not navigate. Optional buying opens only
 the named nearby fragment/reagent vendors and buys shortages within the selected
-purchase budget; this budget excludes any server-imposed pressing fee. Funds,
+per-currency purchase cap; this excludes any server-imposed pressing fee. Funds,
 space and vendor availability must permit the transaction.
 
 STOP prevents further actions; an already issued request can still finish.
