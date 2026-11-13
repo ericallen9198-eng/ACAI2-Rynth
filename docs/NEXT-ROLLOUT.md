@@ -21,3 +21,13 @@ SOOT-SOURCE-REVIEW.md and RYNTH-THREADS-OVERLAP.md; this milestone does not depl
 those features or duplicate Rynth's own systems. The Future combat assembly is
 not a ready standalone plugin; extracting its renderer/manifest/package is later
 work if requested.
+
+## Soot collaboration review — November 13
+
+The user wants Soot's features to run as a companion plugin, not require a custom
+Rynth distribution. [Current patch/boundary review](SOOT-PLUGIN-BOUNDARY-REVIEW.md)
+finds this feasible for an extracted subset: the supplied API97 archive currently
+patches 139 Suite paths and 37 Core paths. Use existing versioned Rynth interfaces,
+keep the action owner in RynthAi, and propose engine/LOS/chat fixes upstream.
+First candidate is read-only Thread/survey data/UI with one authoritative recorder.
+Keyfer remains separate; combat stays excluded. No patch was applied or deployed.

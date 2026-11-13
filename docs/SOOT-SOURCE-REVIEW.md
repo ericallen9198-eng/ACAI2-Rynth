@@ -1,3 +1,6 @@
+> Updated packaging/boundary review: [November 13 plugin feasibility](SOOT-PLUGIN-BOUNDARY-REVIEW.md).
+> The analysis below describes the older November 8 archive.
+
 # Soot DreamWeave source review
 
 Source: user-supplied `rynth-dreamweave-main.zip`, sharing snapshot dated
