@@ -33,6 +33,7 @@ internal sealed class ThreadPanel
     }
     public void Save(string path)
     {string temporary=path+".tmp";File.WriteAllText(temporary,JsonSerializer.Serialize(a));File.Move(temporary,path,true);}
+    private static string Summary(IEnumerable<string> doses)=>string.Join(", ",doses.GroupBy(n=>n).Select(g=>g.Key+(g.Count()>1?" x"+g.Count():"")));
     public void Draw(string character,ThreadView view,PrepMachine machine,string notice,Action<PrepPlan> start,Action stop,Action<string> command)
     {
         if(!a.Visible||ImGui.GetCurrentContext()==IntPtr.Zero)return;
@@ -83,11 +84,13 @@ internal sealed class ThreadPanel
                         if(notice.Length>0)ImGui.TextWrapped(notice);
                         if(machine.Running)
                         {
+                            ImGui.TextWrapped("Current recipe: "+Summary(machine.CurrentDoses()));
                             ImGui.TextUnformatted("Dose "+data.Dose+" | fragment "+data.Fragment.ToString("X8"));
                             if(ImGui.Button("STOP BATCH"))stop();
                         }
                         else
                         {
+                            bool random=plan.RandomRecipes;if(ImGui.Checkbox("Random recipe per gem",ref random)){plan.RandomRecipes=random;Dirty=true;}
                             if(ImGui.BeginCombo("Blank level",plan.Level.ToString())){foreach(int level in new[]{300,325,350,375})if(ImGui.Selectable(level.ToString(),plan.Level==level)){plan.Level=level;Dirty=true;}ImGui.EndCombo();}
                             int target=plan.Target;if(ImGui.InputInt("Gems",ref target)){plan.Target=Math.Clamp(target,1,50);Dirty=true;}
                             bool topup=plan.TopUp;if(ImGui.Checkbox("Top up usable stock",ref topup)){plan.TopUp=topup;Dirty=true;}
@@ -95,17 +98,30 @@ internal sealed class ThreadPanel
                             bool withdraw=plan.AutoWithdrawNotes;if(ImGui.Checkbox("Auto-withdraw notes when needed",ref withdraw)){plan.AutoWithdrawNotes=withdraw;Dirty=true;}
                             ImGui.TextDisabled("Off: stop on a note shortage. On: withdraw only missing notes.");
                             int cap=plan.Budget;if(ImGui.InputInt("Purchase cap (per quoted currency)",ref cap)){plan.Budget=Math.Clamp(cap,0,10000000);Dirty=true;}
-                            string value=plan.Scarab;if(ImGui.InputText("Scarab",ref value,100)){plan.Scarab=value;Dirty=true;}
-                            value=plan.Herb;if(ImGui.InputText("Herb",ref value,100)){plan.Herb=value;Dirty=true;}
-                            value=plan.Powder;if(ImGui.InputText("Powder",ref value,100)){plan.Powder=value;Dirty=true;}
-                            value=plan.Reagent;if(ImGui.InputText("Reagent (optional)",ref value,100)){plan.Reagent=value;Dirty=true;}
-                            value=plan.Talisman;if(ImGui.InputText("Talisman (optional)",ref value,100)){plan.Talisman=value;Dirty=true;}
-                            value=plan.Taper;if(ImGui.InputText("Taper",ref value,100)){plan.Taper=value;Dirty=true;}
-                            int count=plan.TaperCount;if(ImGui.SliderInt("Taper doses",ref count,0,4)){plan.TaperCount=count;Dirty=true;}
-                            ImGui.TextWrapped("Recipe: "+string.Join(", ",plan.Doses()));
+                            if(plan.RandomRecipes)
+                            {
+                                if(ImGui.BeginCombo("Scarab (fixed)",plan.Scarab))
+                                {foreach(string scarab in ThreadComponentCatalog.Scarabs)if(ImGui.Selectable(scarab,scarab==plan.Scarab)){plan.Scarab=scarab;Dirty=true;}ImGui.EndCombo();}
+                                ImGui.TextWrapped("A fresh herb, powder, reagent, talisman and taper color for each gem. Uses all 9 doses; blank level and scarab stay fixed.");
+                                ImGui.TextWrapped(plan.BuyMissing?"Choices use the reagent vendor's live spell-component stock plus your pack.":"Choices use only the spell components you carry; the whole batch must fit your supplies.");
+                                ImGui.TextDisabled("Known families only; learned component roles extend the choices.");
+                            }
+                            else
+                            {
+                                string value=plan.Scarab;if(ImGui.InputText("Scarab",ref value,100)){plan.Scarab=value;Dirty=true;}
+                                value=plan.Herb;if(ImGui.InputText("Herb",ref value,100)){plan.Herb=value;Dirty=true;}
+                                value=plan.Powder;if(ImGui.InputText("Powder",ref value,100)){plan.Powder=value;Dirty=true;}
+                                value=plan.Reagent;if(ImGui.InputText("Reagent (optional)",ref value,100)){plan.Reagent=value;Dirty=true;}
+                                value=plan.Talisman;if(ImGui.InputText("Talisman (optional)",ref value,100)){plan.Talisman=value;Dirty=true;}
+                                value=plan.Taper;if(ImGui.InputText("Taper",ref value,100)){plan.Taper=value;Dirty=true;}
+                                int count=plan.TaperCount;if(ImGui.SliderInt("Taper doses",ref count,0,4)){plan.TaperCount=count;Dirty=true;}
+                                ImGui.TextWrapped("Recipe: "+Summary(plan.Doses()));
+                            }
                             ImGui.TextDisabled("Keeps every result. No automatic gem destruction.");
                             if(ImGui.Button("START BATCH"))start(plan);
                         }
+                        if(data.Plan.RandomRecipes&&data.Recipes.Count>0&&ImGui.CollapsingHeader("Frozen batch recipes"))
+                            for(int i=0;i<data.Recipes.Count;i++)ImGui.TextWrapped((i+1)+". "+Summary(data.Recipes[i]));
                         ImGui.EndTabItem();
                     }
                     if(ImGui.BeginTabItem("Research"))

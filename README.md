@@ -1,6 +1,6 @@
 # ACAI2-Rynth
 
-**Independent Rynth plugins: Keyfer v0.3.1, Threads v0.1.4 and Combat v0.1.7.**
+**Independent Rynth plugins: Keyfer v0.3.1, Threads v0.1.5 and Combat v0.1.7.**
 Each has its own Windows package and setup guide. The Keyfer package excludes
 combat; the standalone Combat app is described below.
 
@@ -14,11 +14,14 @@ project and installed ACAI2 files are not modified.
 
 ## Standalone Threads app
 
-The separate **ACAI2.Threads v0.1.4** plugin combines a compact Thread journal,
+The separate **ACAI2.Threads v0.1.5** plugin combines a compact Thread journal,
 recipe research and an explicitly started native gem maker. It does not replace
 RynthCore/RynthAi or require Keyfer/Bridge. Choose 300/325/350/375 blanks; Start temporarily pauses RynthAi and reports exact
 blockers. All results are retained; uncertain
 actions never automatically retry. See [Thread setup and first test](docs/THREADS-SETUP.md).
+v0.1.5 adds random recipes: fix the blank level/scarab and independently sample the
+other component families per gem, recording all nine doses and their outcomes.
+[Download Threads v0.1.5 for Windows](https://github.com/ericallen9198-eng/ACAI2-Rynth/releases/download/threads-v0.1.5/ACAI2-Threads-v0.1.5-Windows.zip).
 Build on Windows with `scripts/Publish-Threads.ps1`; pure checks use
 `scripts/test-threads.sh`. The independent package excludes combat and Keyfer.
 

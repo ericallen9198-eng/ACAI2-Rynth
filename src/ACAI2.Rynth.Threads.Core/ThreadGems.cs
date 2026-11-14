@@ -41,6 +41,10 @@ namespace ACAI2.Rynth.Threads.Core
         public bool ModifierHeaderObserved { get; set; }
         public bool PrepRecipeConfirmed { get; set; }
         public bool FinalRecipeObserved { get; set; }
+        public string RecipeSelection { get; set; } = "Unknown";
+        public string PrepBatchId { get; set; } = "";
+        public int PrepBatchIndex { get; set; }
+        public string RecipePool { get; set; } = "";
         public string RecipeSource { get; set; } = "Unknown";
         public string Status { get; set; } = "Capturing";
         public string FragmentType { get; set; } = "Unknown";
@@ -297,14 +301,8 @@ namespace ACAI2.Rynth.Threads.Core
         {
             var roles = Data.Claims.Where(x => x.Component.Equals(name, StringComparison.OrdinalIgnoreCase) && x.Role != "Unknown").Select(x => x.Role).Distinct().ToArray();
             if (roles.Length == 1) return roles[0];
-            if (name.EndsWith(" Scarab", StringComparison.OrdinalIgnoreCase)) return "Scarab";
-            if (name.EndsWith(" Taper", StringComparison.OrdinalIgnoreCase)) return "Taper";
-            if (name.EndsWith(" Talisman", StringComparison.OrdinalIgnoreCase)) return "Talisman";
-            if (name.StartsWith("Powdered ", StringComparison.OrdinalIgnoreCase)) return "Powder";
-            // Only category hints from the supplied research; they never create direct claims or observations.
-            if (new[] { "Mugwort", "Hyssop", "Saffron", "Amaranth" }.Contains(name, StringComparer.OrdinalIgnoreCase)) return "Herb";
-            if (new[] { "Colcothar", "Cinnabar", "Cadmia", "Brimstone", "Realgar" }.Contains(name, StringComparer.OrdinalIgnoreCase)) return "Reagent";
-            return "Unknown";
+            if (roles.Length > 1) return "Unknown";
+            return ThreadComponentCatalog.Role(name);
         }
         private static string ClaimRole(string description)
         {

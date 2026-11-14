@@ -9,9 +9,10 @@ public sealed record ThreadIdentity(string Server,string Character)
     public string Folder(string root)=>Path.Combine(root,Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Server+"\n"+Character))));
     public void Validate(){if(string.IsNullOrWhiteSpace(Server)||string.IsNullOrWhiteSpace(Character)||Server.Length>128||Character.Length>128||Server.Any(char.IsControl)||Character.Any(char.IsControl))throw new InvalidDataException("A known server and character are required.");}
 }
-public sealed record ThreadInput(string Kind,string Text,DateTime Utc,int ObjectId=0,string Name="",int NativeType=0,int StartingLevel=0);
+public sealed record ThreadInput(string Kind,string Text,DateTime Utc,int ObjectId=0,string Name="",int NativeType=0,int StartingLevel=0,string RecipeSelection="Manual",string BatchId="",int BatchIndex=0,string RecipePool="");
 public sealed record ThreadView(string Identity,string[] Current,string[] History,string[] Research,string[] Goals,string Notice,int Runs,int Presses,bool Capturing)
 {
+    public IReadOnlyDictionary<string,string> ComponentRoles {get;init;}=new Dictionary<string,string>();
     public static ThreadView Empty=new("Loading",[],[],[],[],"Loading journal...",0,0,false);
 }
 public sealed class ThreadWorker : IDisposable
@@ -39,7 +40,7 @@ public sealed class ThreadWorker : IDisposable
         ThreadGemStore? store=null;ThreadGemCapture? capture=null;ThreadRuns? runs=null;FileStream? owner=null;
         string notice="Local journal only; no combat or automation.",goal="lum";DateTime saved=DateTime.MinValue;
         bool dirty=false;string selectedRun="",selectedRoll="";
-        var prepRecipes=new Dictionary<int,(string Recipe,int Level)>();
+        var prepRecipes=new Dictionary<int,ThreadInput>();
         try
         {
             Directory.CreateDirectory(folder);owner=new(Path.Combine(folder,"owner.lock"),FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.None);
@@ -62,13 +63,14 @@ public sealed class ThreadWorker : IDisposable
                         if(input.Text.Trim()=="Pressed. It holds."&&input.ObjectId!=0&&prepRecipes.Remove(input.ObjectId,out var recipe))
                         {
                             var roll=capture.Data.Current();
-                            roll.Components=capture.ParseRecipe(recipe.Recipe);roll.PrepRecipeConfirmed=true;roll.RecipeSource="Native prep doses: server and inventory confirmed";
-                            roll.FragmentLevel=recipe.Level;roll.FragmentType="Raw Fragment";roll.FragmentObjectId=input.ObjectId;roll.FragmentLevelBasis="Item data matched native prep press";
+                            roll.Components=capture.ParseRecipe(recipe.Text);roll.PrepRecipeConfirmed=true;roll.RecipeSource="Native prep doses: server and inventory confirmed";
+                            roll.RecipeSelection=recipe.RecipeSelection;roll.PrepBatchId=recipe.BatchId;roll.PrepBatchIndex=recipe.BatchIndex;roll.RecipePool=recipe.RecipePool;
+                            roll.FragmentLevel=recipe.StartingLevel;roll.FragmentType="Raw Fragment";roll.FragmentObjectId=input.ObjectId;roll.FragmentLevelBasis="Item data matched native prep press";
                             roll.RecipeControl=ThreadGemCapture.Control(roll.Components,false);
                             roll.Forecast=ThreadGemPrediction.Build(capture.Data.Rolls,roll,input.Utc);roll.Forecast.BeforeOutcome=true;
                         }
                     }
-                    else if(input.Kind=="prep-recipe"){if(input.StartingLevel is 300 or 325 or 350 or 375)prepRecipes[input.ObjectId]=(input.Text,input.StartingLevel);}
+                    else if(input.Kind=="prep-recipe"){if(input.StartingLevel is 300 or 325 or 350 or 375){prepRecipes[input.ObjectId]=input;if(prepRecipes.Count>64)prepRecipes.Remove(prepRecipes.Keys.First());}}
                     else if(input.Kind=="fragment")
                     {
                         var level=ThreadFragmentInspection.Read(input.Name,[input.Text],null);
@@ -150,7 +152,7 @@ public sealed class ThreadWorker : IDisposable
             research.AddRange(ThreadGemReports.Forecast(roll.Forecast));
             foreach(string name in roll.Components.Select(x=>x.Name).Distinct().Take(8))research.AddRange(ThreadGemReports.Component(data,name).Take(12));
         }
-        Volatile.Write(ref view,new(identity.Character,current,history,research.ToArray(),ThreadGemRecommendations.Recommend(data,goal),notice,data.Runs.Count(x=>x.Status!="Superseded by known instance"),data.Rolls.Count,roll?.Status=="Capturing"));
+        Volatile.Write(ref view,new(identity.Character,current,history,research.ToArray(),ThreadGemRecommendations.Recommend(data,goal),notice,data.Runs.Count(x=>x.Status!="Superseded by known instance"),data.Rolls.Count,roll?.Status=="Capturing"){ComponentRoles=data.Claims.Where(c=>c.Role!="Unknown").GroupBy(c=>c.Component,StringComparer.OrdinalIgnoreCase).Take(512).ToDictionary(g=>g.Key,g=>g.Select(c=>c.Role).Distinct().Count()==1?g.First().Role:"Unknown",StringComparer.OrdinalIgnoreCase)});
     }
     public void Dispose(){stop.Cancel();inputs.Writer.TryComplete();}
 }

@@ -1,12 +1,13 @@
 using System.Text.RegularExpressions;
 namespace ACAI2.Rynth.Threads.Core;
 
-public sealed record PrepItem(uint Id,string Name,int Count,string Description,bool Identified,uint Wcid=0);
-public sealed record PrepStock(uint Id,string Name,int Amount,int UnitPrice,uint CurrencyId=0,string CurrencyName="");
-public sealed record PrepWorld(uint PlayerId,bool Safe,bool Busy,PrepItem[] Inventory,uint PressId,uint FragmentVendor,uint ReagentVendor,uint OpenVendor,PrepStock[] Stock,string Problem="",string PressProblem="",string FragmentVendorProblem="",string ReagentVendorProblem="");
+public sealed record PrepItem(uint Id,string Name,int Count,string Description,bool Identified,uint Wcid=0,uint ItemType=0);
+public sealed record PrepStock(uint Id,string Name,int Amount,int UnitPrice,uint CurrencyId=0,string CurrencyName="",uint ItemType=0);
+public sealed record PrepWorld(uint PlayerId,bool Safe,bool Busy,PrepItem[] Inventory,uint PressId,uint FragmentVendor,uint ReagentVendor,uint OpenVendor,PrepStock[] Stock,string Problem="",string PressProblem="",string FragmentVendorProblem="",string ReagentVendorProblem="",IReadOnlyDictionary<string,string>? ComponentRoles=null);
 public sealed record PrepAction(string Kind,uint Source=0,uint Target=0,int Amount=0,string Detail="");
 public sealed class PrepPlan
 {
+    public bool RandomRecipes {get;set;}
     public int Target {get;set;}=1;
     public int Level {get;set;}=325;
     public string BlankName=>"Raw Fragment (Level "+Level+")";
@@ -26,6 +27,11 @@ public sealed class PrepPlan
     {
         if(Level is not (300 or 325 or 350 or 375))throw new InvalidDataException("Choose blank level 300, 325, 350 or 375.");
         if(Target is <1 or >50||Budget is <0 or >10000000||TaperCount is <0 or >4)throw new InvalidDataException("Batch 1..50, tapers 0..4, budget 0..10,000,000.");
+        if(RandomRecipes)
+        {
+            if(!ThreadComponentCatalog.Scarabs.Contains(Scarab,StringComparer.Ordinal))throw new InvalidDataException("Choose a supported scarab for random recipes.");
+            return;
+        }
         var doses=Doses();
         if(doses.Length is <1 or >9||new[]{Scarab,Herb,Powder,Reagent,Talisman,Taper}.Any(n=>n.Length>100||n.Any(char.IsControl)||n.Contains(',')||n.Contains('`'))||Scarab.Length==0||TaperCount>0&&Taper.Length==0)
             throw new InvalidDataException("Use 1..9 exact component doses and a scarab; component names must be plain item names.");
@@ -48,6 +54,8 @@ public sealed class PrepCheckpoint
     public uint WithdrawalCurrency {get;set;}
     public int ReservedSpend {get;set;}
     public Dictionary<uint,int> ReservedCurrency {get;set;}=[];
+    public List<string[]> Recipes {get;set;}=[];
+    public string RecipePool {get;set;}="";
     public List<uint> Finished {get;set;}=[];
     public DateTime StartedUtc {get;set;}
 }
@@ -56,6 +64,7 @@ public sealed class PrepCheckpoint
 public sealed class PrepMachine
 {
     public PrepCheckpoint Data {get;private set;}=new();
+    public string[] CurrentDoses()=>Data.Plan.RandomRecipes?Data.Recipes.ElementAtOrDefault(Data.Done)??[]:Data.Plan.Doses();
     public bool Running=>Data.State is not ("Idle" or "Completed" or "Stopped" or "Needs review");
     private readonly HashSet<uint> initial=[];
     private readonly HashSet<uint> usedFragments=[];
@@ -151,7 +160,20 @@ public sealed class PrepMachine
         if(w.Busy)return null;
         if(Data.State=="Supply check")
         {
-            var need=Data.Plan.Doses().GroupBy(x=>x).ToDictionary(x=>x.Key,x=>x.Count()*(Data.Needed-Data.Done));
+            if(Data.Plan.RandomRecipes&&Data.Recipes.Count==0)
+            {
+                if(Data.Plan.BuyMissing&&w.OpenVendor!=w.ReagentVendor)
+                {
+                    if(w.ReagentVendor==0){Refused("Required reagent vendor missing for random recipe choices");return null;}
+                    waitingVendor=w.ReagentVendor;Advance("Awaiting vendor",now);return new("Open vendor",w.ReagentVendor);
+                }
+                if(Data.Plan.BuyMissing&&w.Stock.Length==0)return null; // wait for the bound vendor catalogue; existing deadline still applies
+                Data.Recipes=RandomRecipes.Build(Data.Plan,w,Data.Needed);
+                Data.RecipePool=Data.Plan.BuyMissing?"Observed reagent vendor stock + carried spell components":"Carried spell components only";
+                Data.Notice="Frozen "+Data.Recipes.Count+" random recipes; blank level and scarab are fixed. Every recipe has 9 known doses.";
+            }
+            var remaining=Data.Plan.RandomRecipes?Data.Recipes.Skip(Data.Done).SelectMany(x=>x):Enumerable.Repeat(Data.Plan.Doses(),Data.Needed-Data.Done).SelectMany(x=>x);
+            var need=remaining.GroupBy(x=>x).ToDictionary(x=>x.Key,x=>x.Count());
             need[Data.Plan.BlankName]=Data.Needed-Data.Done;
             foreach(var missing in need.Where(p=>Count(w,p.Key)<p.Value))
             {
@@ -189,13 +211,14 @@ public sealed class PrepMachine
         }
         if(Data.State=="Loading")
         {
-            if(Data.Dose>=Data.Plan.Doses().Length)
+            if(Data.Plan.RandomRecipes&&CurrentDoses().Length!=9){Refused("Frozen random recipe missing or incomplete; no dosing or pressing");return null;}
+            if(Data.Dose>=CurrentDoses().Length)
             {
                 if(w.PressId==0){Refused(w.PressProblem.Length>0?w.PressProblem:"Fragment Press missing");return null;}
                 beforeGems=w.Inventory.Where(i=>i.Name=="Thread Gem").Select(i=>i.Id).ToHashSet();pressAck=false;
                 Advance("Awaiting press",now);return new("Press",Data.Fragment,w.PressId);
             }
-            ingredient=Data.Plan.Doses()[Data.Dose];
+            ingredient=CurrentDoses()[Data.Dose];
             var stack=w.Inventory.FirstOrDefault(i=>i.Name==ingredient&&i.Count>0);
             if(stack==null||!w.Inventory.Any(i=>i.Id==Data.Fragment)){Refused("Fragment or component disappeared");return null;}
             beforeCount=Count(w,ingredient);loadAck=false;Advance("Awaiting dose",now);

@@ -125,6 +125,71 @@ var tenWorld=World(scarab with{Count=20},herb with{Count=20},powder with{Count=2
 var tenBatch=new PrepMachine();tenBatch.Start(new(){Target=10,BuyMissing=true,AutoWithdrawNotes=true,Reagent="",TaperCount=0},tenWorld,"DreamWeave","Toe",now,0);
 Check(tenBatch.Step(tenWorld,0) is{Kind:"Withdraw notes",Amount:17},"ten gems at two notes each with three carried notes withdraw exactly seventeen once");
 
+
+const uint componentType=ThreadComponentCatalog.SpellComponentType;
+string[] names=["Mana Scarab","Hyssop","Damiana","Powdered Amber","Powdered Quartz","Brimstone","Cobalt","Willow Talisman","Birch Talisman","Brown Taper","Yellow Taper"];
+var componentBag=names.Select((n,i)=>new PrepItem((uint)(500+i),n,100,"",true,ItemType:componentType)).ToArray();
+var randomPlan=new PrepPlan{RandomRecipes=true,Level=375,Scarab="Mana Scarab",Target=10};randomPlan.Validate();
+var randomWorld=World(componentBag);
+var chosen=RandomRecipes.Build(randomPlan,randomWorld,10,new Random(27));
+Check(chosen.Count==10&&chosen.All(r=>r.Length==9&&r[0]=="Mana Scarab"&&r.Skip(5).Distinct().Count()==1&&r.Skip(5).Count()==4),"every random gem keeps the selected scarab and has nine known doses with four of one taper color");
+Check(chosen.Select(r=>string.Join("|",r)).Distinct().Count()>1,"a random batch draws fresh recipes across the different ingredient families");
+Check(chosen.SelectMany(r=>r).GroupBy(n=>n).All(g=>g.Count()<=componentBag.Single(i=>i.Name==g.Key).Count),"inventory-only random recipes reserve finite supplies across the complete batch");
+var recipeCapture=new ThreadGemCapture(new ThreadGemJournal());
+Check(chosen.All(r=>ThreadGemCapture.Control(recipeCapture.ParseRecipe(string.Join(", ",r)),false)=="Fully Controlled"),"randomly selected known components are fully controlled research inputs, not unobserved server-random slots");
+try{RandomRecipes.Build(randomPlan,randomWorld with{Inventory=componentBag.Select(i=>i.Name=="Mana Scarab"?i with{Count=1}:i).ToArray()},10,new Random(1));Check(false,"short scarab rejected");}catch(InvalidOperationException){Check(true,"insufficient fixed scarabs fail before any random batch crafting");}
+var scarce=componentBag.Select(i=>i.Name.EndsWith(" Taper")?i with{Count=1}:i).ToArray();
+try{RandomRecipes.Build(randomPlan,World(scarce),1,new Random(1));Check(false,"short tapers rejected");}catch(InvalidOperationException){Check(true,"random mode requires four units of its selected taper instead of planning an impossible dose sequence");}
+var learned=componentBag.Where(i=>i.Name is not ("Hyssop" or "Damiana")).Append(new PrepItem(800,"Moonwort",20,"",true,ItemType:componentType)).ToArray();
+try{RandomRecipes.Build(randomPlan,World(learned),1,new Random(1));Check(false,"unknown family rejected");}catch(InvalidOperationException){Check(true,"unclassified spell components are not guessed into random ingredient families");}
+Check(RandomRecipes.Build(randomPlan,World(learned) with{ComponentRoles=new Dictionary<string,string>{{"Moonwort","Herb"}}},1,new Random(1)).Single()[1]=="Moonwort","a server-learned ingredient role expands the random pool without a hardcoded outcome claim");
+var withQuest=World(componentBag.Append(new PrepItem(801,"Powdered Quest Artifact",999,"",true,ItemType:0x800)).ToArray());
+Check(RandomRecipes.Build(randomPlan,withQuest,10,new Random(3)).SelectMany(r=>r).All(n=>n!="Powdered Quest Artifact"),"matching names cannot cause a non-spell-component quest item to be selected");
+
+var randomMaker=new PrepMachine();var twoPlan=new PrepPlan{RandomRecipes=true,Target=2,Level=375,Scarab="Mana Scarab"};
+var randomBag=componentBag.Concat(new[]{blank with{Id=900,Name="Raw Fragment (Level 375)",Description=blank.Description.Replace("325","375")},blank with{Id=901,Name="Raw Fragment (Level 375)",Description=blank.Description.Replace("325","375")}}).ToList();
+randomMaker.Start(twoPlan,World(randomBag.ToArray()),"DreamWeave","Toe",now,0);
+List<string[]> pressedRecipes=[];List<string> actualDoses=[];string frozenRecipes="";
+for(int step=0;randomMaker.Running&&step<300;step++)
+{
+ var action=randomMaker.Step(World(randomBag.ToArray()),step*.25);
+ if(randomMaker.Data.Recipes.Count>0&&frozenRecipes.Length==0)frozenRecipes=JsonSerializer.Serialize(randomMaker.Data.Recipes);
+ if(action==null)continue;
+ if(action.Kind=="Dose")
+ {
+  int slot=randomBag.FindIndex(i=>i.Id==action.Target);Check(slot>=0&&action.Source is 900 or 901,"random dose stays bound to a selected blank and a real ingredient stack");
+  actualDoses.Add(action.Detail);randomBag[slot]=randomBag[slot] with{Count=randomBag[slot].Count-1};randomMaker.Observe("The fragment takes the "+action.Detail+". It may add a modifier.");
+ }
+ else if(action.Kind=="Press")
+ {
+  Check(actualDoses.SequenceEqual(randomMaker.CurrentDoses()),"a random press uses exactly the frozen current recipe after all nine dose acknowledgments");actualDoses.Clear();pressedRecipes.Add(randomMaker.CurrentDoses().ToArray());
+  randomBag.RemoveAll(i=>i.Id==action.Source);randomBag.Add(gem with{Id=(uint)(950+randomMaker.Data.Done)});randomMaker.Observe("Pressed. It holds.");
+ }
+ else if(action.Kind!="Identify")throw new Exception("Unexpected random inventory-only action "+action.Kind);
+}
+Check(randomMaker.Data.State=="Completed"&&randomMaker.Data.Done==2&&pressedRecipes.Count==2&&pressedRecipes.Select((r,i)=>r.SequenceEqual(randomMaker.Data.Recipes[i])).All(v=>v),"two random gems complete against separate immutable recipes without redosing or altering the scarab/level");
+Check(JsonSerializer.Serialize(randomMaker.Data.Recipes)==frozenRecipes,"ingredient consumption never rerolls the batch midway through crafting");
+var savedRandom=JsonSerializer.Deserialize<PrepCheckpoint>(JsonSerializer.Serialize(randomMaker.Data))!;savedRandom.State="Awaiting press";var interruptedRandom=new PrepMachine();interruptedRandom.Restore(savedRandom);
+Check(interruptedRandom.Data.State=="Needs review"&&interruptedRandom.Step(World(randomBag.ToArray()),100)==null&&JsonSerializer.Serialize(interruptedRandom.Data.Recipes)==frozenRecipes,"random recipes survive interruption for review without re-randomizing, redosing or repressing on restart");
+
+var randomBuyer=new PrepMachine();var shoppingRandom=new PrepPlan{RandomRecipes=true,Target=3,Scarab="Mana Scarab",BuyMissing=true,Budget=1000};
+var catalogNames=new[]{"Mana Scarab","Hyssop","Powdered Amber","Brimstone","Willow Talisman","Brown Taper"};
+var nativeCatalog=catalogNames.Select((n,i)=>new PrepStock((uint)(1000+i),n,-1,1,ItemType:componentType)).ToArray();
+randomBuyer.Start(shoppingRandom,World(),"DreamWeave","Toe",now,0);
+Check(randomBuyer.Step(World(),0) is{Kind:"Open vendor",Source:22},"random shopping reads only the bound reagent vendor's native catalogue before selecting recipes");
+randomBuyer.Step(World() with{OpenVendor=22},.1);Check(randomBuyer.Step(World() with{OpenVendor=22},.2)==null&&randomBuyer.Running,"an empty loading vendor catalogue waits instead of generating a guessed recipe");
+List<PrepItem> bought=[];List<PrepAction> purchases=[];
+for(int step=1;step<40;step++)
+{
+ var action=randomBuyer.Step(World(bought.ToArray()) with{OpenVendor=22,Stock=nativeCatalog},step*.25);
+ if(action?.Kind=="Buy")
+ {
+  purchases.Add(action);bought.Add(new(action.Source,action.Detail,action.Amount,"",true,ItemType:componentType));if(action.Detail=="Brown Taper")break;
+ }
+}
+Check(randomBuyer.Data.Recipes.Count==3&&purchases.Single(p=>p.Detail=="Brown Taper").Amount==12&&purchases.Where(p=>p.Detail!="Brown Taper").All(p=>p.Amount==3),"shopping sums all frozen random recipes, buying exact batch shortages rather than repeating the first gem's recipe");
+var oldPlan=JsonSerializer.Deserialize<PrepPlan>("{\"Level\":325,\"Scarab\":\"Lead Scarab\"}")!;
+Check(!oldPlan.RandomRecipes&&JsonSerializer.Deserialize<PrepPlan>(JsonSerializer.Serialize(randomPlan))!.RandomRecipes,"existing plans remain manual and each character's random-mode choice is saved");
 string root=Path.Combine(Path.GetTempPath(),"threads-test-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);
 try
 {
@@ -136,13 +201,14 @@ try
  var worker=new ThreadWorker(who,root);
  for(int i=0;!worker.Ready&&i<300;i++)await Task.Delay(10);
  Check(worker.Ready,"standalone managed journal starts without Bridge or Keyfer");
- worker.Submit(new("prep-recipe",recipe,now,321,StartingLevel:375));worker.Submit(new("chat","Pressed. It holds.",now,321));
+ worker.Submit(new("prep-recipe",recipe,now,321,StartingLevel:375,RecipeSelection:"Randomized",BatchId:new string('a',32),BatchIndex:2,RecipePool:"Carried spell components only"));worker.Submit(new("chat","Pressed. It holds.",now,321));
  worker.Submit(new("chat",open,now));worker.Submit(new("chat","[REALM] id=0 inst=99 eph=1 name=Base World",now.AddSeconds(1)));
  for(int i=0;worker.View.Runs==0&&i<300;i++)await Task.Delay(10);
  worker.Dispose();await worker.Completion;
  Check(worker.View.Runs==1,"background worker records a scoped run and flushes on shutdown");
  var scoped=new ThreadGemStore(who.Folder(root),who.Server,who.Character,v=>JsonSerializer.Serialize(v),(t,type)=>JsonSerializer.Deserialize(t,type)!);
  Check(scoped.Load().Rolls.Any(r=>r.FragmentLevel==375&&r.PrepRecipeConfirmed),"native prep records the actual selected starting level rather than hardcoding 325");
+ Check(scoped.Load().Rolls.Any(r=>r.RecipeSelection=="Randomized"&&r.PrepBatchIndex==2&&r.PrepBatchId==new string('a',32)&&!r.RandomSlots&&r.RecipeControl=="Fully Controlled"),"confirmed random-recipe selection and batch metadata persist separately from server-random slots");
 }
 finally{Directory.Delete(root,true);}
 Console.WriteLine($"All {count} Thread checks passed; no native game actions or network calls were made.");

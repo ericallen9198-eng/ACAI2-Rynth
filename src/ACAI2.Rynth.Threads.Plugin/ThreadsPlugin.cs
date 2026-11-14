@@ -7,7 +7,7 @@ namespace ACAI2.Rynth.Threads.Plugin;
 
 public sealed class ThreadsPlugin : RynthPluginBase
 {
-    public const string Version="0.1.4";
+    public const string Version="0.1.5";
     public override uint MinimumApiVersion=>92;
     private readonly ConcurrentQueue<string> commands=new();
     private readonly ConcurrentQueue<(string Text,int Type)> prepChat=new();
@@ -33,7 +33,7 @@ public sealed class ThreadsPlugin : RynthPluginBase
     private StationPosition? batchOrigin;
     private string Root=>Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"ACAI2-Threads");
     private static double Now=>System.Diagnostics.Stopwatch.GetTimestamp()/(double)System.Diagnostics.Stopwatch.Frequency;
-    public override int Initialize(){Host.Log("[ACAI2 Threads] v0.1.4. /acai2threads opens the standalone panel. Gem preparation starts only from the panel.");return 0;}
+    public override int Initialize(){Host.Log("[ACAI2 Threads] v0.1.5. /acai2threads opens the standalone panel. Gem preparation starts only from the panel.");return 0;}
     public override void OnLoginComplete(){waiting=false;Interlocked.Exchange(ref lifecycle,1);}
     public override void OnLogout(){waiting=true;journal?.Dispose();Interlocked.Exchange(ref lifecycle,1);}
     public override void OnChatWindowText(string? text,int type,ref int eat)
@@ -138,7 +138,8 @@ public sealed class ThreadsPlugin : RynthPluginBase
                     if(identified)identifyAfter.Remove(id);
                 }
                 if(!Host.TryGetObjectWcid(id,out uint wcid))throw new InvalidOperationException("Inventory item type snapshot unavailable; cannot safely count currency.");
-                found.Add(new(id,name,count,Description(id),identified,wcid));
+                uint itemType=Host.TryGetObjectIntProperty(id,1,out int type)?unchecked((uint)type):0;
+                found.Add(new(id,name,count,Description(id),identified,wcid,itemType));
                 if(Host.GetNumContainedItems(id)>0)containers.Enqueue(id);
             }
         }
@@ -180,9 +181,9 @@ public sealed class ThreadsPlugin : RynthPluginBase
             vendor=info.VendorId;
             // Send the vendor's own quote/currency unchanged. DreamWeave and the
             // native client handle bank funding; this plugin never manages notes.
-            if(info.TradingAvailable&&!info.TradeInFlight)stock=Host.GetVendorItems().Select(i=>new PrepStock(i.ObjectId,i.Name,i.Amount,i.UnitPrice,info.AltCurrencyWcid,info.AltCurrencyName)).ToArray();
+            if(info.TradingAvailable&&!info.TradeInFlight)stock=Host.GetVendorItems().Select(i=>new PrepStock(i.ObjectId,i.Name,i.Amount,i.UnitPrice,info.AltCurrencyWcid,info.AltCurrencyName,i.ItemType)).ToArray();
         }
-        return new(player,safe,Host.GetBusyState()!=0,Inventory(),press.Id,fragmentVendor.Id,reagentVendor.Id,vendor,stock,blocker,press.Problem,fragmentVendor.Problem,reagentVendor.Problem);
+        return new(player,safe,Host.GetBusyState()!=0,Inventory(),press.Id,fragmentVendor.Id,reagentVendor.Id,vendor,stock,blocker,press.Problem,fragmentVendor.Problem,reagentVendor.Problem,journal?.View.ComponentRoles);
     }
     private unsafe IntPtr BotInterface(string name,int pointers)
     {
@@ -262,6 +263,8 @@ public sealed class ThreadsPlugin : RynthPluginBase
             // so only a genuinely newer appraisal can pass the result gate.
             if(DateTimeOffset.UtcNow.ToUnixTimeSeconds()<=prior){pendingIdentify=a.Source;return;}
         }
+        if(a.Kind=="Press"&&journal?.Submit(new("prep-recipe",string.Join(", ",prep.CurrentDoses()),DateTime.UtcNow,unchecked((int)a.Source),StartingLevel:prep.Data.Plan.Level,RecipeSelection:prep.Data.Plan.RandomRecipes?"Randomized":"Manual",BatchId:prep.Data.Id,BatchIndex:prep.Data.Done+1,RecipePool:prep.Data.RecipePool))!=true)
+        {prep.Refused("Journal could not retain the bound recipe; no press issued");SavePrep();return;}
         bool ok=a.Kind switch {
             "Identify"=>Host.RequestId(a.Source),
             "Withdraw notes"=>a.Amount>0&&prep.Data.Plan.AutoWithdrawNotes&&Host.HasInvokeChatParser&&Host.InvokeChatParser("/b w n "+a.Amount.ToString(System.Globalization.CultureInfo.InvariantCulture)),
@@ -271,7 +274,6 @@ public sealed class ThreadsPlugin : RynthPluginBase
             "Press"=>Host.UseObjectOn(a.Source,a.Target),
             _=>false};
         if(!ok){string reason="Rynth refused the "+a.Kind+" request";if(a.Kind=="Buy"&&Host.TryGetVendorTradeStatus(out var status)&&status.Message.Length>0)reason+=": "+status.Message;prep.Refused(reason);SavePrep();}
-        if(a.Kind=="Press")journal?.Submit(new("prep-recipe",string.Join(", ",prep.Data.Plan.Doses()),DateTime.UtcNow,unchecked((int)a.Source),StartingLevel:prep.Data.Plan.Level));
     }
     private void SavePrep()
     {

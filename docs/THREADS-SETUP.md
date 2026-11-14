@@ -1,4 +1,4 @@
-# ACAI2 Threads — standalone attended-test build
+# ACAI2 Threads v0.1.5 — standalone gem maker and journal
 
 This is an independent managed x86 Rynth plugin, not a replacement for RynthCore,
 RynthAi, Soot's installation, or Keyfer. Requires CoreCLR RynthCore API 92+ and
@@ -16,6 +16,44 @@ preparation rather than guessing. No Bridge or AI subscription is needed.
 3. Launch DreamWeave and log in. Use `/acai2threads` to show the panel;
    `/acai2threads status`, `/acai2threads export`, and `/acai2threads stop`
    are also supported. Leave the existing Keyfer installation alone.
+
+## Random recipe mode
+
+In **Gem Maker**, enable **Random recipe per gem**, choose **Blank level**
+(300/325/350/375) and **Scarab (fixed)**, then set the gem count and start normally.
+The level is the starting blank, not a promised final dungeon level. Every new gem
+gets an independent random herb, powder, reagent, talisman and taper color. There
+are four doses of that taper, for nine known doses total. Repeats are possible;
+this is varied sampling, not a guarantee of unique recipes or desired modifiers.
+
+With **Buy missing supplies** on, the app first reads the bound reagent vendor's
+live catalogue and combines it with carried spell components. With buying off,
+only carried supplies are eligible. Finite quantities are reserved across the
+whole batch; a batch requiring unavailable ingredients stops before dosing.
+Only native spell-component item types with recognized families are eligible;
+quest items, ambiguous vendor rows and unclassified families are excluded.
+Known role hints are extended by confirmed component-loading messages already in
+the journal, so newly learned herbs/reagents can join future batches. This is not
+an exhaustive, guessed retail-component list or a claim about their effects.
+
+The full batch of recipes is frozen and checkpointed before any purchases/doses.
+Shopping sums all remaining recipes, respecting the existing quoted-currency
+budgets and the saved optional note-withdrawal toggle. A stop, refusal, timeout or
+restart never silently rerolls, redoses or represses. **Frozen batch recipes**
+shows the plan; the active recipe is visible while crafting. Every result is kept.
+
+The journal stores the actual recipe and resulting modifiers as before, plus a
+small recipe-selection/batch marker and the sampling-pool basis. **Randomized**
+selection is separate from **server-random slots**: nine recognized doses remain
+fully controlled research inputs unless the server reports otherwise. Selection
+alone is not a new observation or invented outcome. Existing forecasts continue
+to use confirmed observations, not promises of XP, luminance or salvage results.
+Native recipe evidence is queued before issuing the press; if the journal cannot
+accept it, the app stops without pressing. There is no raw chat transcript or
+separate growing experiment log.
+
+Manual mode and saved component choices remain available. Turning random mode
+on does not overwrite the manual recipe. Existing profiles default to manual.
 
 ## First test
 

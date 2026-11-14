@@ -94,3 +94,14 @@ fitted to their available lane. Shared glyph/open-accent geometry was rendered
 and visually inspected at 65%, 100% and 135%, with the background grid visible
 through all notices. Combat 132 controlled checks passed; live-game background
 contrast/overlap remains a client validation. ParserVersion stays 0.1.6.
+
+Threads v0.1.5 adds saved random-recipe batches with fixed starting level/scarab.
+The other five families sample independently from recognized native spell-component
+stock/carried supplies plus learned roles. Full nine-dose recipes are frozen and
+checkpointed before action; shopping totals remaining recipes and reserves finite
+supplies. Interrupted batches never reroll/replay. Compact selection/batch/pool
+metadata accompanies confirmed recipe/outcome records without marking known doses
+as server-random slots. Recipe submission now precedes native press dispatch.
+120 controlled Thread checks pass, including two complete random gems, frozen
+recipes after inventory changes/restart, stock shopping and research provenance.
+Live vendor/type data and generated recipes still need in-game verification.

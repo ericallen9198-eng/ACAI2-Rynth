@@ -120,3 +120,11 @@ authorized only three grouped notification scales (Buffs/Debuffs/Skills), saving
 per character and scaling text plus graphics together. Keep ordinary damage,
 crits and healing on their existing controls. Preserve explicit status/skill
 origins; a generic Utility label must not guess classification or alter totals.
+
+The user authorized random recipes in the standalone Thread gem maker: fixed
+blank level/scarab, fresh remaining components per gem. Bind choices to recognized
+native spell-component inventory/vendor stock and learned roles; freeze the
+bounded batch before buying/dosing and retain exact recipe/outcome provenance.
+Keep randomized selection distinct from server-random slots in research. Preserve
+manual settings, budgets, owned pause/holds, checkpoint-before-action and no replay
+on uncertainty. A press requires its recipe to be accepted by the journal first.

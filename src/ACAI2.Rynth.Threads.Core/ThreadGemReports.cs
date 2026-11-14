@@ -16,7 +16,7 @@ namespace ACAI2.Rynth.Threads.Core
                 string.Join(", ", roll.Components.Select(x => x.Name + (x.Count > 1 ? " x" + x.Count : ""))),
                 roll.RecipeControl + " | Level " + (roll.Level?.ToString() ?? "?") + " | Entries " + (roll.Entries?.ToString() ?? "?"),
                 roll.FragmentLevel.HasValue ? "Starting level: " + roll.FragmentLevel.Value + " (" + (roll.FragmentLevelBasis.StartsWith("Item data matched") ? "item data" : "candidate") + ")" : "Starting level: not captured" }
-                .Concat(roll.Modifiers.Select(x => x.Raw)).Concat(roll.Warnings.Select(x => "Note: " + x)).ToArray();
+                .Concat(roll.RecipeSelection=="Unknown"?Array.Empty<string>():new[]{"Recipe selection: "+roll.RecipeSelection+(roll.PrepBatchIndex>0?" | batch gem "+roll.PrepBatchIndex:"")+(roll.RecipePool.Length>0?" | "+roll.RecipePool:"")}).Concat(roll.Modifiers.Select(x => x.Raw)).Concat(roll.Warnings.Select(x => "Note: " + x)).ToArray();
         }
         public static string[] Forecast(ThreadGemForecast forecast)
         {

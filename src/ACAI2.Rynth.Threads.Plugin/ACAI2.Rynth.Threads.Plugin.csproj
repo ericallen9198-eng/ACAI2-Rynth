@@ -4,7 +4,7 @@
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <PlatformTarget>x86</PlatformTarget>
     <RuntimeIdentifier>win-x86</RuntimeIdentifier>
-    <Version>0.1.4</Version>
+    <Version>0.1.5</Version>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <PublishAot>false</PublishAot>
     <SelfContained>false</SelfContained>
