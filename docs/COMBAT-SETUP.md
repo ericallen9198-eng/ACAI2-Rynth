@@ -1,4 +1,4 @@
-# ACAI2 Combat v0.1.6 — standalone Rynth plugin
+# ACAI2 Combat v0.1.7 — standalone Rynth plugin
 
 A separate read-only combat meter and floating text app. Requires managed CoreCLR
 RynthCore API 92+ and the engine's matching ImGui bindings. It does not need
@@ -18,6 +18,37 @@ vendor/bank or renders debuff icons. Settings and data are separate from Threads
    Keep floating XP/Luminance with `/rv plates gains on`. These commands
    leave Rynth's nameplates and debuff icons enabled. The app does not change
    Rynth settings automatically. Restore either with the command ending in `on`.
+
+## v0.1.7 open notices and grouped scaling
+
+Floating vuln/Imperil and Kinetic Ready notices no longer have solid backings.
+They keep their block lettering, thin dark glyph outlines and individual colors.
+Debuffs arrive with a short colored slash and a quickly fading underline;
+Kinetic Ready uses electric edge accents, then settles to a smaller **READY** cue.
+The meter's own background is unchanged.
+
+Setup has just three notification sliders: **Buffs scale**, **Debuffs scale** and
+**Skills scale**, each 0.5–2.0 (1.0 = original size). Each scales its lettering,
+number/caption and graphics together. Beneficial Ward/class status cues use Buffs;
+vuln/Imperil use Debuffs; Kinetic ready/release/fade, Second Wind, Dirty Fighting
+and other class/weapon-skill cues use Skills. Shield-block notices are Skills.
+Regular damage, crits, acid/poison damage and healing retain their existing controls.
+A Kinetic-associated hit number follows Skills because it is part of that cue.
+Large group notices are fitted to the available lane to avoid clipping.
+
+The three values save per character, including alongside existing colors, mode,
+position and lock settings. Older profiles default to neutral 1.0 group scales;
+Apply impact layout does not reset these values. Preview includes the group
+classification. COMBAT-PREVIEW.html includes the same three size controls for
+review; browser transforms demonstrate size, not the live collision layout.
+`notice-scales.svg` compares actual shared glyph/accent geometry at 65%, 100% and
+135%. No new font installation, rendering context, combat action or parser totals
+are involved. ParserVersion remains 0.1.6 for this appearance-only update.
+
+Build on Windows from the repository root with `scripts/Publish-Combat.ps1`.
+The compiled standalone files and HTML/SVG reviews are in `artifacts/combat-managed`.
+Close the game/Core before replacing installed plugin files. The live-game
+background, antialiasing and overlapping events still need the client's check.
 
 ## v0.1.6 meter modes, pack DPS and combat cues
 

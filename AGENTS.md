@@ -113,3 +113,10 @@ separate states. A release may decorate the next observed direct weapon hit, but
 never add that damage twice or invent an amount when correlation is unavailable.
 Do not suppress ordinary equal chat lines globally: genuine hits, ticks and evades
 can be identical. Preserve the separate physical/spell/periodic classification.
+
+Floating notice backings are now removed: vuln/Imperil use open line accents and
+Kinetic Ready uses electric edges, settling to a smaller READY cue. The user
+authorized only three grouped notification scales (Buffs/Debuffs/Skills), saving
+per character and scaling text plus graphics together. Keep ordinary damage,
+crits and healing on their existing controls. Preserve explicit status/skill
+origins; a generic Utility label must not guess classification or alter totals.

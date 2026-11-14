@@ -1,6 +1,6 @@
 # ACAI2-Rynth
 
-**Independent Rynth plugins: Keyfer v0.3.1, Threads v0.1.4 and Combat v0.1.6.**
+**Independent Rynth plugins: Keyfer v0.3.1, Threads v0.1.4 and Combat v0.1.7.**
 Each has its own Windows package and setup guide. The Keyfer package excludes
 combat; the standalone Combat app is described below.
 
@@ -24,7 +24,7 @@ Build on Windows with `scripts/Publish-Threads.ps1`; pure checks use
 
 ## Standalone Combat app
 
-**ACAI2 Combat v0.1.6** is its own read-only plugin: an adaptive DPS/defense meter,
+**ACAI2 Combat v0.1.7** is its own read-only plugin: an adaptive DPS/defense meter,
 class/proc readouts, artistic outlined floating text, compact Thread run/mob
 summaries and exact server death/overkill notices. It requires neither Keyfer nor
 Threads/RynthAi and duplicates no debuff icons. [Combat setup](docs/COMBAT-SETUP.md)
@@ -32,11 +32,11 @@ covers installation, preview, RynthVision toggles and the first build's adjustab
 fixed-screen anchor. Build with `scripts/Publish-Combat.ps1`; controlled checks use
 `scripts/test-combat.sh`. No ordinary combat log/CSV is recorded.
 
-v0.1.6 adds Normal/Compact/Ultra-compact modes sharing frozen per-pack DPS,
-click-through locked digits on the existing float layer, outgoing Reckless ON/OFF
-with validated requested-power reads, separate Kinetic ready/release/expiry counts
-and stronger block-lettered combat cues. The ZIP includes the vector HTML preview.
-[Download Combat v0.1.6 for Windows](https://github.com/ericallen9198-eng/ACAI2-Rynth/releases/download/combat-v0.1.6/ACAI2-Combat-v0.1.6-Windows.zip).
+v0.1.7 replaces solid floating notice panels with open accents and adds saved
+Buffs/Debuffs/Skills scale controls. Each group scales text and graphics together;
+ordinary damage, crits and healing keep their existing controls. Per-pack DPS,
+three HUD modes and the Kinetic/Reckless handling from v0.1.6 are preserved.
+[Download Combat v0.1.7 for Windows](https://github.com/ericallen9198-eng/ACAI2-Rynth/releases/download/combat-v0.1.7/ACAI2-Combat-v0.1.7-Windows.zip).
 
 ## Package and runtime
 

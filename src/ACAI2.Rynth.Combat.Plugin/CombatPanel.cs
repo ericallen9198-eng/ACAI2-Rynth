@@ -211,6 +211,10 @@ internal sealed class CombatPanel
             Toggle("Custom combat lettering",a.CustomLettering,x=>a.CustomLettering=x);
             Toggle("Subdued effects",a.Subdued,x=>a.Subdued=x);Toggle("Bold effects and crits",a.Bold,x=>a.Bold=x);
             Slider("Meter transparency",a.Opacity,0,1,x=>a.Opacity=x);Slider("Meter scale",a.Scale,.7f,2,x=>a.Scale=x);
+            ImGui.Separator();
+            Slider("Buffs scale",a.BuffsScale,.5f,2,x=>a.BuffsScale=x);Tip("Beneficial status cues, including Ward readiness/absorption. Text and accents scale together.");
+            Slider("Debuffs scale",a.DebuffsScale,.5f,2,x=>a.DebuffsScale=x);Tip("Vuln and Imperil notifications. Keeps each element color; no solid backings.");
+            Slider("Skills scale",a.SkillsScale,.5f,2,x=>a.SkillsScale=x);Tip("Kinetic ready/release, Second Wind and class/weapon-skill cues. Regular damage, crits and healing keep their own controls.");
             if(ImGui.Button("Apply impact layout")){a.CustomLettering=true;a.FontSize=23;a.Gap=185;a.Curve=45;a.Overlap=0;a.Lifetime=2.2f;a.CritScale=1.5f;a.RegularScale=.8f;a.RegularAlpha=.8f;Dirty=true;}
             ImGui.TextDisabled("Layout preset changes floating size/spacing; keeps your colors and meter position.");
             if(ImGui.Button(v.Preview?"Stop preview":"Preview effects (30 seconds)"))command("preview");
@@ -269,11 +273,13 @@ internal sealed class CombatPanel
         {
             double age=now-e.Start;if(age<0||age>=a.Lifetime)continue;
             var arc=FloatStream.Arc(e,now,a);float alpha=arc.Alpha;
-            string label=FloatStream.Format(e);if(label.Length==0)continue;
+            string label=NoticeStyle.Label(e,age);if(label.Length==0)continue;
             bool regular=FloatStream.Regular(e),impact=e.Critical||e.Kind is "Critical" or "KineticRelease",effect=e.Kind=="KineticReady"||e.Kind=="Imperil"||e.Kind.StartsWith("Vuln",StringComparison.Ordinal);
             bool numeric=FloatStream.HasNumber(e)&&a.CustomLettering;
-            float size=MathF.Round(a.FontSize*(impact?a.CritScale*(a.CustomLettering?1.3f:1):regular?a.RegularScale:1)*(impact?ImpactLettering.Punch(age):1));
-            if(effect)size=MathF.Round(a.FontSize*1.08f);
+            float baseSize=MathF.Round(a.FontSize*(impact?a.CritScale*(a.CustomLettering?1.3f:1):regular?a.RegularScale:1)*(impact?ImpactLettering.Punch(age):1));
+            if(effect)baseSize=MathF.Round(a.FontSize*1.08f);
+            float noticeScale=NoticeStyle.Scale(e,a)*NoticeStyle.Focus(e,age);
+            float size=baseSize*noticeScale;
             if(regular)alpha*=a.RegularAlpha;
             // Prefer the larger baked font for labels; never enlarge the small bold atlas for crits.
             IntPtr chosen=floatFont!=IntPtr.Zero?floatFont:boldFont;
@@ -288,15 +294,23 @@ internal sealed class CombatPanel
                 }
                 if(a.CustomLettering){headline=headline.ToUpperInvariant();caption=caption.ToUpperInvariant();}
                 float Width(string text,float pixels)=>ImGui.CalcTextSize(text).X*pixels/ImGui.GetFontSize();
-                float captionSize=MathF.Round(Math.Max(12,Math.Min(18,size*.52f)));
+                float captionSize=MathF.Round(Math.Max(12,Math.Min(18,baseSize*.52f)))*noticeScale;
                 bool vectorHeadline=a.CustomLettering&&ImpactLettering.Supports(headline);
                 bool vectorCaption=a.CustomLettering&&ImpactLettering.Supports(caption);
                 float headlineWidth=vectorHeadline?ImpactLettering.Width(headline,size):Width(headline,size);
                 float captionWidth=vectorCaption?ImpactLettering.Width(caption,captionSize):Width(caption,captionSize);
                 float width=Math.Max(headlineWidth,captionWidth);
-                float height=size+(caption.Length>0?captionSize+3:0);
-                Vector2 padding=effect?new(13,7):impact?new(32,8):Vector2.Zero;
+                float height=size+(caption.Length>0?captionSize+3*noticeScale:0);
+                Vector2 padding=(effect?new Vector2(6,4):impact?new Vector2(32,8):Vector2.Zero)*noticeScale;
                 Vector2 bounds=new(width+padding.X*2,height+padding.Y*2);
+                // Large group sizes are capped to their screen lane rather than disappearing.
+                if(NoticeStyle.Group(e)!=NoticeGroup.None)
+                {
+                    float laneWidth=e.Kind=="Healing"?viewport.X-36:e.Incoming?anchor.X-42:viewport.X-anchor.X-42;
+                    float fit=Math.Min(1,Math.Min((laneWidth-8)/bounds.X,(viewport.Y-32)/bounds.Y));
+                    if(fit<=0||size*fit<8)continue;
+                    noticeScale*=fit;size*=fit;captionSize*=fit;headlineWidth*=fit;captionWidth*=fit;width*=fit;height*=fit;padding*=fit;bounds*=fit;
+                }
                 Vector2 p=anchor+new Vector2(arc.X,arc.Y);
                 // Hold crits briefly, then let them drift. Entry is an outward punch, never screen shake.
                 if(impact){p.X+=(e.Incoming?-1:1)*14*MathF.Exp(-(float)age*9);p.Y+=a.Rise*Math.Min((float)age,.20f)/a.Lifetime;}
@@ -305,22 +319,21 @@ internal sealed class CombatPanel
                 if(impact&&e.Incoming&&e.Kind=="Taken")c=new(1,.32f,.29f,c.W);
                 float l=(c.X+c.Y+c.Z)/3,saturation=(impact||effect?1:a.Intensity)*(a.Subdued?.65f:1);
                 c.X=l+(c.X-l)*saturation;c.Y=l+(c.Y-l)*saturation;c.Z=l+(c.Z-l)*saturation;c.W*=alpha;
-                if(effect)ImpactArt.Plate(p,bounds,c,age,(points,tint)=>Polygon(draw,points,tint));
                 Vector2 textP=p+padding;
-                if(!a.Subdued&&a.Intensity>.05f&&(!regular||e.Kind is "Acid" or "Poison" or "Sneak"))Art(draw,e,textP,new(width,height),c,age,a.Intensity*(regular?.85f:1));
+                if(!a.Subdued&&a.Intensity>.05f&&(!regular||e.Kind is "Acid" or "Poison" or "Sneak"))Art(draw,e,textP,new(width,height),c,age,a.Intensity*(regular?.85f:1),noticeScale);
                 if(vectorHeadline)ImpactLettering.Draw(headline,textP+new Vector2((width-headlineWidth)/2,0),size,c,a.Bold,(points,tint)=>Polygon(draw,points,tint));
-                else Lettering(draw,headline,textP+new Vector2((width-headlineWidth)/2,0),size,c,a.Outline);
+                else Lettering(draw,headline,textP+new Vector2((width-headlineWidth)/2,0),size,c,a.Outline*noticeScale);
                 if(caption.Length>0)
                 {
-                    Vector2 captionP=textP+new Vector2((width-captionWidth)/2,size+3);
+                    Vector2 captionP=textP+new Vector2((width-captionWidth)/2,size+3*noticeScale);
                     if(vectorCaption)ImpactLettering.Draw(caption,captionP,captionSize,c,false,(points,tint)=>Polygon(draw,points,tint));
-                    else Lettering(draw,caption,captionP,captionSize,c,a.Outline);
+                    else Lettering(draw,caption,captionP,captionSize,c,a.Outline*noticeScale);
                 }
             }
             finally{if(pushed)ImGui.PopFont();}
         }
     }
-    private static void Art(ImDrawListPtr d,FloatEvent e,Vector2 p,Vector2 text,Vector4 color,double age,float intensity)
+    private static void Art(ImDrawListPtr d,FloatEvent e,Vector2 p,Vector2 text,Vector4 color,double age,float intensity,float scale)
     {
         float t=(float)age;Vector2 center=p+text*.5f;
         uint Tint(float alpha){var c=color;c.W*=Math.Clamp(alpha*intensity,0,1);return ImGui.ColorConvertFloat4ToU32(c);}
@@ -367,18 +380,17 @@ internal sealed class CombatPanel
         }
         else if(e.Kind=="KineticReady")
         {
-            ImpactArt.Charge(p,text,color,age,intensity,(from,to,tint,width)=>d.AddLine(Pixel(from),Pixel(to),ImGui.ColorConvertFloat4ToU32(tint),width));
+            ImpactArt.Charge(p,text,color,age,intensity,(from,to,tint,width)=>d.AddLine(Pixel(from),Pixel(to),ImGui.ColorConvertFloat4ToU32(tint),width),scale);
         }
         if(e.Critical||e.Kind is "Critical" or "Kill" or "KineticRelease")
         {
-            ImpactArt.Burst(p,text,color,age,intensity,(from,to,tint,thickness)=>d.AddLine(Pixel(from),Pixel(to),ImGui.ColorConvertFloat4ToU32(tint),thickness),(points,tint)=>Polygon(d,points,tint));
+            ImpactArt.Burst(p,text,color,age,intensity,(from,to,tint,thickness)=>d.AddLine(Pixel(from),Pixel(to),ImGui.ColorConvertFloat4ToU32(tint),thickness),(points,tint)=>Polygon(d,points,tint),scale);
         }
         else if(e.Kind=="Ward")
-        {d.AddLine(p+new Vector2(-5,text.Y+4),p+new Vector2(text.X+5,text.Y+4),Tint(.35f),1);}
+        {d.AddLine(p+new Vector2(-5*scale,text.Y+4*scale),p+new Vector2(text.X+5*scale,text.Y+4*scale),Tint(.35f),scale);}
         else if(e.Kind=="Imperil"||e.Kind.StartsWith("Vuln",StringComparison.Ordinal))
         {
-            d.AddLine(p+new Vector2(-7,2),p+new Vector2(-7,text.Y-2),Tint(.7f),2);
-            d.AddLine(p+new Vector2(-7,text.Y-2),p+new Vector2(-2,text.Y-2),Tint(.7f),2);
+            ImpactArt.Notice(p,text,color,age,intensity,(from,to,tint,width)=>d.AddLine(Pixel(from),Pixel(to),ImGui.ColorConvertFloat4ToU32(tint),width),scale);
         }
         else if(e.Kind=="Sneak")
         {d.AddLine(p+new Vector2(-7,text.Y),p+new Vector2(-2,0),Tint(MathF.Exp(-t*3)*.7f),2);}

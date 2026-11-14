@@ -116,35 +116,43 @@ public static class ImpactArt
         float length=size.X*(.28f+.20f*MathF.Exp(-(float)age*3));
         polygon([p+new Vector2(8,size.Y-2),p+new Vector2(length,size.Y-2),p+new Vector2(length-3,size.Y),p+new Vector2(8,size.Y)],new(color.X,color.Y,color.Z,color.W*.8f));
     }
-    public static void Charge(Vector2 p,Vector2 size,Vector4 color,double age,float strength,Action<Vector2,Vector2,Vector4,float> line)
+    /// <summary>Open line-only accents: no panel or filled shape can obscure the scene.</summary>
+    public static void Notice(Vector2 p,Vector2 size,Vector4 color,double age,float strength,Action<Vector2,Vector2,Vector4,float> line,float scale=1)
+    {
+        float arrival=MathF.Exp(-(float)age*5)*strength;
+        line(p+new Vector2(-10,12)*scale,p+new Vector2(-3,-3)*scale,new(color.X,color.Y,color.Z,color.W*arrival),2*scale);
+        float fade=MathF.Exp(-(float)age*3.5f)*strength;
+        line(p+new Vector2(0,size.Y+3*scale),p+new Vector2(size.X*.4f,size.Y+3*scale),new(color.X,color.Y,color.Z,color.W*fade*.7f),1.5f*scale);
+    }
+    public static void Charge(Vector2 p,Vector2 size,Vector4 color,double age,float strength,Action<Vector2,Vector2,Vector4,float> line,float scale=1)
     {
         float fade=MathF.Exp(-(float)age*1.2f)*strength;Vector4 tint=new(color.X,color.Y,color.Z,color.W*fade);
         for(int side=-1;side<=1;side+=2)
         {
-            float x=p.X+size.X*.5f+side*(size.X*.5f+10),y=p.Y+size.Y*.5f;
-            line(new(x+side*5,y-12),new(x-side*2,y-1),tint,2.5f);
-            line(new(x-side*2,y-1),new(x+side*4,y+1),tint,2.5f);
-            line(new(x+side*4,y+1),new(x-side*4,y+13),tint,2.5f);
+            float x=p.X+size.X*.5f+side*(size.X*.5f+10*scale),y=p.Y+size.Y*.5f;
+            line(new(x+side*5*scale,y-12*scale),new(x-side*2*scale,y-1*scale),tint,2.5f*scale);
+            line(new(x-side*2*scale,y-1*scale),new(x+side*4*scale,y+1*scale),tint,2.5f*scale);
+            line(new(x+side*4*scale,y+1*scale),new(x-side*4*scale,y+13*scale),tint,2.5f*scale);
         }
     }
-    public static void Burst(Vector2 p,Vector2 size,Vector4 color,double age,float strength,Action<Vector2,Vector2,Vector4,float> line,Action<Vector2[],Vector4> polygon)
+    public static void Burst(Vector2 p,Vector2 size,Vector4 color,double age,float strength,Action<Vector2,Vector2,Vector4,float> line,Action<Vector2[],Vector4> polygon,float scale=1)
     {
-        float t=(float)age,fade=MathF.Exp(-t*2.2f)*strength,travel=Math.Min(t,.6f)*22;
+        float t=(float)age,fade=MathF.Exp(-t*2.2f)*strength,travel=Math.Min(t,.6f)*22*scale;
         Vector4 Tint(float alpha)=>new(color.X,color.Y,color.Z,color.W*fade*alpha);
         Vector2 center=p+size*.5f;
         for(int side=-1;side<=1;side+=2)
         {
-            float x=center.X+side*(size.X*.5f+7+travel);
-            line(new(x+side*9,p.Y+9),new(x,p.Y-3),Tint(1),2);
-            line(new(x,p.Y-3),new(x-side*13,p.Y-3),Tint(1),2);
-            line(new(x,p.Y+size.Y),new(x-side*10,p.Y+size.Y),Tint(.7f),2);
+            float x=center.X+side*(size.X*.5f+7*scale+travel);
+            line(new(x+side*9*scale,p.Y+9*scale),new(x,p.Y-3*scale),Tint(1),2*scale);
+            line(new(x,p.Y-3*scale),new(x-side*13*scale,p.Y-3*scale),Tint(1),2*scale);
+            line(new(x,p.Y+size.Y),new(x-side*10*scale,p.Y+size.Y),Tint(.7f),2*scale);
             for(int i=0;i<3;i++)
             {
-                Vector2 q=new(x+side*(10+i*6+travel),center.Y+(i-1)*(13+travel));
-                polygon([q,q+new Vector2(side*(8+i*2),(i-1)*6),q+new Vector2(side*2,4)],Tint(.85f));
+                Vector2 q=new(x+side*((10+i*6)*scale+travel),center.Y+(i-1)*(13*scale+travel));
+                polygon([q,q+new Vector2(side*(8+i*2)*scale,(i-1)*6*scale),q+new Vector2(side*2,4)*scale],Tint(.85f));
             }
         }
-        line(new(center.X-size.X*.28f,p.Y+size.Y+5),new(center.X+size.X*.28f,p.Y+size.Y+5),Tint(.8f),2);
+        line(new(center.X-size.X*.28f,p.Y+size.Y+5*scale),new(center.X+size.X*.28f,p.Y+size.Y+5*scale),Tint(.8f),2*scale);
     }
 }
 

@@ -24,6 +24,9 @@ public sealed class Appearance
     public float Y {get;set;}=120;
     public float Opacity {get;set;}=.72f;
     public float Scale {get;set;}=1;
+    public float BuffsScale {get;set;}=1;
+    public float DebuffsScale {get;set;}=1;
+    public float SkillsScale {get;set;}=1;
     public float FontSize {get;set;}=23;
     public float Outline {get;set;}=1.3f;
     public float RegularScale {get;set;}=.85f;
@@ -50,6 +53,7 @@ public sealed class Appearance
         if(!Enum.IsDefined(MeterMode))MeterMode=MeterMode.Normal;
         DigitsX=Clamp(DigitsX,0,16000,30);DigitsY=Clamp(DigitsY,0,16000,120);DigitsSize=Clamp(DigitsSize,18,90,36);PackIdleSeconds=Clamp(PackIdleSeconds,2,12,4);
         BigHitMinimum=Math.Clamp(BigHitMinimum,1,10000);
+        BuffsScale=Clamp(BuffsScale,.5f,2,1);DebuffsScale=Clamp(DebuffsScale,.5f,2,1);SkillsScale=Clamp(SkillsScale,.5f,2,1);
         RegularScale=Clamp(RegularScale,.6f,1,.85f);RegularAlpha=Clamp(RegularAlpha,.25f,1,.65f);CritScale=Clamp(CritScale,1.05f,1.8f,1.35f);HealOffset=Clamp(HealOffset,0,300,150);
         X=Clamp(X,0,16000,30);Y=Clamp(Y,0,16000,120);Opacity=Clamp(Opacity,0,1,.72f);Scale=Clamp(Scale,.7f,2,1);
         FontSize=Clamp(FontSize,12,42,23);Outline=Clamp(Outline,0,3,1.3f);Gap=Clamp(Gap,40,300,120);Curve=Clamp(Curve,0,160,65);Rise=Clamp(Rise,30,300,145);Lifetime=Clamp(Lifetime,.7f,5,2.6f);Overlap=Clamp(Overlap,0,1,.35f);Intensity=Clamp(Intensity,0,1,.85f);AnchorX=Clamp(AnchorX,.05f,.95f,.5f);AnchorY=Clamp(AnchorY,.1f,.95f,.65f);

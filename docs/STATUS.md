@@ -85,3 +85,12 @@ is separate from direct spell rates. Controlled Combat checks: 126. A private
 provided sample was replayed and compared with an independent outgoing-damage
 count; no private transcript is checked in. Live drag/click-through, effects and
 native power reads still require client validation.
+
+Combat v0.1.7 removes solid floating notice backings and adds neutral-default
+per-character Buffs/Debuffs/Skills scales for text and graphics together. Group
+origins are explicit for generic utility notices; damage, crits and healing
+retain independent controls. Kinetic Ready settles to smaller READY. Notices are
+fitted to their available lane. Shared glyph/open-accent geometry was rendered
+and visually inspected at 65%, 100% and 135%, with the background grid visible
+through all notices. Combat 132 controlled checks passed; live-game background
+contrast/overlap remains a client validation. ParserVersion stays 0.1.6.

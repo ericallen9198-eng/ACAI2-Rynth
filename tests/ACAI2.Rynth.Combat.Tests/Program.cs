@@ -252,4 +252,18 @@ var savedMode=JsonSerializer.Deserialize<Appearance>(JsonSerializer.Serialize(ne
 Check(savedMode is{MeterMode:MeterMode.UltraCompact,DigitsLocked:false,DigitsX:321,DigitsY:456,DigitsSize:48,PackIdleSeconds:6,Opacity:.37f},"display mode, click-through lock, digit position/size and pack cutoff survive character profile roundtrip");
 var oldMode=JsonSerializer.Deserialize<Appearance>("{\"Schema\":1,\"X\":175,\"FontSize\":27}")!;oldMode.Validate();
 Check(oldMode is{MeterMode:MeterMode.Normal,DigitsLocked:true,X:175,FontSize:27},"older character preferences load in Normal mode without losing their prior appearance settings");
+
+var groupAppearance=new Appearance{BuffsScale=.65f,DebuffsScale=.75f,SkillsScale=1.35f};
+var wardNotice=new FloatEvent(1,0,"Ward","WARD READY","",119,1,0);
+var frostNotice=new FloatEvent(2,0,"VulnFrost","FROST VULN","",0,1,0,true);
+var readyNotice=new FloatEvent(3,0,"KineticReady","KINETIC READY","",0,1,0);
+Check(NoticeStyle.Scale(wardNotice,groupAppearance)==.65f&&NoticeStyle.Scale(frostNotice,groupAppearance)==.75f&&NoticeStyle.Scale(readyNotice,groupAppearance)==1.35f&&NoticeStyle.Scale(readyNotice with{Kind="KineticRelease",Amount=558},groupAppearance)==1.35f,"Buffs, Debuffs and Skills control their own notification families, including both Kinetic ready and its hit number");
+Check(new[]{"Direct","Critical","Sneak","Acid","Poison","Healing","Taken","Evade","Resist"}.All(k=>NoticeStyle.Scale(readyNotice with{Kind=k},groupAppearance)==1),"group controls do not resize ordinary damage, crits, procs, healing or defense numbers");
+var groupedEvents=new CombatEngine("DreamWeave","Samm");groupedEvents.Observe("You catch your second wind.",0,utc,0);groupedEvents.Observe("Your runic ward is fully inscribed, absorbing your next 119 points of damage.",0,utc,.01);groupedEvents.Observe("Dirty Fighting! Samm delivers a Bleeding Blow to Mob!",0,utc,.02);groupedEvents.Observe("You block Mob's attack with your shield!",0,utc,.03);
+var groupedFloats=groupedEvents.Floats.Read(.1);
+Check(NoticeStyle.Group(groupedFloats.Single(f=>f.Label=="SECOND WIND"))==NoticeGroup.Skill&&NoticeStyle.Group(groupedFloats.Single(f=>f.Label=="WARD READY"))==NoticeGroup.Buff&&NoticeStyle.Group(groupedFloats.Single(f=>f.Label=="Bleeding Blow"))==NoticeGroup.Skill&&NoticeStyle.Group(groupedFloats.Single(f=>f.Label=="BLOCK"))==NoticeGroup.Skill,"observed status/skill origins assign groups explicitly instead of guessing from a generic Utility label");
+var groupCopy=JsonSerializer.Deserialize<Appearance>(JsonSerializer.Serialize(groupAppearance))!;groupCopy.Validate();
+Check(groupCopy.BuffsScale==.65f&&groupCopy.DebuffsScale==.75f&&groupCopy.SkillsScale==1.35f&&oldMode.BuffsScale==1&&oldMode.DebuffsScale==1&&oldMode.SkillsScale==1,"each character's grouped scales roundtrip and older profiles keep neutral defaults without resetting their layout");
+groupCopy.BuffsScale=float.NaN;groupCopy.DebuffsScale=.01f;groupCopy.SkillsScale=100;groupCopy.Validate();Check(groupCopy.BuffsScale==1&&groupCopy.DebuffsScale==.5f&&groupCopy.SkillsScale==2,"invalid group preferences recover safe finite bounds before rendering");
+Check(NoticeStyle.Label(readyNotice,.1)=="KINETIC READY"&&NoticeStyle.Label(readyNotice with{Count=2},.8)=="READY ×2"&&NoticeStyle.Focus(readyNotice,.8)<NoticeStyle.Focus(readyNotice,.1),"Kinetic's full arrival cue settles into a smaller READY label while retaining repetition counts");
 Console.WriteLine($"All {checks} Combat checks passed. No game actions, production network or AI calls were made.");

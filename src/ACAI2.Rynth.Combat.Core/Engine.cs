@@ -1,17 +1,17 @@
 using System.Text.RegularExpressions;
 namespace ACAI2.Rynth.Combat.Core;
 
-public sealed record FloatEvent(long Id,double Start,string Kind,string Label,string Target,long Amount,int Count,int Slot,bool Incoming=false,bool Critical=false,string AttackType="");
+public sealed record FloatEvent(long Id,double Start,string Kind,string Label,string Target,long Amount,int Count,int Slot,bool Incoming=false,bool Critical=false,string AttackType="",NoticeGroup Group=NoticeGroup.None);
 public sealed class FloatStream
 {
     private readonly List<FloatEvent> events=[];
     private long serial;
-    public void Add(double now,string kind,string label,string target="",long amount=0,bool incoming=false,bool critical=false,string attackType="")
+    public void Add(double now,string kind,string label,string target="",long amount=0,bool incoming=false,bool critical=false,string attackType="",NoticeGroup group=NoticeGroup.None)
     {
         events.RemoveAll(e=>now-e.Start>5);
-        int index=events.FindLastIndex(e=>e.Kind==kind&&e.Amount==amount&&e.AttackType==attackType&&e.Label==label&&e.Incoming==incoming&&e.Critical==critical&&now>=e.Start&&now-e.Start<=.6);
+        int index=events.FindLastIndex(e=>e.Kind==kind&&e.Group==group&&e.Amount==amount&&e.AttackType==attackType&&e.Label==label&&e.Incoming==incoming&&e.Critical==critical&&now>=e.Start&&now-e.Start<=.6);
         if(index>=0){var old=events[index];events[index]=old with{Count=old.Count+1,Target=old.Target==target?target:"Multiple targets"};return;}
-        events.Add(new(++serial,now,kind,label,target,amount,1,(int)(serial%4),incoming,critical,attackType));if(events.Count>48)events.RemoveAt(0);
+        events.Add(new(++serial,now,kind,label,target,amount,1,(int)(serial%4),incoming,critical,attackType,group));if(events.Count>48)events.RemoveAt(0);
     }
     public static bool HasNumber(FloatEvent e)=>e.Amount>0||e.Kind=="KineticRelease"&&e.AttackType.Length>0;
     public static string Format(FloatEvent e)
@@ -147,11 +147,11 @@ public sealed class CombatEngine(string server,string character)
         if(e.Result=="Damage"&&(e.Damage>0||kineticHit))Floats.Add(now,kind,kineticHit?"KINETIC RELEASE":e.Direction=="Incoming"?e.AttackType=="Periodic"?"DOT":"HIT":e.Component=="Direct"?e.SneakAttack?"SNEAK":"":e.Component.ToUpperInvariant(),e.Mob,e.Damage,e.Direction=="Incoming",e.Critical,e.AttackType);
         else if(e.Result=="Healing"&&e.Amount>0)Floats.Add(now,"Healing",e.Component=="Summons"?"PET HEAL":"HEAL",e.Recipient,e.Amount,incoming:true,critical:e.Critical);
         else if(e.Result is "Evade" or "Resist"&&e.Direction=="Incoming")Floats.Add(now,kind,e.Result.ToUpperInvariant(),e.Mob,0,true);
-        else if(e.Result=="Block")Floats.Add(now,"Ward","BLOCK",e.Mob,incoming:true);
+        else if(e.Result=="Block")Floats.Add(now,"Ward","BLOCK",e.Mob,incoming:true,group:NoticeGroup.Skill);
         else if(e.Result is "Evade" or "Resist"&&e.Direction=="Outgoing")Floats.Add(now,"Utility",e.Result=="Evade"?"EVADED":"RESISTED",e.Mob);
         else if(e.Result=="Kill")Floats.Add(now,"Kill","DOWN",e.Mob);
-        else if(e.Component=="Kinetic"){if(e.Result=="ChargeReady")Floats.Add(now,"KineticReady","KINETIC READY");else if(e.Result=="ChargeExpired")Floats.Add(now,"Utility","KINETIC FADED");}
-        else if(e.Direction=="Utility")Floats.Add(now,"Utility",e.Ability.Length>0?e.Ability:e.Result,e.Mob);
+        else if(e.Component=="Kinetic"){if(e.Result=="ChargeReady")Floats.Add(now,"KineticReady","KINETIC READY");else if(e.Result=="ChargeExpired")Floats.Add(now,"Utility","KINETIC FADED",group:NoticeGroup.Skill);}
+        else if(e.Direction=="Utility")Floats.Add(now,"Utility",e.Ability.Length>0?e.Ability:e.Result,e.Mob,group:NoticeGroup.Skill);
         return true;
     }
     private static bool TryIncomingEffect(string text,out string kind,out string label)
@@ -200,7 +200,7 @@ public sealed class CombatEngine(string server,string character)
     private void Utility(string kind,int n,string label,double now,bool ready=false)
     {
         void AddTo(Totals t){t.Procs[kind]=t.Procs.GetValueOrDefault(kind)+1;if(kind=="Ward"){if(ready)t.WardCapacity=n;else{t.WardAbsorbed+=n;t.WardCapacity=0;}}}
-        AddTo(Session);if(Inside&&Current is {Cleared:null} r){AddTo(r.Stats);Revision++;}Floats.Add(now,kind=="Ward"?"Ward":"Utility",label,amount:n,incoming:true);
+        AddTo(Session);if(Inside&&Current is {Cleared:null} r){AddTo(r.Stats);Revision++;}Floats.Add(now,kind=="Ward"?"Ward":"Utility",label,amount:n,incoming:true,group:kind is "Ward" or "Class status"?NoticeGroup.Buff:NoticeGroup.Skill);
     }
     private void AddDeath(DeathRecord death,double now)
     {
