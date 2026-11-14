@@ -57,14 +57,17 @@ public sealed class CombatPlugin : RynthPluginBase
         {
             if(!Host.HasReadPlayerEnchantments||!Host.IsPlayerReady()){engine.Effects.SampleAt(utc,false,[],"Player enchantment snapshot unavailable");return;}
             int n=Host.ReadPlayerEnchantments(effectIds,effectExpiry,512);double serverTime=Host.GetServerTime();
+            // Stamp completed reads, never the start of a native read that could
+            // finish after an intervening hit callback.
+            DateTime sampledUtc=DateTime.UtcNow;
             if(n<0||n>=512||!double.IsFinite(serverTime)||serverTime<=0){engine.Effects.SampleAt(utc,false,[],"Native enchantment snapshot missing, truncated or clock unavailable");return;}
             var active=new List<ActiveEffect>();
             for(int i=0;i<n;i++)
             {
                 double remaining=effectExpiry[i]-serverTime;if(double.IsNaN(remaining)||remaining<=0)continue;
-                active.Add(new(effectIds[i],remaining<31536000?utc.AddSeconds(remaining):null));
+                active.Add(new(effectIds[i],remaining<31536000?sampledUtc.AddSeconds(remaining):null));
             }
-            engine.Effects.SampleAt(utc,true,active.ToArray());
+            engine.Effects.SampleAt(sampledUtc,true,active.ToArray());
         }
         catch(Exception ex){engine.Effects.SampleAt(utc,false,[],"Enchantment snapshot failed: "+ex.GetType().Name);}
     }
