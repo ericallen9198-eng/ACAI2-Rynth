@@ -54,3 +54,10 @@ average/high/low metrics. Unknown/stale/unclassified/layer-ambiguous effect stat
 is explicit. Lethal peaks and additional death phrasings are retained without
 guessing delivery type or re-adding correlated damage. Legacy records have no
 retroactively invented debuff snapshot. No game actions or debuff icons are added.
+
+Combat v0.1.4 replaces fractional duplicate text fills with pixel-aligned single
+fills and engine-supplied fonts. Critical numbers have smaller captions, angular
+impact brackets and shards; healing has a thin halo and side motes. Ordinary
+hits stay quieter; saved controls and compact records are preserved. Combat 89,
+Keyfer 99 and Threads 83 controlled checks passed; Windows publish verified.
+Live appearance needs in-game validation; no font atlas or other plugin changes.
