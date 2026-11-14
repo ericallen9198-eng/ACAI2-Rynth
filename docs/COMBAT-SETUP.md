@@ -1,4 +1,4 @@
-# ACAI2 Combat v0.1.2 — standalone Rynth plugin
+# ACAI2 Combat v0.1.3 — standalone Rynth plugin
 
 A separate read-only combat meter and floating text app. Requires managed CoreCLR
 RynthCore API 92+ and the engine's matching ImGui bindings. It does not need
@@ -20,6 +20,10 @@ vendor/bank or renders debuff icons. Settings and data are separate from Threads
    Rynth settings automatically. Restore either with the command ending in `on`.
 
 ## v0.1.2 big hits and Reckless module
+
+Details → Thread runs → select a run → Big hits opens saved snapshots. Its
+Reckless IN/OUT summary is shown with that run. ParserVersion remains 0.1.2 for
+this UI-only patch; the parsing/context format is unchanged.
 
 Details → Big hits keeps the **24 largest incoming hit snapshots** for the session
 and each tracked Thread. Default minimum is 100 reported damage; adjust Big hit

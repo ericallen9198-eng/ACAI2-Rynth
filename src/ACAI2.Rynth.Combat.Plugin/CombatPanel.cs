@@ -71,7 +71,14 @@ internal sealed class CombatPanel
             }
             foreach(var run in v.History)if(ImGui.Selectable(run.Name+" · "+run.Opened.ToLocalTime().ToString("g")+"##"+run.Id,selected==run.Id))selected=selected==run.Id?"":run.Id;
             var chosen=v.History.FirstOrDefault(r=>r.Id==selected);
-            if(chosen!=null){RunHeader(chosen);MobTable(chosen.Stats);Deaths(chosen.Stats);}
+            if(chosen!=null)
+            {
+                RunHeader(chosen);
+                if(chosen.Stats.RecklessIncoming.Count+chosen.Stats.RecklessOutgoing.Count>0)
+                {RecklessLine("OUT",chosen.Stats.RecklessOutgoing,chosen.Stats.DirectHits,chosen.Stats.RecklessOutgoingPercent);RecklessLine("IN",chosen.Stats.RecklessIncoming,chosen.Stats.PhysicalHits,chosen.Stats.RecklessIncomingPercent);}
+                if(ImGui.TreeNode("Big hits##"+chosen.Id)){BigHits(chosen.Stats);ImGui.TreePop();}
+                MobTable(chosen.Stats);Deaths(chosen.Stats);
+            }
             ImGui.TreePop();
         }
         if(t.Truncated)ImGui.TextWrapped("A bounded mob/death limit was reached; totals continue but detail is incomplete.");

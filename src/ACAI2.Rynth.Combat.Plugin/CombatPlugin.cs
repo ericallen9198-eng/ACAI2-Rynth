@@ -6,7 +6,7 @@ namespace ACAI2.Rynth.Combat.Plugin;
 
 public sealed class CombatPlugin : RynthPluginBase
 {
-    public const string Version="0.1.2";
+    public const string Version="0.1.3";
     public override uint MinimumApiVersion=>92;
     private readonly ConcurrentQueue<(string Text,int Type,DateTime Utc,double Now,long Epoch,uint EffectId,bool Added,double Duration)> incoming=new();
     private readonly ConcurrentQueue<string> commands=new();
