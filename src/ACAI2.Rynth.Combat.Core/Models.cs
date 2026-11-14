@@ -9,6 +9,7 @@ public sealed class Appearance
     public bool Visible {get;set;}=true;
     public bool Floating {get;set;}=true;
     public bool Locked {get;set;}
+    public bool CustomLettering {get;set;}=true;
     public bool Bold {get;set;}=true;
     public bool Subdued {get;set;}
     public float X {get;set;}=30;

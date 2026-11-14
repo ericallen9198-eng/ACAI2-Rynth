@@ -11,6 +11,8 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Combat checks failed.' }
     dotnet publish src\ACAI2.Rynth.Combat.Plugin -c Release --no-self-contained -o $Output
     if ($LASTEXITCODE -ne 0) { throw 'Combat publish failed.' }
+    dotnet run --project tools\ACAI2.Combat.DesignPreview -c Release -- $Output
+    if ($LASTEXITCODE -ne 0) { throw 'Shared vector preview export failed.' }
     Remove-Item (Join-Path $Output 'cimgui.dll') -Force -ErrorAction SilentlyContinue
     Copy-Item docs\COMBAT-SETUP.md $Output
     Copy-Item external\RynthCore\LICENSE (Join-Path $Output 'RynthCore-LICENSE.txt')

@@ -25,8 +25,21 @@ internal sealed class CombatPanel
             try
             {
                 ImGui.SetWindowFontScale(a.Scale);
+                if(a.CustomLettering)
+                {
+                    var header=ImGui.GetCursorScreenPos()-new Vector2(5,3);var tint=Accent;tint.W=a.Opacity;
+                    ImpactArt.Plate(header,new Vector2(ImGui.GetWindowSize().X-ImGui.GetStyle().WindowPadding.X*2+10,76*a.Scale),tint,.5,(points,color)=>Polygon(ImGui.GetWindowDrawList(),points,color));
+                }
                 ImGui.TextUnformatted("COMBAT / "+character);ImGui.SameLine();if(ImGui.SmallButton("Setup"))Setup=!Setup;
-                ImGui.Separator();ImGui.TextColored(Accent,$"{v.Dps:N0} DPS");ImGui.SameLine();ImGui.TextUnformatted($"   {v.Taken:N0} taken/s");
+                ImGui.Separator();
+                if(a.CustomLettering)
+                {
+                    var origin=ImGui.GetCursorScreenPos();string dps=v.Dps.ToString("N0",System.Globalization.CultureInfo.InvariantCulture);float numberSize=30*a.Scale;
+                    ImpactLettering.Draw(dps,origin,numberSize,Accent,a.Bold,(points,tint)=>Polygon(ImGui.GetWindowDrawList(),points,tint));
+                    ImGui.Dummy(new Vector2(ImpactLettering.Width(dps,numberSize)+5,numberSize));ImGui.SameLine();ImGui.TextUnformatted("DPS");
+                    ImGui.TextDisabled($"{v.Taken:N0} incoming / sec");
+                }
+                else{ImGui.TextColored(Accent,$"{v.Dps:N0} DPS");ImGui.SameLine();ImGui.TextUnformatted($"   {v.Taken:N0} taken/s");}
                 ImGui.TextDisabled(v.Scope+(v.Preview?" | PREVIEW":" | 60s rolling"));
                 if(v.RunScope&&v.Current?.ParserVersion!="0.1.2")ImGui.TextDisabled("Includes earlier parser totals; New session starts a clean sample.");
                 var t=v.Stats;ImGui.TextUnformatted($"Damage {t.Damage:N0}   Heals {t.Healing:N0}   Kills {t.Kills}");
@@ -146,8 +159,11 @@ internal sealed class CombatPanel
         {
             ImGui.TextWrapped("Standalone display. Debuff icons remain owned by Rynth. Events discover their own meter modules.");
             Toggle("Lock meter position",a.Locked,x=>a.Locked=x);Toggle("Show meter",a.Visible,x=>a.Visible=x);Toggle("Floating combat text",a.Floating,x=>a.Floating=x);
+            Toggle("Custom combat lettering",a.CustomLettering,x=>a.CustomLettering=x);
             Toggle("Subdued effects",a.Subdued,x=>a.Subdued=x);Toggle("Bold effects and crits",a.Bold,x=>a.Bold=x);
             Slider("Meter transparency",a.Opacity,0,1,x=>a.Opacity=x);Slider("Meter scale",a.Scale,.7f,2,x=>a.Scale=x);
+            if(ImGui.Button("Apply impact layout")){a.CustomLettering=true;a.FontSize=23;a.Gap=185;a.Curve=45;a.Overlap=0;a.Lifetime=2.2f;a.CritScale=1.5f;a.RegularScale=.8f;a.RegularAlpha=.8f;Dirty=true;}
+            ImGui.TextDisabled("Layout preset changes floating size/spacing; keeps your colors and meter position.");
             if(ImGui.Button(v.Preview?"Stop preview":"Preview effects (30 seconds)"))command("preview");
             ImGui.TextDisabled("Preview is synthetic and never affects real totals or run records.");
             if(ImGui.CollapsingHeader("Floating text · advanced"))
@@ -186,42 +202,70 @@ internal sealed class CombatPanel
         // One fill only: offset duplicate fills blur the glyph edges.
         draw.AddText(ImGui.GetFont(),size,p,ImGui.ColorConvertFloat4ToU32(color),text);
     }
+    private static void Polygon(ImDrawListPtr draw,Vector2[] points,Vector4 color)
+    {
+        // Dear ImGui's AA convex fill expects clockwise points in screen coordinates.
+        float area=0;for(int i=0;i<points.Length;i++){var b=points[(i+1)%points.Length];area+=points[i].X*b.Y-b.X*points[i].Y;}
+        if(area<0)for(int i=points.Length-1;i>=0;i--)draw.PathLineTo(points[i]);
+        else foreach(var q in points)draw.PathLineTo(q);
+        draw.PathFillConvex(ImGui.ColorConvertFloat4ToU32(color));
+    }
     private static void Floating(Appearance a,FloatEvent[] events,Vector2 viewport,double now,IntPtr floatFont,IntPtr boldFont)
     {
         var draw=ImGui.GetForegroundDrawList();Vector2 anchor=new(viewport.X*a.AnchorX,viewport.Y*a.AnchorY);
-        foreach(var e in events)
+        var layout=new FloatLayout(viewport,anchor);
+        // New important notices claim space first. Quiet events yield visually when the screen is full;
+        // the underlying combat counters and event compression are never changed by layout.
+        foreach(var e in events.OrderByDescending(e=>e.Critical||e.Kind=="Critical"?2:e.Kind=="Healing"||e.Kind=="Imperil"||e.Kind.StartsWith("Vuln")?1:0).ThenByDescending(e=>e.Id))
         {
             double age=now-e.Start;if(age<0||age>=a.Lifetime)continue;
             var arc=FloatStream.Arc(e,now,a);float alpha=arc.Alpha;
             string label=FloatStream.Format(e);if(label.Length==0)continue;
-            bool regular=FloatStream.Regular(e),impact=e.Critical||e.Kind=="Critical";
-            // A short size step rather than continuous fractional scaling keeps glyphs steadier.
-            float size=MathF.Round(a.FontSize*(impact?a.CritScale:regular?a.RegularScale:1)*(impact&&age<.09?1.08f:1));
+            bool regular=FloatStream.Regular(e),impact=e.Critical||e.Kind=="Critical",effect=e.Kind=="Imperil"||e.Kind.StartsWith("Vuln",StringComparison.Ordinal);
+            bool numeric=e.Amount>0&&a.CustomLettering;
+            float size=MathF.Round(a.FontSize*(impact?a.CritScale*(a.CustomLettering?1.3f:1):regular?a.RegularScale:1)*(impact?ImpactLettering.Punch(age):1));
+            if(effect)size=MathF.Round(a.FontSize*1.08f);
             if(regular)alpha*=a.RegularAlpha;
-            IntPtr chosen=a.Bold&&!regular&&boldFont!=IntPtr.Zero?boldFont:floatFont;
+            // Prefer the larger baked font for labels; never enlarge the small bold atlas for crits.
+            IntPtr chosen=floatFont!=IntPtr.Zero?floatFont:boldFont;
             bool pushed=chosen!=IntPtr.Zero;if(pushed)ImGui.PushFont(new ImFontPtr(chosen));
             try
             {
                 string headline=label,caption="";
-                if(impact&&e.Amount>0)
+                if(numeric||impact&&e.Amount>0)
                 {
-                    headline=(e.Kind=="Healing"?"+":e.Incoming?"-":"")+e.Amount.ToString("N0")+(e.Count>1?" ×"+e.Count:"");
-                    caption="CRIT"+(e.Label.Length>0?" · "+e.Label:"");
+                    headline=ImpactLettering.Number(e);
+                    caption=ImpactLettering.Caption(e)+(e.Count>1?" ×"+e.Count:"");
                 }
                 float Width(string text,float pixels)=>ImGui.CalcTextSize(text).X*pixels/ImGui.GetFontSize();
-                float captionSize=MathF.Round(Math.Max(12,size*.52f));
-                float width=Math.Max(Width(headline,size),Width(caption,captionSize));
+                float captionSize=MathF.Round(Math.Max(12,Math.Min(18,size*.52f)));
+                bool vectorHeadline=numeric||effect&&a.CustomLettering&&ImpactLettering.Supports(headline);
+                bool vectorCaption=a.CustomLettering&&ImpactLettering.Supports(caption);
+                float headlineWidth=vectorHeadline?ImpactLettering.Width(headline,size):Width(headline,size);
+                float captionWidth=vectorCaption?ImpactLettering.Width(caption,captionSize):Width(caption,captionSize);
+                float width=Math.Max(headlineWidth,captionWidth);
                 float height=size+(caption.Length>0?captionSize+3:0);
+                Vector2 padding=effect?new(13,7):impact?new(32,8):Vector2.Zero;
+                Vector2 bounds=new(width+padding.X*2,height+padding.Y*2);
                 Vector2 p=anchor+new Vector2(arc.X,arc.Y);
-                p.X=Math.Clamp(p.X-width/2,4,Math.Max(4,viewport.X-width-4));p.Y=Math.Clamp(p.Y,4,Math.Max(4,viewport.Y-height-4));p=Pixel(p);
+                // Hold crits briefly, then let them drift. Entry is an outward punch, never screen shake.
+                if(impact){p.X+=(e.Incoming?-1:1)*14*MathF.Exp(-(float)age*9);p.Y+=a.Rise*Math.Min((float)age,.20f)/a.Lifetime;}
+                if(!layout.TryPlace(p,bounds,e.Kind=="Healing"?0:e.Incoming?-1:1,out p))continue;
                 Vector4 c=Color(a,e.Kind);
-                // Incoming crits retain an unmistakable coral danger accent; elemental text keeps its hue.
                 if(impact&&e.Incoming&&e.Kind=="Taken")c=new(1,.32f,.29f,c.W);
-                float l=(c.X+c.Y+c.Z)/3,saturation=(impact?1:a.Intensity)*(a.Subdued?.65f:1);
+                float l=(c.X+c.Y+c.Z)/3,saturation=(impact||effect?1:a.Intensity)*(a.Subdued?.65f:1);
                 c.X=l+(c.X-l)*saturation;c.Y=l+(c.Y-l)*saturation;c.Z=l+(c.Z-l)*saturation;c.W*=alpha;
-                if(!a.Subdued&&a.Intensity>.05f&&!regular)Art(draw,e,p,new(width,height),c,age,a.Intensity);
-                Lettering(draw,headline,p+new Vector2((width-Width(headline,size))/2,0),size,c,a.Outline);
-                if(caption.Length>0)Lettering(draw,caption,p+new Vector2((width-Width(caption,captionSize))/2,size+3),captionSize,c,a.Outline);
+                if(effect)ImpactArt.Plate(p,bounds,c,age,(points,tint)=>Polygon(draw,points,tint));
+                Vector2 textP=p+padding;
+                if(!a.Subdued&&a.Intensity>.05f&&(!regular||e.Kind is "Acid" or "Poison" or "Sneak"))Art(draw,e,textP,new(width,height),c,age,a.Intensity*(regular?.55f:1));
+                if(vectorHeadline)ImpactLettering.Draw(headline,textP+new Vector2((width-headlineWidth)/2,0),size,c,a.Bold,(points,tint)=>Polygon(draw,points,tint));
+                else Lettering(draw,headline,textP+new Vector2((width-headlineWidth)/2,0),size,c,a.Outline);
+                if(caption.Length>0)
+                {
+                    Vector2 captionP=textP+new Vector2((width-captionWidth)/2,size+3);
+                    if(vectorCaption)ImpactLettering.Draw(caption,captionP,captionSize,c,false,(points,tint)=>Polygon(draw,points,tint));
+                    else Lettering(draw,caption,captionP,captionSize,c,a.Outline);
+                }
             }
             finally{if(pushed)ImGui.PopFont();}
         }
@@ -253,22 +297,7 @@ internal sealed class CombatPanel
         }
         if(e.Critical||e.Kind is "Critical" or "Kill")
         {
-            float fade=MathF.Exp(-t*5),travel=Math.Min(t,.5f)*25;
-            // Open angular brackets frame the impact without a filled glow over the glyphs.
-            for(int side=-1;side<=1;side+=2)
-            {
-                float x=center.X+side*(text.X*.5f+7+travel),y=p.Y-3;
-                d.AddLine(Pixel(new(x+side*7,y+9)),Pixel(new(x,y)),Tint(fade),2);
-                d.AddLine(Pixel(new(x,y)),Pixel(new(x-side*7,y)),Tint(fade),2);
-                d.AddLine(Pixel(new(x,p.Y+text.Y)),Pixel(new(x-side*7,p.Y+text.Y)),Tint(fade*.7f),2);
-                for(int i=0;i<3;i++)
-                {
-                    Vector2 q=new(x+side*(7+i*7+travel),center.Y+(i-1)*(12+travel));
-                    Vector2 dir=new(side*(5+i*2),(i-1)*4);
-                    d.AddTriangleFilled(Pixel(q),Pixel(q+dir),Pixel(q+new Vector2(side*2,3)),Tint(fade*.8f));
-                }
-            }
-            d.AddLine(Pixel(new(center.X-text.X*.28f,p.Y+text.Y+5)),Pixel(new(center.X+text.X*.28f,p.Y+text.Y+5)),Tint(fade*.7f),2);
+            ImpactArt.Burst(p,text,color,age,intensity,(from,to,tint,thickness)=>d.AddLine(Pixel(from),Pixel(to),ImGui.ColorConvertFloat4ToU32(tint),thickness),(points,tint)=>Polygon(d,points,tint));
         }
         else if(e.Kind=="Ward")
         {d.AddLine(p+new Vector2(-5,text.Y+4),p+new Vector2(text.X+5,text.Y+4),Tint(.35f),1);}

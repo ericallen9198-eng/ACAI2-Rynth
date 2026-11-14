@@ -61,3 +61,12 @@ impact brackets and shards; healing has a thin halo and side motes. Ordinary
 hits stay quieter; saved controls and compact records are preserved. Combat 89,
 Keyfer 99 and Threads 83 controlled checks passed; Windows publish verified.
 Live appearance needs in-game validation; no font atlas or other plugin changes.
+
+Combat v0.1.5 adds original, cached vector digit/uppercase glyph geometry (no
+engine atlas edits), shared with a standalone SVG/HTML review exporter. Large
+critical punches and longer angular bursts, elemental vuln/imperil backplates,
+measured lane-safe placement and a matching meter header are implemented. The
+explicit impact layout preset preserves colors and meter position. Older profiles
+receive the custom-lettering toggle without resetting saved layout. Combat 100,
+Keyfer 99 and Threads 83 controlled checks passed locally. Live CoreCLR/ImGui
+appearance and performance remain an in-game check; the preview is synthetic.

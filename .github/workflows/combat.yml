@@ -1,7 +1,7 @@
 name: Standalone Combat app checks
 on:
   push:
-    paths: ['src/ACAI2.Rynth.Combat.*/**', 'tests/ACAI2.Rynth.Combat.Tests/**', 'scripts/*Combat*', 'scripts/test-combat.sh', 'docs/COMBAT-SETUP.md', '.github/workflows/combat.yml']
+    paths: ['src/ACAI2.Rynth.Combat.*/**', 'tests/ACAI2.Rynth.Combat.Tests/**', 'tools/ACAI2.Combat.DesignPreview/**', 'scripts/*Combat*', 'scripts/test-combat.sh', 'docs/COMBAT-SETUP.md', '.github/workflows/combat.yml']
   workflow_dispatch:
 permissions:
   contents: read

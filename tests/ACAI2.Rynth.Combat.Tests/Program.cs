@@ -168,4 +168,21 @@ if(File.Exists(dll))
  Check(refs.Contains("ACAI2.Rynth.Combat.Core")&&!refs.Any(r=>r.Contains("Threads")||r.Contains("Combat.Future")||r=="ACAI2.Rynth.Core"),"the real-SDK plugin has an independent combat dependency graph with no Keyfer or Threads");
  Check(pe.PEHeaders.CoffHeader.Machine==Machine.I386,"the managed plugin targets the actual x86 client ABI");
 }
+Check(ImpactLettering.Supports("0123456789 +-,. CRIT · ACID ×3")&&!ImpactLettering.Supports("unsupported lowercase"),"custom glyph coverage includes combat numbers, signs, uppercase labels and repetition markers with explicit fallback");
+var shapes=new List<System.Numerics.Vector2[]>();
+ImpactLettering.Draw("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ",new(10,20),48,new(1,1,1,1),true,(points,color)=>shapes.Add(points.ToArray()));
+float glyphWidth=ImpactLettering.Width("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ",48);
+Check(shapes.Count>100&&shapes.SelectMany(p=>p).All(p=>float.IsFinite(p.X)&&float.IsFinite(p.Y)&&p.X>=10&&p.X<=10+glyphWidth&&p.Y>=20&&p.Y<=68),"original vector digits and uppercase labels stay within their measured drawing bounds at critical size");
+var oldGeometry=shapes[0].ToArray();ImpactLettering.Draw("+118",new(500,200),23,new(0,1,0,1),false,(_,_)=>{});
+Check(shapes[0].SequenceEqual(oldGeometry),"compiled digit geometry and copied preview polygons remain stable across unrelated draws");
+Check(ImpactLettering.Caption(new(1,0,"Critical","CRITICAL","",2313,1,0,false,true))=="CRIT"&&ImpactLettering.Caption(new(2,0,"Taken","HIT","",344,1,0,true,true))=="CRIT","critical captions remove the redundant CRIT CRITICAL and CRIT TAKEN labels from preview and live text");
+Check(ImpactLettering.Punch(.04)>ImpactLettering.Punch(.18)&&ImpactLettering.Punch(.55)==1,"critical arrival settles after a short size punch without permanent scaling or camera movement");
+var legacyAppearance=JsonSerializer.Deserialize<Appearance>("{\"Schema\":1,\"FontSize\":27}")!;legacyAppearance.Validate();
+Check(legacyAppearance.CustomLettering&&legacyAppearance.FontSize==27,"older appearance profiles gain custom lettering without overwriting their existing sizing");
+Check(ImpactLettering.Number(new(1,0,"Taken","","",344,1,0,true))=="-344"&&ImpactLettering.Number(new(1,0,"Healing","","",118,1,0,true))=="+118"&&ImpactLettering.Number(new(1,0,"Ward","","",135,1,0,true))=="135","custom numerical signs distinguish damage, recovery and ward absorption instead of marking every incoming event as damage");
+var layout=new FloatLayout(new(1156,754),new(578,480));
+Check(layout.TryPlace(new(620,450),new(170,75),-1,out var incomingBox)&&incomingBox.X+170<=554,"wide incoming crit boxes stay left of the reserved character center even with a narrow saved lane gap");
+Check(layout.TryPlace(new(500,450),new(170,75),1,out var outgoingBox)&&outgoingBox.X>=602,"outgoing crit boxes stay right of center instead of colliding with incoming notices");
+Check(layout.TryPlace(new(620,450),new(170,75),-1,out var secondBox)&&secondBox.Y+75+6<incomingBox.Y,"measured text boxes stack without overlapping critical numbers and captions");
+Check(!layout.TryPlace(new(578,300),new(2000,75),1,out _),"a display too narrow for a notice omits it visually instead of drawing across both lanes");
 Console.WriteLine($"All {checks} Combat checks passed. No game actions, production network or AI calls were made.");

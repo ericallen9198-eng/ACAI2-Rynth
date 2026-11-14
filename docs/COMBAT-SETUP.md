@@ -1,4 +1,4 @@
-# ACAI2 Combat v0.1.4 — standalone Rynth plugin
+# ACAI2 Combat v0.1.5 — standalone Rynth plugin
 
 A separate read-only combat meter and floating text app. Requires managed CoreCLR
 RynthCore API 92+ and the engine's matching ImGui bindings. It does not need
@@ -18,6 +18,38 @@ vendor/bank or renders debuff icons. Settings and data are separate from Threads
    Keep floating XP/Luminance with `/rv plates gains on`. These commands
    leave Rynth's nameplates and debuff icons enabled. The app does not change
    Rynth settings automatically. Restore either with the command ending in `on`.
+
+## v0.1.5 custom combat lettering
+
+Custom combat lettering is enabled by default, including for older profiles.
+Original vector digits and uppercase display labels avoid enlarging a small font
+atlas. Critical hits in both directions use larger numbers, short captions, a
+brief size punch and longer visible angular brackets/shards. Landed vuln/imperil
+notices use matching lettering over dark, cut-corner backings in their elemental
+colors. The meter gains matching DPS digits and an accented header; detailed
+statistics keep the engine font for readability. Healing halos/motes and quiet
+acid/poison accents remain. No external font installation or engine patch needed.
+
+For the intended spacing, open `/acai2combat setup`, click **Apply impact layout**,
+then **Preview effects**. This explicit preset sets Font size 23, Lane gap 185,
+Arc inward 45, Overlap 0, Duration 2.2, Critical emphasis 1.5, Quiet hit size .8
+and Quiet hit opacity .8. It keeps colors, anchor and meter position. Existing
+settings are otherwise preserved. **Custom combat lettering** can be turned off.
+The fixed screen anchor still needs manual positioning for your camera.
+
+Measured text boxes stay out of the center lane and avoid each other. Criticals,
+heals and landed debuffs receive priority when busy; a crowded screen may omit
+lower-priority visual events. The actual statistics still include every parsed
+hit. Decorative particles may extend beyond the text boxes. Repetitions use ×N
+on the caption; the displayed hit amount is never summed or altered.
+
+The ZIP includes **COMBAT-PREVIEW.html**: double-click it for a 1156 × 754 review
+with arrival/hold/drift states. Use 100% browser zoom. Its digits, display labels,
+backplates and crit bursts come from the same C# geometry used by the plugin;
+it is a synthetic layout illustration, not an in-game screenshot. Engine
+antialiasing, camera placement, overlapping events and the meter's native detail
+font still need live-game review. `combat-design.svg` is the static vector sample.
+The exporter source is `tools/ACAI2.Combat.DesignPreview`.
 
 ## v0.1.4 floating text redesign
 

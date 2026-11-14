@@ -6,9 +6,9 @@ on:
         description: Successful Windows verification run ID
         required: true
       version:
-        description: Package version (e.g. 0.1.4)
+        description: Package version (e.g. 0.1.5)
         required: true
-        default: '0.1.4'
+        default: '0.1.5'
       commit_sha:
         description: Full tested source commit SHA
         required: true
@@ -51,6 +51,8 @@ jobs:
           set -euo pipefail
           test -f package/ACAI2.Rynth.Combat.Plugin.dll
           test -f package/COMBAT-SETUP.md
+          test -f package/COMBAT-PREVIEW.html
+          test -f package/combat-design.svg
           test ! -e package/cimgui.dll
           test ! -e package/ImGui.NET.dll
           test ! -e package/ACAI2.Rynth.Combat.Future.dll
@@ -58,19 +60,21 @@ jobs:
           test ! -e package/ACAI2.Rynth.Plugin.dll
           zip_name="ACAI2-Combat-v${PACKAGE_VERSION}-Windows.zip"
           tag="combat-v${PACKAGE_VERSION}"
+          cp package/COMBAT-PREVIEW.html "$RUNNER_TEMP/COMBAT-PREVIEW.html"
+          cp package/combat-design.svg "$RUNNER_TEMP/combat-design.svg"
           cd package
           zip -qr "$RUNNER_TEMP/$zip_name" .
           cd "$RUNNER_TEMP"
           sha256sum "$zip_name" > "$zip_name.sha256"
           cat > release-notes.md <<NOTES
-          v0.1.4 redesigns incoming and outgoing floating combat text with pixel-aligned single-fill lettering using engine fonts, quieter normal hits, large critical numbers with smaller captions, angular impact brackets and shards, elemental proc accents and centered healing halos. Existing big-hit snapshots, saved-run details and Reckless metrics are preserved. Built from $SOURCE_SHA using the genuine Rynth SDK and Windows manifest tooling.
+          v0.1.5 adds original vector digits and uppercase display lettering, larger incoming/outgoing crits with a brief punch and angular burst, dark elemental vuln/imperil backplates, measured non-overlapping text placement and a matching meter header. Includes COMBAT-PREVIEW.html and a static SVG generated from the same vector geometry. Apply the impact layout in Setup to try the recommended spacing. All combat statistics, compact run records and existing controls are preserved. Built from $SOURCE_SHA using the genuine Rynth SDK and Windows manifest tooling.
 
           Requires managed CoreCLR RynthCore API 92+ and matching engine ImGui bindings. No Bridge, Keyfer, Threads or RynthAi dependency; no attacks, casts, bank/vendor commands or debuff renderer. Disable RynthVision floating numbers separately with /rv plates numbers off; keep its debuff icons.
 
           Extract all DLLs together and follow COMBAT-SETUP.md. The floating anchor is adjustable fixed-screen positioning in this first build. Automatic camera-follow awaits a supported projection-frame interface. Ordinary combat chat is never retained; only compact totals and bounded server death notices are saved. Automated checks use synthetic events; live UI validation remains. Includes a preview that does not affect real statistics.
           NOTES
           if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag" "$zip_name" "$zip_name.sha256" --clobber
+            gh release upload "$tag" "$zip_name" "$zip_name.sha256" COMBAT-PREVIEW.html combat-design.svg --clobber
           else
-            gh release create "$tag" "$zip_name" "$zip_name.sha256" --target "$SOURCE_SHA" --title "Combat for Rynth v$PACKAGE_VERSION — Windows package" --notes-file release-notes.md
+            gh release create "$tag" "$zip_name" "$zip_name.sha256" COMBAT-PREVIEW.html combat-design.svg --target "$SOURCE_SHA" --title "Combat for Rynth v$PACKAGE_VERSION — Windows package" --notes-file release-notes.md
           fi
