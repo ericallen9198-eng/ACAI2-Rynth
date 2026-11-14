@@ -211,7 +211,7 @@ public sealed class CombatEngine(string server,string character)
     public (double Dps,double Taken) Rates(double now,bool run)=>run?runRate.Read(now):sessionRate.Read(now);
     public void RestoreRuns(IEnumerable<RunRecord> runs)
     {
-        foreach(var r in runs.Take(50))if(r.Server==server&&r.Character==character&&!Runs.Any(x=>x.Id==r.Id)){if(r.Ended==null)r.Gaps=true;Runs.Add(r);}
+        foreach(var r in runs.Take(50).OrderBy(r=>r.Opened))if(r.Server==server&&r.Character==character&&!Runs.Any(x=>x.Id==r.Id)){if(r.Ended==null)r.Gaps=true;Runs.Add(r);}
         Current??=Runs.Where(r=>r.Ended==null).OrderByDescending(r=>r.Opened).FirstOrDefault();
         Revision++;
     }

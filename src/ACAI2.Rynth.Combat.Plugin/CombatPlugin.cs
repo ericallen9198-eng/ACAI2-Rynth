@@ -127,7 +127,7 @@ public sealed class CombatPlugin : RynthPluginBase
         if(now>=nextSave&&archive.Ready)
         {
             nextSave=now+5;if(savedRevision!=engine.Revision)
-            {bool ok=true;foreach(var run in engine.Runs.Where(r=>r.Entered!=null||r.Ended!=null))ok&=archive.Save(run);if(ok)savedRevision=engine.Revision;else notice="Run save queue busy; retrying next interval.";}
+            {bool ok=true;if(engine.Current is {Entered:not null} active)ok&=archive.Save(active);foreach(var run in engine.Runs.Where(r=>r.Id!=engine.Current?.Id&&(r.Entered!=null||r.Ended!=null)))ok&=archive.Save(run);if(ok)savedRevision=engine.Revision;else notice="Run save queue busy; retrying next interval.";}
         }
         if(profileApplied&&archive.Ready&&panel.Dirty&&now>=nextProfile)
         {

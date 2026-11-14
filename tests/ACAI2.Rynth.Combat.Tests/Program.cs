@@ -142,6 +142,10 @@ var capped=new CombatEngine("DreamWeave","Samm");for(int i=0;i<40;i++)capped.Obs
 
 var layered=new EffectHistory();layered.SampleAt(utc,true,[new(4312,utc.AddMinutes(1)),new(4312,utc.AddMinutes(2))]);layered.Changed(utc.AddMilliseconds(10),4312,false,0);Check(!layered.At(utc.AddMilliseconds(20)).Available,"a layer-ambiguous removal cannot falsely declare imperil gone");
 
+var fifty=Enumerable.Range(0,50).Select(i=>new RunRecord{Server="DreamWeave",Character="Samm",Opened=utc.AddSeconds(i),Entered=utc.AddSeconds(i),Name="History "+i}).ToArray();
+var orderedRestore=new CombatEngine("DreamWeave","Samm");orderedRestore.RestoreRuns(fifty.Reverse());orderedRestore.Observe(open,0,utc.AddSeconds(100),100);
+Check(orderedRestore.Runs.Count==50&&!orderedRestore.Runs.Any(r=>r.Id==fifty[0].Id)&&orderedRestore.Runs.Any(r=>r.Id==fifty[49].Id),"opening a new run after restore keeps the newest historical runs rather than evicting the most recent");
+
 string root=Path.Combine(Path.GetTempPath(),"acai2-combat-test-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);
 try
 {
