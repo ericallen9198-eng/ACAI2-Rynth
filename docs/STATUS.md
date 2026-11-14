@@ -33,3 +33,12 @@ research and user-started native preparation. It has its own package, entry poin
 ImGui panel, per-character storage and 36 controlled checks. It has no Keyfer,
 Bridge or combat dependency. See [Thread setup](THREADS-SETUP.md) for supported
 interfaces, retained-result behavior and the required attended first test.
+
+## Independent Combat v0.1.0
+
+A separate genuine-SDK managed plugin now implements adaptive DPS/defense, proc
+readouts, outlined artistic floating text, compact Thread run/mob summaries and
+server killing-blow/overkill records. It has no Keyfer/Threads/RynthAi dependency,
+no combat actions and no debuff renderer. The first build uses an adjustable
+fixed-screen anchor and engine fonts; camera-follow awaits frame-cell API support.
+See [Combat setup](COMBAT-SETUP.md). Live ImGui and server validation remain.

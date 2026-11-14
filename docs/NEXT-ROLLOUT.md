@@ -43,3 +43,12 @@ or automatic destruction is included. Keyfer remains separate.
 36 fake-world Thread checks and the existing 99 Keyfer checks pass locally.
 Windows packaging and an attended one-gem test are separate release gates.
 See [Thread setup](THREADS-SETUP.md); no live gem actions were made here.
+
+## Standalone Combat v0.1.0
+
+Combat is now a separately authorized companion plugin, with adaptive meter
+modules, outlined artistic floating text and compact run/mob/death records. It
+references neither Keyfer nor Threads/RynthAi, preserves Rynth debuff ownership,
+and makes no game actions. First-build limits: fixed-screen anchor and no automatic
+summary transfer to Threads. See COMBAT-SETUP.md for the attended preview and live
+checks; none of the controlled tests sends production game commands.

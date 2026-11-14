@@ -73,3 +73,13 @@ fixed `/b w n <positive integer shortage>` command on the pump after its durable
 checkpoint. Require matching native BANK withdrawal acknowledgment and a counted
 currency inventory increase before purchasing. No automatic retry, bank-balance
 guessing, exchanges, deposits, unrelated bank commands or replay after restart.
+
+The user has now authorized the separate ACAI2 Combat plugin: adaptive DPS/defense
+meter, artistic floating text, automatic observed class modules, bounded mob/run
+statistics, and the explicitly supplied server death notice with numeric overkill.
+No Keyfer/Threads dependency or shared live parser state. No combat actions,
+settings changes to other plugins, debuff renderer or full chat/CSV recording.
+Only bounded explicit death notices may be persisted with aggregate run records.
+Use engine-owned ImGui, real pinned SDK and matching bindings. Do not guess camera
+projection without frame-cell data; disclose fixed-anchor limitations. Preview
+must be labeled synthetic and isolated from real statistics and saved records.

@@ -1,7 +1,8 @@
 # ACAI2-Rynth
 
-**v0.3.1 focuses on restoring Keyfer on RynthCore. Combat is excluded from this
-rollout**, with its source retained for a possible separate plugin.
+**Independent Rynth plugins: Keyfer v0.3.1, Threads v0.1.4 and Combat v0.1.0.**
+Each has its own Windows package and setup guide. The Keyfer package excludes
+combat; the standalone Combat app is described below.
 
 The adapter reconnects the existing local ACAI2 Bridge for conversation, private
 tells, contextual follow-ups, arena games, paced announcements/emotes, world
@@ -20,6 +21,16 @@ blockers. All results are retained; uncertain
 actions never automatically retry. See [Thread setup and first test](docs/THREADS-SETUP.md).
 Build on Windows with `scripts/Publish-Threads.ps1`; pure checks use
 `scripts/test-threads.sh`. The independent package excludes combat and Keyfer.
+
+## Standalone Combat app
+
+**ACAI2 Combat v0.1.0** is its own read-only plugin: an adaptive DPS/defense meter,
+class/proc readouts, artistic outlined floating text, compact Thread run/mob
+summaries and exact server death/overkill notices. It requires neither Keyfer nor
+Threads/RynthAi and duplicates no debuff icons. [Combat setup](docs/COMBAT-SETUP.md)
+covers installation, preview, RynthVision toggles and the first build's adjustable
+fixed-screen anchor. Build with `scripts/Publish-Combat.ps1`; controlled checks use
+`scripts/test-combat.sh`. No ordinary combat log/CSV is recorded.
 
 ## Package and runtime
 

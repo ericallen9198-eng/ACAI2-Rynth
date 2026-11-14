@@ -26,3 +26,9 @@ prep controller is new code informed by the user-supplied SootAC DreamWeave
 ThreadPrep workflow. No supplied meta, Lua script, patched engine or private
 archive is redistributed. See docs/THREADS-SETUP.md for the deliberately narrower
 attended workflow and retained-result policy.
+
+The standalone Combat plugin independently adapts this project's original ACAI2
+combat parser (fa363107 provenance retained in the source) and adds new aggregate,
+run/death, persistence and ImGui rendering code. No RynthVision implementation,
+engine binary, RynthAi automation or third-party combat assets are copied into its
+package. It references the same genuine SDK and matching ImGui bindings above.
