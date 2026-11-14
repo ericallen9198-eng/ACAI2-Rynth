@@ -66,11 +66,48 @@ var limited=new Totals();for(int i=0;i<400;i++)limited.Mob("Mob "+i).Kills++;Che
 
 var appearance=new Appearance{Curve=160,Gap=40,Opacity=float.NaN,Colors=new(){["unexpected"]=0}};appearance.Validate();
 Check(appearance.Opacity==.72f&&!appearance.Colors.ContainsKey("unexpected")&&appearance.Colors.ContainsKey("Poison"),"profile validation repairs non-finite values and restores known palette entries");
-var stream=new FloatStream();stream.Add(0,"Acid","ACID","Mob",10);stream.Add(.1,"Acid","ACID","Mob",20);
-Check(stream.Read(.1) is[{Amount:30,Count:2}],"rapid same-target proc ticks coalesce without changing true aggregate amounts");
+var stream=new FloatStream();stream.Add(0,"Acid","ACID","Mob",10);stream.Add(.1,"Acid","ACID","Mob",10);
+Check(stream.Read(.1) is[{Amount:10,Count:2}],"identical proc ticks retain their individual number and use a repetition count");
 var left=stream.Read(.1)[0] with{Incoming=true};var arc=FloatStream.Arc(left,2,appearance);Check(arc.X<=-24,"even maximum inward curvature cannot cross the character center");
 for(int i=0;i<100;i++)stream.Add(.2+i*.02,"Poison","POISON","Mob "+i,1);Check(stream.Read(2.3).Length<=48&&stream.Read(10).Length==0,"floating event memory is bounded and expired effects disappear");
 long real=e.Session.Damage;var preview=new FloatStream();preview.Add(4,"Critical","PREVIEW",amount:9999);Check(e.Session.Damage==real,"preview effects do not modify real session or run statistics");
+
+var separated=new CombatEngine("DreamWeave","Toe");
+void Separate(string line,double time)=>separated.Observe(line,0,utc.AddSeconds(time),time);
+Separate("Mage burns your chest for 80 points of fire damage with Incantation of Flame Bolt!",0);
+Separate("Archer scratches your arm for 20 points of fire damage!",.1);
+Separate("You evaded Archer!",.2);Separate("You resist the spell cast by Mage!",.3);
+Check(separated.Session.PhysicalHits==1&&separated.Session.PhysicalDamage==20&&separated.Session.EvadePercent==50&&separated.Session.MagicHits==1&&separated.Session.MagicDamage==80&&separated.Session.ResistPercent==50,"explicit spell evidence outranks physical-looking body damage and keeps both defense denominators separate");
+Separate("Mystery scalds you for 30 points of fire damage!",.4);
+Check(separated.Session.UnclassifiedHits==1&&separated.Session.UnclassifiedDamage==30&&separated.Session.PhysicalHits==1&&separated.Session.MagicHits==1&&separated.Session.Taken==130,"ambiguous damage remains counted but never contaminates physical or spell defense rates");
+Separate("Caster cast Incantation of Lightning Vulnerability Other on you",.5);
+Separate("Caster cast Incantation of Cold Vulnerability Other on you, refreshing Incantation of Cold Vulnerability Other",.6);
+Separate("Caster cast Incantation of Acid Vulnerability Other on you",.7);
+Separate("Caster cast Incantation of Imperil Other on you",.8);
+Check(separated.Session.IncomingEffects.Count==4&&separated.Session.MagicHits==1&&separated.Session.Resists==1,"landed vuln/imperil notices are effects, not invented damage hits or resists");
+Check(separated.Floats.Read(.8).Any(f=>f.Kind=="VulnLightning"&&f.Label=="LIGHT VULN"&&f.Incoming)&&separated.Floats.Read(.8).Any(f=>f.Kind=="VulnFrost"&&f.Label=="FROST VULN"&&f.Incoming),"incoming vulns use short elemental labels and the incoming lane");
+Check(!SeparateRejected("Caster cast Incantation of Fire Vulnerability Other on you, but it is surpassed by Other")&&!SeparateRejected("Incantation of Acid Vulnerability Other has expired."),"surpassed or expired debuffs do not create false landed-effect notifications");
+bool SeparateRejected(string text)=>separated.Observe(text,0,utc.AddSeconds(1),1);
+Separate("Critical hit! Your acid deals 100 points of periodic damage to Mob!",1.1);
+Separate("Critical hit! Your poison deals 100 additional points of damage to Mob!",1.2);
+Separate("Critical hit! Toe's Fire Elemental hits Mob for 100 damage!",1.3);
+Separate("Critical heal! You receive 100 points of periodic healing.",1.4);
+Check(separated.Floats.Read(1.4).Count(f=>f.Critical)>=4,"critical acid, poison, summons and heals preserve their critical emphasis flag");
+var healFloat=separated.Floats.Read(1.4).Last(f=>f.Kind=="Healing");
+Check(FloatStream.Arc(healFloat,1.4,new()).X==0&&FloatStream.Arc(healFloat,1.4,new()).Y<=-150&&FloatStream.Format(healFloat).StartsWith("+100"),"heals rise above the center anchor and display positive recovery, never incoming damage");
+var repeat=new FloatStream();repeat.Add(0,"Sneak","SNEAK","Mob A",380);repeat.Add(.4,"Sneak","SNEAK","Mob B",380);repeat.Add(.5,"Sneak","SNEAK","Mob C",380);
+Check(repeat.Read(.5) is[{Amount:380,Count:3,Target:"Multiple targets"}]&&FloatStream.Format(repeat.Read(.5)[0]).Contains("380 SNEAK ×3"),"identical hits across targets become 380 SNEAK ×3 instead of a misleading summed number");
+repeat.Add(.51,"Sneak","SNEAK","Mob",381);repeat.Add(.52,"Sneak","SNEAK","Mob",380,critical:true);
+Check(repeat.Read(.52).Length==3,"different amounts and critical hits never merge with normal repeated hits");
+var mixed=new FloatStream();mixed.Add(0,"Taken","HIT","Mob",100,true,false,"Magic");mixed.Add(.1,"Taken","HIT","Mob",100,true,false,"Melee/Missile");Check(mixed.Read(.1).Length==2,"identical spell and physical incoming hits retain separate float groups");
+var leftFloat=mixed.Read(.1)[0];var rightFloat=repeat.Read(.5)[0];Check(FloatStream.Arc(leftFloat,.3,new()).X<0&&FloatStream.Arc(rightFloat,.5,new()).X>0,"incoming effects travel left and outgoing effects travel right");
+Check(!FloatStream.Regular(healFloat)&&!FloatStream.Regular(healFloat with{Kind="Acid",Critical=true})&&FloatStream.Regular(rightFloat),"quiet-hit styling excludes healing and every critical event");
+
+var spam=new CombatEngine("DreamWeave","Toe");for(int i=0;i<100;i++)spam.Observe("You bash Mob for 380 points of bludgeoning damage!",0,utc.AddSeconds(i*.01),i*.01);
+Check(spam.Session.Damage==38000&&spam.Session.DirectHits==100&&spam.Floats.Read(1.1).Sum(f=>f.Amount*f.Count)==38000,"visual repetition compression never removes hits or damage from actual statistics");
+var spellOut=new CombatEngine("DreamWeave","Toe");spellOut.Observe("You burn Mob for 500 points of fire damage with Incantation of Flame Bolt!",0,utc,0);
+Check(spellOut.Session.DirectHits==0&&spellOut.Session.Damage==500,"outgoing spells with explicit elemental damage do not inflate physical or sneak denominators");
+Check(!separated.Observe("Orb cast Imperil Protection Self on you",0,utc,2),"a beneficial spell mentioning imperil is not mislabeled as landed imperil");
 
 string root=Path.Combine(Path.GetTempPath(),"acai2-combat-test-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);
 try

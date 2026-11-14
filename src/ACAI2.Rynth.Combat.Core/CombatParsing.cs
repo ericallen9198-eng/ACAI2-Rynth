@@ -40,14 +40,14 @@ namespace ACAI2.Rynth.Combat.Core
 
     public sealed class CombatMessageParser
     {
-        private static readonly Regex Poison = Rx(@"^Your poison deals (?<damage>[\d,]+) additional points of damage to (?<mob>.+)!$");
-        private static readonly Regex Acid = Rx(@"^Your acid deals (?<damage>[\d,]+) points of periodic damage to (?<mob>.+)!$");
-        private static readonly Regex Thorns = Rx(@"^Your thorns reflect (?<damage>[\d,]+) points of damage back at (?<mob>.+)!$");
-        private static readonly Regex PetHit = Rx(@"^(?<owner>.+?)'s (?<pet>.+?) hits (?<mob>.+?) for (?<damage>[\d,]+) damage!$");
-        private static readonly Regex DrainSelf = Rx(@"^You gain (?<amount>[\d,]+) points of health due to casting Drain Health Other I on (?<mob>.+?)[.!]?$");
-        private static readonly Regex DrainPet = Rx(@"^Your (?<owner>.+?)'s (?<pet>.+?) gains (?<amount>[\d,]+) points of health due to your Drain Health Other I on (?<mob>.+?)[.!]?$");
-        private static readonly Regex PeriodicHeal = Rx(@"^You receive (?<amount>[\d,]+) points of periodic healing\.$");
-        private static readonly Regex KitHeal = Rx(@"^You heal yourself for (?<amount>[\d,]+) Health points\. Your .+$");
+        private static readonly Regex Poison = Rx("^"+Prefix+@"Your poison deals (?<damage>[\d,]+) additional points of damage to (?<mob>.+)!$");
+        private static readonly Regex Acid = Rx("^"+Prefix+@"Your acid deals (?<damage>[\d,]+) points of periodic damage to (?<mob>.+)!$");
+        private static readonly Regex Thorns = Rx("^"+Prefix+@"Your thorns reflect (?<damage>[\d,]+) points of damage back at (?<mob>.+)!$");
+        private static readonly Regex PetHit = Rx("^"+Prefix+@"(?<owner>.+?)'s (?<pet>.+?) hits (?<mob>.+?) for (?<damage>[\d,]+) damage!$");
+        private static readonly Regex DrainSelf = Rx("^"+Prefix+@"You gain (?<amount>[\d,]+) points of health due to casting Drain Health Other I on (?<mob>.+?)[.!]?$");
+        private static readonly Regex DrainPet = Rx("^"+Prefix+@"Your (?<owner>.+?)'s (?<pet>.+?) gains (?<amount>[\d,]+) points of health due to your Drain Health Other I on (?<mob>.+?)[.!]?$");
+        private static readonly Regex PeriodicHeal = Rx("^"+Prefix+@"You receive (?<amount>[\d,]+) points of periodic healing\.$");
+        private static readonly Regex KitHeal = Rx("^"+Prefix+@"You heal yourself for (?<amount>[\d,]+) Health points\. Your .+$");
         private static readonly Regex Block = Rx(@"^You block (?<mob>.+?)'s attack with your shield!$");
         private static readonly Regex ChargeReady = Rx(@"^Kinetic charge at full \((?<amount>\d+)/\d+\) - your next attack spends it\.$");
         private static readonly Regex ChargeRelease = Rx(@"^You release your kinetic charge! \((?<detail>.+)\)$");
@@ -60,11 +60,13 @@ namespace ACAI2.Rynth.Combat.Core
         private static readonly Regex OutgoingResist = Rx(@"^(?<mob>.+?) resists your spell[.!]?$");
         private static readonly Regex IncomingResist = Rx(@"^You resist the spell cast by (?<mob>.+?)[.!]?$");
 
-        private static readonly string Prefix = @"(?:(?:Critical hit!|Sneak Attack!|Recklessness!|Overpower!)\s*)*";
+        private const string Prefix = @"(?:(?:Critical hit!|Critical heal!|Sneak Attack!|Recklessness!|Overpower!)\s*)*";
         private static readonly Regex OutgoingPhysical = Rx("^" + Prefix + @"You\s+\w+\s+(?<mob>.+?)\s+for\s+(?<damage>[\d,]+)\s+points?\s+of\s+(?<element>[A-Za-z]+)\s+damage.*$");
         private static readonly Regex OutgoingMagic = Rx("^" + Prefix + @"You\s+(?<verb>\w+)\s+(?<mob>.+?)\s+for\s+(?<damage>[\d,]+)\s+points?\s+with\s+.+$");
         private static readonly Regex IncomingPhysical = Rx("^" + Prefix + @"(?<mob>.+?)\s+\w+\s+your\s+.+?\s+for\s+(?<damage>[\d,]+)\s+points?\s+of\s+(?<element>[A-Za-z]+)\s+damage.*$");
         private static readonly Regex IncomingMagic = Rx("^" + Prefix + @"(?<mob>.+?)\s+(?<verb>\w+)\s+you\s+for\s+(?<damage>[\d,]+)\s+points?\s+with\s+.+$");
+        private static readonly Regex ExplicitOutgoingSpell = Rx("^"+Prefix+@"You\s+\w+\s+(?<mob>.+?)\s+for\s+(?<damage>[\d,]+)\s+points?\s+of\s+(?<element>[A-Za-z]+)\s+damage\s+with\s+.+$");
+        private static readonly Regex ExplicitIncomingSpell = Rx("^"+Prefix+@"(?<mob>.+?)\s+\w+\s+(?:you|your\s+.+?)\s+for\s+(?<damage>[\d,]+)\s+points?\s+of\s+(?<element>[A-Za-z]+)\s+damage\s+with\s+.+$");
         private static readonly Regex IncomingLoseHealth = Rx(@"^(?:Magical energies|You) (?<verb>lose) (?<damage>[\d,]+) points? of health due to (?<mob>.+?) casting .+$");
         private static readonly Regex IncomingDrain = Rx(@"^(?<mob>.+?) casts .+ and (?<verb>drains) (?<damage>[\d,]+) points?.*$");
 
@@ -107,6 +109,7 @@ namespace ACAI2.Rynth.Combat.Core
             if (Regex.IsMatch(clean, @"^(?:\[[^\]]+\]\s*)?.+?\s+(?:say|says|think|thinks|tells you),\s+""", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(100))) return false;
             if (!TryParseCore(clean, character, out record)) return false;
             record.Raw = text;
+            record.Critical = Regex.IsMatch(Regex.Match(clean,"^"+Prefix).Value,@"Critical (?:hit|heal)!",RegexOptions.IgnoreCase,TimeSpan.FromMilliseconds(100));
             record.SneakAttack = record.Direction == "Outgoing" && record.Result == "Damage" && CombatComponents.IsDirect(record) &&
                 Regex.IsMatch(clean, @"^(?:(?:Critical hit!|Recklessness!|Overpower!)\s*)*Sneak Attack!", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(100));
             return true;
@@ -169,6 +172,8 @@ namespace ACAI2.Rynth.Combat.Core
             if ((match = OutgoingResist.Match(text)).Success)
                 return Make(text, "Outgoing", match.Groups["mob"].Value, "Magic", "Resist", "None", 0, out record);
 
+            if ((match = ExplicitOutgoingSpell.Match(text)).Success)return MakeDamage(text,match,"Outgoing","Magic",true,out record);
+            if ((match = ExplicitIncomingSpell.Match(text)).Success)return MakeDamage(text,match,"Incoming","Magic",true,out record);
             if ((match = OutgoingPhysical.Match(text)).Success)
                 return MakeDamage(text, match, "Outgoing", "Melee/Missile", true, out record);
             if ((match = OutgoingMagic.Match(text)).Success)

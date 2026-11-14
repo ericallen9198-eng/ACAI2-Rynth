@@ -83,3 +83,10 @@ Only bounded explicit death notices may be persisted with aggregate run records.
 Use engine-owned ImGui, real pinned SDK and matching bindings. Do not guess camera
 projection without frame-cell data; disclose fixed-anchor limitations. Preview
 must be labeled synthetic and isolated from real statistics and saved records.
+
+Combat display refinement authorized by the user: incoming effects left, outgoing
+right, heals centered above the head/screen anchor. Short landed vuln/imperil text
+is permitted while icons remain Rynth-owned. Keep physical hits/evades separate
+from magic hits/resists; unknown delivery must not enter either denominator.
+Repeated identical float values may use xN without changing true damage totals;
+criticals remain separate and visually stronger than regular hits of every kind.

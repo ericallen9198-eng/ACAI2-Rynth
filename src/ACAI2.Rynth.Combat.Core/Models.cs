@@ -17,6 +17,10 @@ public sealed class Appearance
     public float Scale {get;set;}=1;
     public float FontSize {get;set;}=23;
     public float Outline {get;set;}=1.3f;
+    public float RegularScale {get;set;}=.85f;
+    public float RegularAlpha {get;set;}=.65f;
+    public float CritScale {get;set;}=1.35f;
+    public float HealOffset {get;set;}=150;
     public float Gap {get;set;}=120;
     public float Curve {get;set;}=65;
     public float Rise {get;set;}=145;
@@ -28,11 +32,12 @@ public sealed class Appearance
     public bool AutoThread {get;set;}=true;
     public Dictionary<string,bool> Modules {get;set;}=[]; // Missing = automatic discovery.
     public Dictionary<string,uint> Colors {get;set;}=Defaults();
-    public static Dictionary<string,uint> Defaults()=>new(){["Direct"]=0xffece8e3,["Critical"]=0xff51dafa,["Sneak"]=0xffffa0df,["Acid"]=0xff86f9be,["Poison"]=0xff5fd779,["Healing"]=0xffb4f59a,["Taken"]=0xff7774ff,["Evade"]=0xffdfd0bd,["Resist"]=0xffffbb95,["Ward"]=0xffffc774,["Utility"]=0xffeec3dd,["Summons"]=0xffffb77b,["Thorns"]=0xff85cb87,["Drain"]=0xffb797ff,["Kill"]=0xff7ceac1,["Death"]=0xff6565ff,["Fire"]=0xff63a8ff,["Cold"]=0xffffe08a,["Electrical"]=0xff9cf3ff,["Nether"]=0xffe694cb};
+    public static Dictionary<string,uint> Defaults()=>new(){["VulnLightning"]=0xffff91d7,["VulnFrost"]=0xffffbf62,["VulnFire"]=0xff509dff,["VulnAcid"]=0xff6ae67a,["VulnNether"]=0xffe28bc4,["VulnBludgeon"]=0xff91b8d6,["VulnSlash"]=0xffd2d4dc,["VulnPierce"]=0xffb0c7e0,["Imperil"]=0xff68a3ff,["Direct"]=0xffece8e3,["Critical"]=0xff51dafa,["Sneak"]=0xffffa0df,["Acid"]=0xff86f9be,["Poison"]=0xff5fd779,["Healing"]=0xffb4f59a,["Taken"]=0xff7774ff,["Evade"]=0xffdfd0bd,["Resist"]=0xffffbb95,["Ward"]=0xffffc774,["Utility"]=0xffeec3dd,["Summons"]=0xffffb77b,["Thorns"]=0xff85cb87,["Drain"]=0xffb797ff,["Kill"]=0xff7ceac1,["Death"]=0xff6565ff,["Fire"]=0xff63a8ff,["Cold"]=0xffffe08a,["Electrical"]=0xff9cf3ff,["Nether"]=0xffe694cb};
     public void Validate()
     {
         if(Schema!=1)throw new InvalidDataException("Unsupported Combat settings schema");
         float Clamp(float v,float lo,float hi,float fallback)=>float.IsFinite(v)?Math.Clamp(v,lo,hi):fallback;
+        RegularScale=Clamp(RegularScale,.6f,1,.85f);RegularAlpha=Clamp(RegularAlpha,.25f,1,.65f);CritScale=Clamp(CritScale,1.05f,1.8f,1.35f);HealOffset=Clamp(HealOffset,0,300,150);
         X=Clamp(X,0,16000,30);Y=Clamp(Y,0,16000,120);Opacity=Clamp(Opacity,0,1,.72f);Scale=Clamp(Scale,.7f,2,1);
         FontSize=Clamp(FontSize,12,42,23);Outline=Clamp(Outline,0,3,1.3f);Gap=Clamp(Gap,40,300,120);Curve=Clamp(Curve,0,160,65);Rise=Clamp(Rise,30,300,145);Lifetime=Clamp(Lifetime,.7f,5,2.6f);Overlap=Clamp(Overlap,0,1,.35f);Intensity=Clamp(Intensity,0,1,.85f);AnchorX=Clamp(AnchorX,.05f,.95f,.5f);AnchorY=Clamp(AnchorY,.1f,.95f,.65f);
         Modules??=[];Modules=Modules.Where(p=>p.Key.Length<64).Take(32).ToDictionary();
@@ -54,6 +59,8 @@ public sealed class MobStats
     public int Kills {get;set;}
     public long Dealt {get;set;}
     public long PhysicalDamage {get;set;}
+    public long UnclassifiedDamage {get;set;}
+    public int UnclassifiedHits {get;set;}
     public int PhysicalHits {get;set;}
     public int PhysicalHigh {get;set;}
     public int Evades {get;set;}
@@ -72,6 +79,8 @@ public sealed class Totals
     public int Sneaks {get;set;}
     public long SneakDamage {get;set;}
     public long PhysicalDamage {get;set;}
+    public long UnclassifiedDamage {get;set;}
+    public int UnclassifiedHits {get;set;}
     public int PhysicalHits {get;set;}
     public int PhysicalHigh {get;set;}
     public int Evades {get;set;}
@@ -86,6 +95,7 @@ public sealed class Totals
     public long WardAbsorbed {get;set;}
     public Dictionary<string,long> Components {get;set;}=[];
     public Dictionary<string,int> Procs {get;set;}=[];
+    public Dictionary<string,int> IncomingEffects {get;set;}=[];
     public Dictionary<string,long> HealingSources {get;set;}=[];
     public Dictionary<string,MobStats> Mobs {get;set;}=[];
     public List<DeathRecord> Deaths {get;set;}=[];
@@ -104,6 +114,7 @@ public sealed class RunRecord
     public string Server {get;set;}="";
     public string Character {get;set;}="";
     public string Name {get;set;}="";
+    public string ParserVersion {get;set;}="0.1.0";
     public string Realm {get;set;}="";
     public DateTime Opened {get;set;}
     public DateTime? Entered {get;set;}

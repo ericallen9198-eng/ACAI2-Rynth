@@ -34,7 +34,7 @@ ImGui panel, per-character storage and 36 controlled checks. It has no Keyfer,
 Bridge or combat dependency. See [Thread setup](THREADS-SETUP.md) for supported
 interfaces, retained-result behavior and the required attended first test.
 
-## Independent Combat v0.1.0
+## Independent Combat v0.1.1
 
 A separate genuine-SDK managed plugin now implements adaptive DPS/defense, proc
 readouts, outlined artistic floating text, compact Thread run/mob summaries and
@@ -42,3 +42,8 @@ server killing-blow/overkill records. It has no Keyfer/Threads/RynthAi dependenc
 no combat actions and no debuff renderer. The first build uses an adjustable
 fixed-screen anchor and engine fonts; camera-follow awaits frame-cell API support.
 See [Combat setup](COMBAT-SETUP.md). Live ImGui and server validation remain.
+
+Combat v0.1.1 keeps physical/spell defense evidence separate, excludes ambiguous
+delivery from both rates, compresses equal float numbers as xN, emphasizes every
+recognized critical kind, centers healing above the anchor, and adds short incoming
+elemental vuln/imperil notifications. Rynth still owns debuff icons and XP gains.

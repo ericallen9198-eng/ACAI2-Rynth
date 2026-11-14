@@ -6,7 +6,7 @@ namespace ACAI2.Rynth.Combat.Plugin;
 
 public sealed class CombatPlugin : RynthPluginBase
 {
-    public const string Version="0.1.0";
+    public const string Version="0.1.1";
     public override uint MinimumApiVersion=>92;
     private readonly ConcurrentQueue<(string Text,int Type,DateTime Utc,double Now,long Epoch)> incoming=new();
     private readonly ConcurrentQueue<string> commands=new();
@@ -101,9 +101,9 @@ public sealed class CombatPlugin : RynthPluginBase
         }
         if(now<previewUntil&&now>=nextPreview)
         {
-            nextPreview=now+.4;int n=(int)(now*2.5)%6;
-            string[] kinds=["Acid","Poison","Healing","Critical","Sneak","Ward"];
-            string kind=kinds[n];preview.Add(now,kind,kind.ToUpperInvariant(),amount:kind=="Critical"?2313:kind=="Healing"?118:249,critical:kind=="Critical");
+            nextPreview=now+.4;int n=(int)(now*2.5)%11;
+            string[] kinds=["Acid","Poison","Healing","Critical","Sneak","Ward","Taken","VulnLightning","VulnFrost","VulnAcid","Imperil"];
+            string kind=kinds[n];string label=kind switch{"VulnLightning"=>"LIGHT VULN","VulnFrost"=>"FROST VULN","VulnAcid"=>"ACID VULN",_=>kind.ToUpperInvariant()};preview.Add(now,kind,label,amount:kind.StartsWith("Vuln")||kind=="Imperil"?0:kind=="Critical"?2313:kind=="Healing"?118:249,incoming:kind is "Healing" or "Ward" or "Taken" or "Imperil"||kind.StartsWith("Vuln"),critical:kind is "Critical" or "Taken");
         }
         if(now>=nextView)
         {

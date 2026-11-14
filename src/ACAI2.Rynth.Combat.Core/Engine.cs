@@ -1,23 +1,31 @@
 using System.Text.RegularExpressions;
 namespace ACAI2.Rynth.Combat.Core;
 
-public sealed record FloatEvent(long Id,double Start,string Kind,string Label,string Target,long Amount,int Count,int Slot,bool Incoming=false,bool Critical=false);
+public sealed record FloatEvent(long Id,double Start,string Kind,string Label,string Target,long Amount,int Count,int Slot,bool Incoming=false,bool Critical=false,string AttackType="");
 public sealed class FloatStream
 {
     private readonly List<FloatEvent> events=[];
     private long serial;
-    public void Add(double now,string kind,string label,string target="",long amount=0,bool incoming=false,bool critical=false)
+    public void Add(double now,string kind,string label,string target="",long amount=0,bool incoming=false,bool critical=false,string attackType="")
     {
         events.RemoveAll(e=>now-e.Start>5);
-        int index=events.FindLastIndex(e=>e.Kind==kind&&e.Target==target&&e.Label==label&&e.Incoming==incoming&&e.Critical==critical&&now>=e.Start&&now-e.Start<.15);
-        if(index>=0){var old=events[index];events[index]=old with{Amount=old.Amount+amount,Count=old.Count+1};return;}
-        events.Add(new(++serial,now,kind,label,target,amount,1,(int)(serial%4),incoming,critical));if(events.Count>48)events.RemoveAt(0);
+        int index=events.FindLastIndex(e=>e.Kind==kind&&e.Amount==amount&&e.AttackType==attackType&&e.Label==label&&e.Incoming==incoming&&e.Critical==critical&&now>=e.Start&&now-e.Start<=.6);
+        if(index>=0){var old=events[index];events[index]=old with{Count=old.Count+1,Target=old.Target==target?target:"Multiple targets"};return;}
+        events.Add(new(++serial,now,kind,label,target,amount,1,(int)(serial%4),incoming,critical,attackType));if(events.Count>48)events.RemoveAt(0);
     }
+    public static string Format(FloatEvent e)
+    {
+        string tag=e.Critical?"CRIT"+(e.Label.Length>0?" "+e.Label:""):e.Label;
+        string label=e.Amount>0?(e.Kind=="Healing"?"+":e.Kind=="Taken"?"-":"")+e.Amount.ToString("N0")+(tag.Length>0?" "+tag:""):tag;
+        return label+(e.Count>1?" ×"+e.Count:"");
+    }
+    public static bool Regular(FloatEvent e)=>!e.Critical&&e.Amount>0&&e.Kind is not ("Healing" or "Ward");
     public FloatEvent[] Read(double now)=>events.Where(e=>now>=e.Start&&now-e.Start<5).ToArray();
     public static (float X,float Y,float Alpha) Arc(FloatEvent e,double now,Appearance a)
     {
         float age=(float)Math.Max(0,now-e.Start),p=Math.Clamp(age/a.Lifetime,0,1);
-        bool left=e.Incoming||e.Kind is "Healing" or "Ward" or "Evade" or "Resist";
+        if(e.Kind=="Healing")return(0,-a.HealOffset-a.Rise*p-e.Slot*8,Math.Clamp((1-p)*4,0,1));
+        bool left=e.Incoming;
         float bend=Math.Min(a.Curve,a.Gap-24),spacing=44-26*a.Overlap;
         return ((left?-1:1)*(a.Gap-bend*p*p),-a.Rise*p-e.Slot*spacing,Math.Clamp((1-p)*4,0,1));
     }
@@ -58,13 +66,14 @@ public sealed class CombatEngine(string server,string character)
     private static readonly Regex WardReady=Rx(@"^Your runic ward is fully inscribed, absorbing your next (?<n>[\d,]+) points of damage\.$");
     private static readonly Regex WardSpent=Rx(@"^Your runic ward (?:shatters|fades) after absorbing (?<n>[\d,]+) points of damage\.$");
     private static readonly Regex SimpleIncoming=Rx(@"^(?:Critical hit! )?(?<mob>.+?) (?:hits|strikes|shoots) you for (?<damage>[\d,]+) points? of (?<element>[A-Za-z]+) damage!$");
+    private static readonly Regex UnknownIncoming=Rx(@"^(?:Critical hit! )?(?<mob>.+?) \w+ you for (?<damage>[\d,]+) points? of (?<element>[A-Za-z]+) damage!$");
     private static int Number(string s)=>int.TryParse(s.Replace(",",""),out int n)&&n>=0?n:0;
     public bool Observe(string raw,int type,DateTime utc,double now)
     {
         if(!Native(raw,type))return false;string text=Regex.Replace(raw.Trim(),@"^\d{2}:\d{2}:\d{2}\s+","");var open=Opener.Match(text);
         if(open.Success)
         {
-            Pause(utc);Current=new(){Server=server,Character=character,Name=open.Groups["name"].Value,Opened=utc};Runs.Add(Current);if(Runs.Count>50)Runs.RemoveAt(0);Revision++;return true;
+            Pause(utc);Current=new(){Server=server,Character=character,ParserVersion="0.1.1",Name=open.Groups["name"].Value,Opened=utc};Runs.Add(Current);if(Runs.Count>50)Runs.RemoveAt(0);Revision++;return true;
         }
         var realm=Realm.Match(text);
         if(realm.Success)
@@ -91,26 +100,46 @@ public sealed class CombatEngine(string server,string character)
             var killer=Regex.Match(text,@"^(?<mob>.+?)'s attack stops you cold!");
             AddDeath(new(utc,killer.Success?killer.Groups["mob"].Value:"Unspecified killer",damage,hp,max,Math.Max(0,damage-hp),text),now);return true;
         }
+        if(TryIncomingEffect(text,out string effectKind,out string effectLabel))
+        {
+            Session.IncomingEffects[effectLabel]=Session.IncomingEffects.GetValueOrDefault(effectLabel)+1;
+            if(Inside&&Current is {Cleared:null} affected){affected.Stats.IncomingEffects[effectLabel]=affected.Stats.IncomingEffects.GetValueOrDefault(effectLabel)+1;Revision++;}
+            Floats.Add(now,effectKind,effectLabel,incoming:true);return true;
+        }
         var ward=WardReady.Match(text);if(ward.Success){Utility("Ward",Number(ward.Groups["n"].Value),"WARD READY",now,true);return true;}
         ward=WardSpent.Match(text);if(ward.Success){Utility("Ward",Number(ward.Groups["n"].Value),"ABSORBED",now,false);return true;}
         if(text=="You catch your second wind."){Utility("Second Wind",0,"SECOND WIND",now);return true;}
         if(text is "Your frenzy subsides." or "Your killer instinct fades."){Utility("Class status",0,text.TrimEnd('.').ToUpperInvariant(),now);return true;}
         if(!parser.TryParse(text,character,out var e))
         {
-            var hit=SimpleIncoming.Match(text);if(!hit.Success)return false;
-            e=new(){Direction="Incoming",Result="Damage",AttackType="Melee/Missile",Component="Defense",Mob=hit.Groups["mob"].Value,Damage=Number(hit.Groups["damage"].Value),Element=hit.Groups["element"].Value};
+            var hit=SimpleIncoming.Match(text);bool physical=hit.Success;if(!physical)hit=UnknownIncoming.Match(text);if(!hit.Success)return false;
+            e=new(){Direction="Incoming",Result="Damage",AttackType=physical?"Melee/Missile":"Unknown",Component="Defense",Mob=hit.Groups["mob"].Value,Damage=Number(hit.Groups["damage"].Value),Element=hit.Groups["element"].Value,Critical=text.StartsWith("Critical hit!",StringComparison.Ordinal)};
         }
         e.Raw=""; // Only explicit server death notices survive as message text.
         if(e.Result=="Death"){if(lastDeath==null||(utc-lastDeath.Utc).TotalSeconds>2)AddDeath(new(utc,"Unspecified killer",null,null,null,null,text),now);return true;}
         Add(Session,e);sessionRate.Add(e,now);
         if(Inside&&Current is {Cleared:null} active){Add(active.Stats,e);runRate.Add(e,now);Revision++;}
         string kind=e.Direction=="Healing"?"Healing":e.Direction=="Incoming"?e.Result=="Damage"?"Taken":e.Result:e.SneakAttack?"Sneak":e.Critical?"Critical":e.Component=="Direct"?e.Element:e.Component;
-        if(e.Result=="Damage"&&e.Damage>0)Floats.Add(now,kind,e.Direction=="Incoming"?"HIT":e.Component=="Direct"?e.SneakAttack?"SNEAK":"":e.Component.ToUpperInvariant(),e.Mob,e.Damage,e.Direction=="Incoming",e.Critical);
-        else if(e.Result=="Healing"&&e.Amount>0)Floats.Add(now,"Healing",e.Component=="PeriodicHeal"?"PERIODIC HEAL":"HEAL",e.Recipient,e.Amount);
+        if(e.Result=="Damage"&&e.Damage>0)Floats.Add(now,kind,e.Direction=="Incoming"?"HIT":e.Component=="Direct"?e.SneakAttack?"SNEAK":"":e.Component.ToUpperInvariant(),e.Mob,e.Damage,e.Direction=="Incoming",e.Critical,e.AttackType);
+        else if(e.Result=="Healing"&&e.Amount>0)Floats.Add(now,"Healing",e.Component=="Summons"?"PET HEAL":"HEAL",e.Recipient,e.Amount,incoming:true,critical:e.Critical);
         else if(e.Result is "Evade" or "Resist"&&e.Direction=="Incoming")Floats.Add(now,kind,e.Result.ToUpperInvariant(),e.Mob,0,true);
+        else if(e.Result=="Block")Floats.Add(now,"Ward","BLOCK",e.Mob,incoming:true);
+        else if(e.Result is "Evade" or "Resist"&&e.Direction=="Outgoing")Floats.Add(now,"Utility",e.Result=="Evade"?"EVADED":"RESISTED",e.Mob);
         else if(e.Result=="Kill")Floats.Add(now,"Kill","DOWN",e.Mob);
         else if(e.Direction=="Utility")Floats.Add(now,"Utility",e.Ability.Length>0?e.Ability:e.Result,e.Mob);
         return true;
+    }
+    private static bool TryIncomingEffect(string text,out string kind,out string label)
+    {
+        kind=label="";
+        var hit=Regex.Match(text,@"^.+? casts? (?<spell>.+?) on you(?:, refreshing .+)?[.!]?$",RegexOptions.CultureInvariant,TimeSpan.FromMilliseconds(50));
+        if(!hit.Success||text.Contains("surpassed",StringComparison.OrdinalIgnoreCase))return false;
+        string spell=hit.Groups["spell"].Value;
+        if(Regex.IsMatch(spell,@"\bImperil Other(?: [IVX]+)?$")){kind="Imperil";label="IMPERIL";return true;}
+        var vuln=Regex.Match(spell,@"\b(Lightning|Electrical|Cold|Frost|Fire|Flame|Acid|Nether|Bludgeoning|Slashing|Piercing) Vulnerability Other(?: [IVX]+)?$",RegexOptions.IgnoreCase);
+        if(!vuln.Success)return false;
+        (kind,label)=vuln.Groups[1].Value.ToLowerInvariant() switch
+        {"lightning" or "electrical"=>("VulnLightning","LIGHT VULN"),"cold" or "frost"=>("VulnFrost","FROST VULN"),"fire" or "flame"=>("VulnFire","FIRE VULN"),"acid"=>("VulnAcid","ACID VULN"),"nether"=>("VulnNether","NETHER VULN"),"bludgeoning"=>("VulnBludgeon","BLUDGE VULN"),"slashing"=>("VulnSlash","SLASH VULN"),_=>("VulnPierce","PIERCE VULN")};return true;
     }
     private static void Add(Totals t,CombatEventRecord e)
     {
@@ -124,7 +153,8 @@ public sealed class CombatEngine(string server,string character)
         {
             t.Taken+=e.Damage;
             if(e.AttackType=="Magic"){t.MagicDamage+=e.Damage;t.MagicHits++;t.MagicHigh=Math.Max(t.MagicHigh,e.Damage);if(m!=null){m.MagicDamage+=e.Damage;m.MagicHits++;m.MagicHigh=Math.Max(m.MagicHigh,e.Damage);}}
-            else {t.PhysicalDamage+=e.Damage;t.PhysicalHits++;t.PhysicalHigh=Math.Max(t.PhysicalHigh,e.Damage);if(m!=null){m.PhysicalDamage+=e.Damage;m.PhysicalHits++;m.PhysicalHigh=Math.Max(m.PhysicalHigh,e.Damage);}}
+            else if(e.AttackType=="Melee/Missile") {t.PhysicalDamage+=e.Damage;t.PhysicalHits++;t.PhysicalHigh=Math.Max(t.PhysicalHigh,e.Damage);if(m!=null){m.PhysicalDamage+=e.Damage;m.PhysicalHits++;m.PhysicalHigh=Math.Max(m.PhysicalHigh,e.Damage);}}
+            else {t.UnclassifiedDamage+=e.Damage;t.UnclassifiedHits++;if(m!=null){m.UnclassifiedDamage+=e.Damage;m.UnclassifiedHits++;}}
         }
         else if(e.Result=="Healing"){if(e.Recipient==""||e.Component!="Summons")t.Healing+=e.Amount;string source=e.Component=="PeriodicHeal"?"Periodic healing (source unspecified)":e.Component=="Recovery"?"Healing kit":e.Ability.Length>0?e.Ability:e.Component;t.HealingSources[source]=t.HealingSources.GetValueOrDefault(source)+e.Amount;}
         else if(e.Direction=="Incoming"&&e.Result=="Evade"){t.Evades++;if(m!=null)m.Evades++;}
@@ -136,14 +166,14 @@ public sealed class CombatEngine(string server,string character)
     private void Utility(string kind,int n,string label,double now,bool ready=false)
     {
         void AddTo(Totals t){t.Procs[kind]=t.Procs.GetValueOrDefault(kind)+1;if(kind=="Ward"){if(ready)t.WardCapacity=n;else{t.WardAbsorbed+=n;t.WardCapacity=0;}}}
-        AddTo(Session);if(Inside&&Current is {Cleared:null} r){AddTo(r.Stats);Revision++;}Floats.Add(now,kind=="Ward"?"Ward":"Utility",label,amount:n);
+        AddTo(Session);if(Inside&&Current is {Cleared:null} r){AddTo(r.Stats);Revision++;}Floats.Add(now,kind=="Ward"?"Ward":"Utility",label,amount:n,incoming:true);
     }
     private void AddDeath(DeathRecord death,double now)
     {
         if(lastDeath!=null&&(death.Utc-lastDeath.Utc).TotalSeconds<2&&lastDeath.Message==death.Message)return;
         void Save(Totals t){if(t.Deaths.Count>0&&(death.Utc-t.Deaths[^1].Utc).TotalSeconds<2&&t.Deaths[^1].Blow==null)t.Deaths.RemoveAt(t.Deaths.Count-1);else t.DeathCount++;t.Deaths.Add(death);if(t.Deaths.Count>64){t.Deaths.RemoveAt(0);t.Truncated=true;}}
         Save(Session);if(Inside&&Current is {Cleared:null} r){Save(r.Stats);Revision++;}
-        lastDeath=death;Floats.Add(now,"Death","DOWN"+(death.Overkill.HasValue?" · "+death.Overkill+" OVERKILL":""));Tick(death.Utc);
+        lastDeath=death;Floats.Add(now,"Death","DOWN"+(death.Overkill.HasValue?" · "+death.Overkill+" OVERKILL":""),incoming:true);Tick(death.Utc);
     }
     public void Enter(DateTime utc)
     {if(Current is not {Ended:null} r)return;Inside=true;EntryConfirmed=true;tick=utc;r.Entered??=utc;Revision++;}

@@ -1,4 +1,4 @@
-# ACAI2 Combat v0.1.0 — standalone Rynth plugin
+# ACAI2 Combat v0.1.1 — standalone Rynth plugin
 
 A separate read-only combat meter and floating text app. Requires managed CoreCLR
 RynthCore API 92+ and the engine's matching ImGui bindings. It does not need
@@ -15,9 +15,38 @@ vendor/bank or renders debuff icons. Settings and data are separate from Threads
 3. Open with `/acai2combat`. Setup opens the settings; its Preview button shows
    synthetic effects for 30 seconds without changing real statistics.
 4. To avoid duplicate floating numbers, enter `/rv plates numbers off`.
-   Optionally turn off gain text with `/rv plates gains off`. These commands
+   Keep floating XP/Luminance with `/rv plates gains on`. These commands
    leave Rynth's nameplates and debuff icons enabled. The app does not change
    Rynth settings automatically. Restore either with the command ending in `on`.
+
+## v0.1.1 display and defense changes
+
+Incoming damage/effects scroll left; outgoing attacks/procs scroll right. Healing
+rises above the center anchor, with a Healing height slider to position it over
+your character's head. This remains a fixed screen anchor, not world tracking.
+Quiet hit size/opacity soften normal hits. Critical emphasis enlarges every
+recognized critical kind, including procs, summons and healing when the server
+explicitly marks it critical. Crits get a bright pulse/starburst/ring; heals use
+spiraling green-gold motes and a halo. Turn Subdued effects off to see this art.
+
+Incoming landed vulns use short names: LIGHT VULN (purple), FROST VULN (blue),
+ACID VULN (green), FIRE VULN (orange), NETHER VULN (violet), physical vuln labels,
+and IMPERIL (warm amber). Colors are editable. These are event notifications,
+not a second debuff-icon/duration tracker. Expirations, resisted/surpassed casts
+and quoted player chat do not create landed-effect notifications. Refreshes may
+appear and count as an application notice. Effects are not invented damage hits.
+
+Explicit spell evidence is classified before physical-looking body-hit text.
+Unknown incoming delivery remains in total damage taken but is excluded from
+physical and spell defense denominators. Physical still combines melee/missile;
+weapon attacks with elemental damage are not automatically assumed to be spells.
+Incoming generic spell resists cannot always identify whether a damage or debuff
+spell was resisted, so rates describe the supported observed outcomes. Ambiguous
+incoming damage has its own detail counter rather than biasing either rate.
+
+Old saved run aggregates cannot be re-parsed because ordinary chat is not retained.
+They are preserved and labeled as earlier-parser totals. Use New session for a
+clean session sample; the next new Thread starts a clean run under the new parser.
 
 ## Automatic meter modules
 
@@ -45,8 +74,10 @@ messages are ignored rather than assigned invented damage or class mechanics.
 
 Colored numbers have adjustable black outlines, bold weight, size, intensity and
 alpha. Acid scatters droplets; poison trails wisps; heals produce rising crosses
-and rings; crits burst with rays. Rapid same-target ticks coalesce visually while
-actual damage totals retain each event. The event queue is bounded to keep busy
+and rings; crits burst with rays. Identical same-kind hits within 0.6 seconds coalesce visually as `380 ×3`,
+including across targets. Their individual value is not replaced by a summed
+number; different amounts, directions, delivery types and critical status stay
+separate. Actual damage totals retain every hit. The event queue is bounded to keep busy
 fights readable. Subdued mode removes decorative art; floating text can be disabled
 without hiding the meter. No debuff icons duplicate RynthVision.
 
