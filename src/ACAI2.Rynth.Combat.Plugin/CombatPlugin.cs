@@ -2,11 +2,12 @@ using System.Collections.Concurrent;
 using System.Text.Json;
 using ACAI2.Rynth.Combat.Core;
 using RynthCore.PluginCore;
+using RynthCore.PluginSdk;
 namespace ACAI2.Rynth.Combat.Plugin;
 
 public sealed class CombatPlugin : RynthPluginBase
 {
-    public const string Version="0.1.3";
+    public const string Version="0.1.4";
     public override uint MinimumApiVersion=>92;
     private readonly ConcurrentQueue<(string Text,int Type,DateTime Utc,double Now,long Epoch,uint EffectId,bool Added,double Duration)> incoming=new();
     private readonly ConcurrentQueue<string> commands=new();
@@ -160,7 +161,7 @@ public sealed class CombatPlugin : RynthPluginBase
     public override void OnRender()
     {
         if(player==0||renderFailed)return;
-        try{lock(settingsGate)panel.Draw(character,appearance,Volatile.Read(ref view),Now,s=>{if(commands.Count<16)commands.Enqueue(s);});}
+        try{lock(settingsGate)panel.Draw(character,appearance,Volatile.Read(ref view),Now,s=>{if(commands.Count<16)commands.Enqueue(s);},Host.GetUiFont(RynthUiFont.Ui18),Host.GetUiFont(RynthUiFont.UiBold14));}
         catch(Exception ex){renderFailed=true;Local("Combat panel hidden after display error: "+ex.GetType().Name+" "+ex.Message);}
     }
     private void End()

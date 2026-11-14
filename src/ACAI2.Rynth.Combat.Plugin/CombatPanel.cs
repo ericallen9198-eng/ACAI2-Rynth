@@ -11,7 +11,7 @@ internal sealed class CombatPanel
     private string selected="";
     public void Reset(){place=true;Setup=false;Dirty=false;selected="";}
     private static Vector4 Accent=>new(.38f,.9f,.77f,1);
-    public void Draw(string character,Appearance a,CombatView v,double now,Action<string> command)
+    public void Draw(string character,Appearance a,CombatView v,double now,Action<string> command,IntPtr floatFont,IntPtr boldFont)
     {
         if(ImGui.GetCurrentContext()==IntPtr.Zero)return;int f=ImGui.GetFrameCount();if(f==frame)return;frame=f;
         Vector2 screen=ImGui.GetIO().DisplaySize;if(screen.X<=0||screen.Y<=0)return;
@@ -48,7 +48,7 @@ internal sealed class CombatPanel
             finally{ImGui.End();ImGui.PopStyleColor();ImGui.PopStyleVar();}
         }
         if(Setup)Settings(a,v,command);
-        if(a.Floating||v.Preview)Floating(a,v.Floats,screen,now);
+        if(a.Floating||v.Preview)Floating(a,v.Floats,screen,now,floatFont,boldFont);
     }
     private static bool Show(Appearance a,Totals t,string kind)=>a.Modules.TryGetValue(kind,out bool enabled)?enabled:kind=="Sneak"?t.Sneaks>0:kind=="Reckless"?t.RecklessIncoming.Count+t.RecklessOutgoing.Count>0:t.Components.ContainsKey(kind)||t.Procs.ContainsKey(kind);
     private static void Tip(string text){if(ImGui.IsItemHovered()){ImGui.BeginTooltip();ImGui.PushTextWrapPos(420);ImGui.TextUnformatted(text);ImGui.PopTextWrapPos();ImGui.EndTooltip();}}
@@ -175,50 +175,109 @@ internal sealed class CombatPanel
         }
         finally{ImGui.End();}
     }
-    private static void Floating(Appearance a,FloatEvent[] events,Vector2 viewport,double now)
+    private static Vector2 Pixel(Vector2 p)=>new(MathF.Round(p.X),MathF.Round(p.Y));
+    private static void Lettering(ImDrawListPtr draw,string text,Vector2 p,float size,Vector4 color,float outline)
+    {
+        p=Pixel(p);size=MathF.Round(size);
+        uint black=ImGui.ColorConvertFloat4ToU32(new Vector4(0,0,0,color.W*.94f));
+        int edge=(int)MathF.Round(outline);
+        if(edge>0)for(int x=-1;x<=1;x++)for(int y=-1;y<=1;y++)if(x!=0||y!=0)
+            draw.AddText(ImGui.GetFont(),size,p+new Vector2(x*edge,y*edge),black,text);
+        // One fill only: offset duplicate fills blur the glyph edges.
+        draw.AddText(ImGui.GetFont(),size,p,ImGui.ColorConvertFloat4ToU32(color),text);
+    }
+    private static void Floating(Appearance a,FloatEvent[] events,Vector2 viewport,double now,IntPtr floatFont,IntPtr boldFont)
     {
         var draw=ImGui.GetForegroundDrawList();Vector2 anchor=new(viewport.X*a.AnchorX,viewport.Y*a.AnchorY);
         foreach(var e in events)
         {
             double age=now-e.Start;if(age<0||age>=a.Lifetime)continue;
             var arc=FloatStream.Arc(e,now,a);float alpha=arc.Alpha;
-            string label=FloatStream.Format(e);
-            if(label.Length==0)continue;
-            bool regular=FloatStream.Regular(e);
-            float size=a.FontSize*(e.Critical?a.CritScale:regular?a.RegularScale:1)*(1+(e.Critical?.13f:0)*(float)Math.Exp(-age*9));
+            string label=FloatStream.Format(e);if(label.Length==0)continue;
+            bool regular=FloatStream.Regular(e),impact=e.Critical||e.Kind=="Critical";
+            // A short size step rather than continuous fractional scaling keeps glyphs steadier.
+            float size=MathF.Round(a.FontSize*(impact?a.CritScale:regular?a.RegularScale:1)*(impact&&age<.09?1.08f:1));
             if(regular)alpha*=a.RegularAlpha;
-            Vector2 p=anchor+new Vector2(arc.X,arc.Y);float width=ImGui.CalcTextSize(label).X*size/ImGui.GetFontSize();
-            p.X=Math.Clamp(p.X-width/2,2,Math.Max(2,viewport.X-width-2));p.Y=Math.Clamp(p.Y,2,Math.Max(2,viewport.Y-size-2));
-            Vector4 c=Color(a,e.Kind);float l=(c.X+c.Y+c.Z)/3;float saturation=(e.Critical?1:a.Intensity)*(a.Subdued?.65f:1);c.X=l+(c.X-l)*saturation;c.Y=l+(c.Y-l)*saturation;c.Z=l+(c.Z-l)*saturation;if(e.Critical){float flash=(float)Math.Exp(-age*7)*.35f;c.X+= (1-c.X)*flash;c.Y+=(1-c.Y)*flash;c.Z+=(1-c.Z)*flash;}c.W*=alpha;
-            uint tint=ImGui.ColorConvertFloat4ToU32(c),black=(uint)(alpha*235)<<24;
-            if((!regular||e.Kind is "Acid" or "Poison" or "Sneak")&&!a.Subdued&&a.Intensity>.05f)Art(draw,e,p,new(width,size),c,age,a.Intensity*(regular?.35f:1));
-            if(a.Outline>0)for(int x=-1;x<=1;x++)for(int y=-1;y<=1;y++)if(x!=0||y!=0)draw.AddText(ImGui.GetFont(),size,p+new Vector2(x,y)*a.Outline,black,label);
-            draw.AddText(ImGui.GetFont(),size,p,tint,label);if(a.Bold&&!regular)draw.AddText(ImGui.GetFont(),size,p+new Vector2(.65f,0),tint,label);
+            IntPtr chosen=a.Bold&&!regular&&boldFont!=IntPtr.Zero?boldFont:floatFont;
+            bool pushed=chosen!=IntPtr.Zero;if(pushed)ImGui.PushFont(new ImFontPtr(chosen));
+            try
+            {
+                string headline=label,caption="";
+                if(impact&&e.Amount>0)
+                {
+                    headline=(e.Kind=="Healing"?"+":e.Incoming?"-":"")+e.Amount.ToString("N0")+(e.Count>1?" ×"+e.Count:"");
+                    caption="CRIT"+(e.Label.Length>0?" · "+e.Label:"");
+                }
+                float Width(string text,float pixels)=>ImGui.CalcTextSize(text).X*pixels/ImGui.GetFontSize();
+                float captionSize=MathF.Round(Math.Max(12,size*.52f));
+                float width=Math.Max(Width(headline,size),Width(caption,captionSize));
+                float height=size+(caption.Length>0?captionSize+3:0);
+                Vector2 p=anchor+new Vector2(arc.X,arc.Y);
+                p.X=Math.Clamp(p.X-width/2,4,Math.Max(4,viewport.X-width-4));p.Y=Math.Clamp(p.Y,4,Math.Max(4,viewport.Y-height-4));p=Pixel(p);
+                Vector4 c=Color(a,e.Kind);
+                // Incoming crits retain an unmistakable coral danger accent; elemental text keeps its hue.
+                if(impact&&e.Incoming&&e.Kind=="Taken")c=new(1,.32f,.29f,c.W);
+                float l=(c.X+c.Y+c.Z)/3,saturation=(impact?1:a.Intensity)*(a.Subdued?.65f:1);
+                c.X=l+(c.X-l)*saturation;c.Y=l+(c.Y-l)*saturation;c.Z=l+(c.Z-l)*saturation;c.W*=alpha;
+                if(!a.Subdued&&a.Intensity>.05f&&!regular)Art(draw,e,p,new(width,height),c,age,a.Intensity);
+                Lettering(draw,headline,p+new Vector2((width-Width(headline,size))/2,0),size,c,a.Outline);
+                if(caption.Length>0)Lettering(draw,caption,p+new Vector2((width-Width(caption,captionSize))/2,size+3),captionSize,c,a.Outline);
+            }
+            finally{if(pushed)ImGui.PopFont();}
         }
     }
     private static void Art(ImDrawListPtr d,FloatEvent e,Vector2 p,Vector2 text,Vector4 color,double age,float intensity)
     {
-        Vector2 center=p+text*.5f;float t=(float)age;
+        float t=(float)age;Vector2 center=p+text*.5f;
         uint Tint(float alpha){var c=color;c.W*=Math.Clamp(alpha*intensity,0,1);return ImGui.ColorConvertFloat4ToU32(c);}
-        if(e.Kind=="Acid")
+        // Decoration stays outside the lettering's bounding box.
+        if(e.Kind=="Healing")
         {
-            for(int i=0;i<6;i++){float angle=i*1.047f+e.Id*.7f,travel=8+22*t;var q=center+new Vector2(MathF.Cos(angle)*travel,MathF.Sin(angle)*travel*.55f+8*t*t);d.AddCircleFilled(q,Math.Max(1,3-t),Tint(.5f),8);}
+            float fade=MathF.Exp(-t*1.8f),r=8+24*Math.Min(t,1);
+            Vector2 halo=new(center.X,p.Y+text.Y+9);
+            d.AddEllipse(halo,new(r,r*.26f),Tint(fade*.6f),0,24,1.5f);
+            for(int side=-1;side<=1;side+=2)for(int i=0;i<4;i++)
+            {
+                float phase=t*3+i*.8f;
+                Vector2 q=new(center.X+side*(text.X*.5f+10+MathF.Sin(phase)*4),p.Y+text.Y-i*9-t*12);
+                d.AddCircleFilled(Pixel(q),1.5f,Tint(fade*.65f),6);
+            }
         }
-        else if(e.Kind=="Poison")
+        else if(e.Kind is "Acid" or "Poison")
         {
-            for(int j=0;j<2;j++)for(int i=0;i<7;i++){float a=i*.4f+t*3+j*2;Vector2 q=new(p.X-10-j*7+MathF.Sin(a)*5,p.Y+text.Y-i*4-t*8);d.AddCircleFilled(q,1.3f+i*.15f,Tint(.16f+i*.035f),8);}
+            for(int side=-1;side<=1;side+=2)for(int i=0;i<3;i++)
+            {
+                Vector2 q=new(center.X+side*(text.X*.5f+8+i*4),center.Y+(i-1)*7+t*9);
+                d.AddCircleFilled(Pixel(q),e.Kind=="Acid"?2:1.3f,Tint(MathF.Exp(-t*2)*.55f),6);
+            }
         }
-        else if(e.Kind=="Healing")
+        if(e.Critical||e.Kind is "Critical" or "Kill")
         {
-            for(int strand=0;strand<2;strand++)for(int i=0;i<6;i++){float q=i*.42f+t*3+strand*MathF.PI;Vector2 mote=center+new Vector2(MathF.Sin(q)*(18-i*1.5f),8-i*9-t*12);d.AddCircleFilled(mote,1.8f,Tint(.35f),8);}
-            float r=8+(t%1)*28;d.AddCircle(center,r,Tint(.22f*(1-t%1)),24,1.2f);for(int i=0;i<3;i++){var q=center+new Vector2((i-1)*23,-10-t*15-i*9);d.AddLine(q-new Vector2(3,0),q+new Vector2(3,0),Tint(.4f),1.5f);d.AddLine(q-new Vector2(0,3),q+new Vector2(0,3),Tint(.4f),1.5f);}}
-        if(e.Critical||e.Kind=="Critical"||e.Kind=="Kill")
-        {
-            float pop=MathF.Exp(-t*7);d.AddCircleFilled(center,5+8*pop,Tint(pop*.25f),16);
-            float fade=MathF.Exp(-t*5);for(int i=0;i<8;i++){float angle=i*MathF.PI/4;Vector2 dir=new(MathF.Cos(angle),MathF.Sin(angle));d.AddLine(center+dir*(15+18*t),center+dir*(22+35*t),Tint(fade),2);}d.AddCircle(center,8+50*t,Tint(fade*.4f),32,1.5f);}
+            float fade=MathF.Exp(-t*5),travel=Math.Min(t,.5f)*25;
+            // Open angular brackets frame the impact without a filled glow over the glyphs.
+            for(int side=-1;side<=1;side+=2)
+            {
+                float x=center.X+side*(text.X*.5f+7+travel),y=p.Y-3;
+                d.AddLine(Pixel(new(x+side*7,y+9)),Pixel(new(x,y)),Tint(fade),2);
+                d.AddLine(Pixel(new(x,y)),Pixel(new(x-side*7,y)),Tint(fade),2);
+                d.AddLine(Pixel(new(x,p.Y+text.Y)),Pixel(new(x-side*7,p.Y+text.Y)),Tint(fade*.7f),2);
+                for(int i=0;i<3;i++)
+                {
+                    Vector2 q=new(x+side*(7+i*7+travel),center.Y+(i-1)*(12+travel));
+                    Vector2 dir=new(side*(5+i*2),(i-1)*4);
+                    d.AddTriangleFilled(Pixel(q),Pixel(q+dir),Pixel(q+new Vector2(side*2,3)),Tint(fade*.8f));
+                }
+            }
+            d.AddLine(Pixel(new(center.X-text.X*.28f,p.Y+text.Y+5)),Pixel(new(center.X+text.X*.28f,p.Y+text.Y+5)),Tint(fade*.7f),2);
+        }
         else if(e.Kind=="Ward")
-        {d.AddCircle(center,Math.Max(text.X*.55f,20),Tint(.15f),6,1.5f);}
+        {d.AddLine(p+new Vector2(-5,text.Y+4),p+new Vector2(text.X+5,text.Y+4),Tint(.35f),1);}
+        else if(e.Kind=="Imperil"||e.Kind.StartsWith("Vuln",StringComparison.Ordinal))
+        {
+            d.AddLine(p+new Vector2(-7,2),p+new Vector2(-7,text.Y-2),Tint(.7f),2);
+            d.AddLine(p+new Vector2(-7,text.Y-2),p+new Vector2(-2,text.Y-2),Tint(.7f),2);
+        }
         else if(e.Kind=="Sneak")
-        {d.AddLine(p-new Vector2(10,-text.Y),p+new Vector2(text.X*.2f,-5),Tint(MathF.Exp(-t*3)*.7f),2);}
+        {d.AddLine(p+new Vector2(-7,text.Y),p+new Vector2(-2,0),Tint(MathF.Exp(-t*3)*.7f),2);}
     }
 }

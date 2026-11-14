@@ -1,4 +1,4 @@
-# ACAI2 Combat v0.1.3 — standalone Rynth plugin
+# ACAI2 Combat v0.1.4 — standalone Rynth plugin
 
 A separate read-only combat meter and floating text app. Requires managed CoreCLR
 RynthCore API 92+ and the engine's matching ImGui bindings. It does not need
@@ -18,6 +18,24 @@ vendor/bank or renders debuff icons. Settings and data are separate from Threads
    Keep floating XP/Luminance with `/rv plates gains on`. These commands
    leave Rynth's nameplates and debuff icons enabled. The app does not change
    Rynth settings automatically. Restore either with the command ending in `on`.
+
+## v0.1.4 floating text redesign
+
+Incoming stays left, outgoing right, and healing rises above the center anchor.
+Regular hits are quiet; crits use a large number with a smaller CRIT caption,
+angular impact brackets and brief shards outside the lettering. Incoming crits
+use coral danger accents; acid/poison crits keep their elemental colors. Healing
+uses a thin halo and rising side motes. Vuln/imperil labels retain elemental colors.
+Subdued effects disables decoration; existing size, color and emphasis controls
+and saved settings remain available.
+
+Text uses engine-supplied fonts, rounded pixel positions, integer outline offsets
+and one fill pass, removing the previous fractional duplicate bold fill. This
+reduces a source of blur; the engine's baked font resolution and selected font
+size still affect sharpness. No engine font atlas is modified. The concept images
+are style references, not a pixel-exact promise or screenshots of this build.
+Use Setup → Preview effects to check both directions and healing without changing
+statistics. Live rendering still needs verification in your game.
 
 ## v0.1.2 big hits and Reckless module
 
