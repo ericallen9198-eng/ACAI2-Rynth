@@ -93,6 +93,7 @@ Separate("Critical hit! Your poison deals 100 additional points of damage to Mob
 Separate("Critical hit! Toe's Fire Elemental hits Mob for 100 damage!",1.3);
 Separate("Critical heal! You receive 100 points of periodic healing.",1.4);
 Check(separated.Floats.Read(1.4).Count(f=>f.Critical)>=4,"critical acid, poison, summons and heals preserve their critical emphasis flag");
+Check(separated.Floats.Read(1.4).Any(f=>f.Kind=="Acid"&&f.Critical)&&separated.Floats.Read(1.4).Any(f=>f.Kind=="Poison"&&f.Critical),"critical procs keep their elemental colors and art while receiving the independent critical burst");
 var healFloat=separated.Floats.Read(1.4).Last(f=>f.Kind=="Healing");
 Check(FloatStream.Arc(healFloat,1.4,new()).X==0&&FloatStream.Arc(healFloat,1.4,new()).Y<=-150&&FloatStream.Format(healFloat).StartsWith("+100"),"heals rise above the center anchor and display positive recovery, never incoming damage");
 var repeat=new FloatStream();repeat.Add(0,"Sneak","SNEAK","Mob A",380);repeat.Add(.4,"Sneak","SNEAK","Mob B",380);repeat.Add(.5,"Sneak","SNEAK","Mob C",380);

@@ -119,7 +119,7 @@ public sealed class CombatEngine(string server,string character)
         if(e.Result=="Death"){if(lastDeath==null||(utc-lastDeath.Utc).TotalSeconds>2)AddDeath(new(utc,"Unspecified killer",null,null,null,null,text),now);return true;}
         Add(Session,e);sessionRate.Add(e,now);
         if(Inside&&Current is {Cleared:null} active){Add(active.Stats,e);runRate.Add(e,now);Revision++;}
-        string kind=e.Direction=="Healing"?"Healing":e.Direction=="Incoming"?e.Result=="Damage"?"Taken":e.Result:e.SneakAttack?"Sneak":e.Critical?"Critical":e.Component=="Direct"?e.Element:e.Component;
+        string kind=e.Direction=="Healing"?"Healing":e.Direction=="Incoming"?e.Result=="Damage"?"Taken":e.Result:e.Component!="Direct"?e.Component:e.SneakAttack?"Sneak":e.Critical?"Critical":e.Element;
         if(e.Result=="Damage"&&e.Damage>0)Floats.Add(now,kind,e.Direction=="Incoming"?"HIT":e.Component=="Direct"?e.SneakAttack?"SNEAK":"":e.Component.ToUpperInvariant(),e.Mob,e.Damage,e.Direction=="Incoming",e.Critical,e.AttackType);
         else if(e.Result=="Healing"&&e.Amount>0)Floats.Add(now,"Healing",e.Component=="Summons"?"PET HEAL":"HEAL",e.Recipient,e.Amount,incoming:true,critical:e.Critical);
         else if(e.Result is "Evade" or "Resist"&&e.Direction=="Incoming")Floats.Add(now,kind,e.Result.ToUpperInvariant(),e.Mob,0,true);
