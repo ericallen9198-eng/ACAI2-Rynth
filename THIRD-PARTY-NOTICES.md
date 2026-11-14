@@ -37,3 +37,12 @@ Combat v0.1.2 embeds a compact known-ID/hostile-effect reference derived from th
 spell ID/name facts in MIT-licensed RynthSuite Combat/SpellData.txt at 44571693.
 See origin/COMBAT-SPELL-METADATA.md and the retained RynthSuite license. This is
 reference metadata, not a RynthAi runtime dependency or copied bot implementation.
+
+Combat's optional read-only requested-power sampler uses the published retail
+x86 ClientCombatSystem layout previously validated by ACAI2 and documented by
+UtilityBelt.Service (MIT, revision a3ef224a2c08f0e086cad62de2717030b42279a8).
+Its constants also agree with the pinned RynthCore ClientCombatHooks getter.
+See THIRD-PARTY-NOTICES/UtilityBelt-Service.txt. No UtilityBelt binary is required;
+this sampler validates the getter/call sites and reads process memory only. It
+never invokes combat methods or changes the power setting. Unsupported clients
+show power unavailable rather than guessing a percentage.

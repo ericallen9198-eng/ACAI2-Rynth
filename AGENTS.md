@@ -100,3 +100,16 @@ or game actions. Use pre-hit samples/deltas; missing/stale/partial data is unkno
 not proof of no debuffs. Preserve Reckless as hit metadata, not part of a mob name
 or an inferred damage multiplier/skill owner. Never retroactively invent context
 for old aggregates, or double-count a correlated hit and its killing-blow notice.
+
+The user now authorizes Normal/Compact/Ultra-compact modes with one shared per-pack
+DPS lifecycle and per-character appearance persistence. Locked ultra digits use
+only the existing foreground floating-text renderer; unlocking may reuse the
+existing meter's transparent drag target, not a new window system. Reckless is now
+an outgoing-only recent-tag ON/OFF indicator; stop accumulating/displaying incoming
+Reckless while preserving its actual physical damage and legacy files. A validated
+read-only retail ClientCombatSystem power sample is authorized; no writes, combat
+method calls, hooks or fabricated percentages. Kinetic ready/release/expiry are
+separate states. A release may decorate the next observed direct weapon hit, but
+never add that damage twice or invent an amount when correlation is unavailable.
+Do not suppress ordinary equal chat lines globally: genuine hits, ticks and evades
+can be identical. Preserve the separate physical/spell/periodic classification.

@@ -116,6 +116,17 @@ public static class ImpactArt
         float length=size.X*(.28f+.20f*MathF.Exp(-(float)age*3));
         polygon([p+new Vector2(8,size.Y-2),p+new Vector2(length,size.Y-2),p+new Vector2(length-3,size.Y),p+new Vector2(8,size.Y)],new(color.X,color.Y,color.Z,color.W*.8f));
     }
+    public static void Charge(Vector2 p,Vector2 size,Vector4 color,double age,float strength,Action<Vector2,Vector2,Vector4,float> line)
+    {
+        float fade=MathF.Exp(-(float)age*1.2f)*strength;Vector4 tint=new(color.X,color.Y,color.Z,color.W*fade);
+        for(int side=-1;side<=1;side+=2)
+        {
+            float x=p.X+size.X*.5f+side*(size.X*.5f+10),y=p.Y+size.Y*.5f;
+            line(new(x+side*5,y-12),new(x-side*2,y-1),tint,2.5f);
+            line(new(x-side*2,y-1),new(x+side*4,y+1),tint,2.5f);
+            line(new(x+side*4,y+1),new(x-side*4,y+13),tint,2.5f);
+        }
+    }
     public static void Burst(Vector2 p,Vector2 size,Vector4 color,double age,float strength,Action<Vector2,Vector2,Vector4,float> line,Action<Vector2[],Vector4> polygon)
     {
         float t=(float)age,fade=MathF.Exp(-t*2.2f)*strength,travel=Math.Min(t,.6f)*22;

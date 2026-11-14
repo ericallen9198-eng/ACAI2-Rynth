@@ -1,4 +1,4 @@
-# ACAI2 Combat v0.1.5 — standalone Rynth plugin
+# ACAI2 Combat v0.1.6 — standalone Rynth plugin
 
 A separate read-only combat meter and floating text app. Requires managed CoreCLR
 RynthCore API 92+ and the engine's matching ImGui bindings. It does not need
@@ -18,6 +18,71 @@ vendor/bank or renders debuff icons. Settings and data are separate from Threads
    Keep floating XP/Luminance with `/rv plates gains on`. These commands
    leave Rynth's nameplates and debuff icons enabled. The app does not change
    Rynth settings automatically. Restore either with the command ending in `on`.
+
+## v0.1.6 meter modes, pack DPS and combat cues
+
+Setup → **Display mode** selects **Normal**, **Compact** or **Ultra-compact**.
+Normal keeps the statistics and Details in a tighter 310px layout, with a smaller
+header and less row spacing. Compact shows just the styled DPS digits in a small
+HUD. Ultra-compact draws transparent digits on the existing floating-text layer.
+Locked ultra digits create no input window/widget and do not capture clicks.
+Unlocking reuses the existing meter's window ID as a transparent drag target;
+there is no second window system, renderer or ImGui context.
+
+Commands: `/acai2combat normal`, `compact`, `ultra`, `lock`, `unlock`, `setup`.
+`lock`/`unlock` control ultra digits. Normal/Compact use the existing meter lock.
+Each character keeps mode, digit position/size, lock, colors, layout and the pack
+idle cutoff. Existing profiles default to Normal with ultra click-through locked;
+no saved appearance is reset. Ultra position is saved separately from the meter.
+
+All three modes display the **same per-pack outgoing DPS**, not the old rolling
+60-second outgoing rate. A pack starts on observed attacks/damage/evades/resists/
+blocks and ends after **4 seconds without combat activity** by default (Setup:
+Pack idle cutoff, 2–12 seconds). DPS is outgoing damage divided by the observed
+first-to-last combat-event span, minimum 1 second. It changes with combat events,
+then holds the final value through the idle tail and until the next pack resets
+it. Damage includes direct attacks, procs, summons and reflection once each.
+Healing/status messages cannot start or prolong a pack. Pausing/portaling ends a
+pack. This is an observation heuristic: packs connected by continuous damage or
+attacks remain one pack. Pack state is session-only, not a new persistent log.
+Normal's detailed totals still use the selected Session/Thread scope; incoming
+in/s remains the 60-second rolling rate. Run average DPS remains in Details.
+
+The live **Reckless ON/OFF** indicator only responds to your outgoing tagged
+physical hits. A tag sets ON; four seconds without a tag shows OFF. OFF describes
+recent evidence, not a server skill-toggle query. Incoming Reckless is no longer
+counted/displayed as a class module, including incoming big-hit markers. Legacy
+fields are readable but not reinterpreted or displayed. Outgoing tagged percent,
+average/high/low remain in Details. The stated skill range is 10–90% power.
+A guarded read-only retail x86 sampler reports the **requested power setting**
+from the latest pre-hit sample no more than 500ms old. It does not report the
+instantaneous charging animation, change power, call combat methods or depend on
+UtilityBelt. Missing/stale/unsupported reads show **power unavailable**.
+
+Kinetic readiness, release and expiry are separate lifecycle notices. The main
+readout counts **releases**, not all three messages as procs. Details shows the
+separate counts. Repeated ready states and identical release/expiry callbacks
+within 250ms are suppressed; a new ready transition permits the next release.
+The **KINETIC READY** cue has matching block lettering and electric accents.
+A release decorates the first following observed direct weapon hit within 1.5s
+with its real damage, replacing that hit's ordinary number. Poison, pets and
+spell hits cannot claim it; cleave hits are not summed or counted again. This is
+a next-hit correlation, not a server attack-ID guarantee. An unmatched release
+shows one amount-free cue. Original damage and critical statistics stay intact.
+
+All supported floating labels now use uppercase block lettering. Healing gets
+brighter halos/motes, poison stronger wisps, and acid a local mist/drip effect
+behind its numbers. Colors and Subdued controls remain per-character. Preview
+includes the Kinetic ready/release styles without changing real statistics.
+
+The parser retains one mutually exclusive route for each recognized line. It
+never globally drops equal damage/evade/healing text: separate real events can
+have identical wording in the same batch. Quest-completion announcements are not
+combat kills. Periodic nether damage is tracked separately from physical and
+direct spell attempts. A repeated upstream combat callback without a unique ID
+cannot always be distinguished from a genuine equal hit; no broad rate limit
+silently deletes real damage. New run records carry ParserVersion 0.1.6; old run
+aggregates cannot be retroactively corrected.
 
 ## v0.1.5 custom combat lettering
 
@@ -72,8 +137,8 @@ statistics. Live rendering still needs verification in your game.
 ## v0.1.2 big hits and Reckless module
 
 Details → Thread runs → select a run → Big hits opens saved snapshots. Its
-Reckless IN/OUT summary is shown with that run. ParserVersion remains 0.1.2 for
-this UI-only patch; the parsing/context format is unchanged.
+outgoing Reckless summary is shown with that run. Version 0.1.6 no longer displays
+or accumulates incoming Reckless. Older aggregates remain labeled.
 
 Details → Big hits keeps the **24 largest incoming hit snapshots** for the session
 and each tracked Thread. Default minimum is 100 reported damage; adjust Big hit
@@ -81,7 +146,7 @@ minimum in Setup. Killing-blow notices always qualify for ranking and remain in
 the separate bounded death history even if they fall outside the top 24.
 
 Each snapshot records time, attacker, damage, physical/spell/unknown delivery,
-element, named spell when present, critical and Reckless markers, and effect
+element, named spell when present, critical markers and effect
 context. A matched preceding hit is upgraded to lethal by name/damage within one
 second; the evidence explicitly describes that correlation. Unmatched killing
 blows stay unclassified rather than entering the physical or magic denominator.
@@ -98,14 +163,9 @@ state. Retail Imperil/vuln IDs come from embedded reference metadata, requiring 
 RynthAi plugin or identification actions. Native expiration is used; no duration
 is invented from a spell's nominal base duration. Rynth still owns debuff icons.
 
-Reckless discovers itself from explicit Reckless!/Recklessness! hit prefixes.
-Incoming and outgoing rows separately show tagged physical-hit percentage,
-average, high and low, including zero-damage landed hits and tagged crits.
-Spells, procs, summons and evades do not enter these physical-hit denominators.
-The prefix is preserved as hit metadata and removed from the mob name. A marker
-does not establish which participant owns the skill or prove a damage multiplier.
-Old summaries cannot recover missing low values or at-hit effects. Start a new
-Thread/session for clean new-module percentages; legacy totals remain labeled.
+The current Reckless indicator and outgoing detail summary are described above.
+Old summaries cannot recover missing low values or at-hit effects; legacy totals
+remain labeled. Incoming Reckless is no longer a class readout.
 
 Big-hit context persists with tracked Thread records, with the existing five-second
 save and logout flush. Session-only hits outside a tracked Thread remain in memory
@@ -153,7 +213,7 @@ character's trained skills. Sneak percentage is sneak hits / landed direct physi
 hits, including zero-damage landed hits; magic, pets, poison, acid and reflections
 are excluded. A module can be enabled manually before its first observed event.
 
-The meter shows outgoing DPS and incoming damage/second over the last 60 seconds,
+The meter now shows per-pack outgoing DPS (see above); incoming damage/second uses the last 60 seconds,
 with a denominator ramping from the first damage event to 60 seconds. Totals and
 Thread summaries persist independently of that moving rate. Physical defense
 combines melee and missile because chat does not consistently identify them.

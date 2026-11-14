@@ -33,11 +33,13 @@ static string Frame(double age)
     Line(new(578,115),new(578,650),new(.4f,.6f,.7f,.12f),1);
     b.Append("<path d=\"M550 370 L605 370 L626 468 L610 605 L546 605 L530 468 Z\" fill=\"#243b43\" stroke=\"#35525d\"/><circle cx=\"578\" cy=\"346\" r=\"24\" fill=\"#243b43\" stroke=\"#35525d\"/>");
     Text("INCOMING",235,90,12,muted);Text("HEALING",540,90,12,muted);Text("OUTGOING",790,90,12,muted);
+    Vector2 chargeP=new(730,175);Vector2 chargeSize=new(ImpactLettering.Width("KINETIC READY",25)+26,39);Vector4 chargeColor=new(.44f,.85f,1,1);
+    ImpactArt.Plate(chargeP,chargeSize,chargeColor,age,Poly);ImpactArt.Charge(chargeP+new Vector2(13,7),chargeSize-new Vector2(26,14),chargeColor,age,.85f,Line);ImpactLettering.Draw("KINETIC READY",chargeP+new Vector2(13,7),25,chargeColor,true,Poly);
     // Sample meter uses the same digits as its actual plugin header.
     ImpactArt.Plate(new(24,22),new(285,137),new(.38f,.9f,.77f,1),age,Poly);
     Text("COMBAT / TOE",42,37,13,muted);
     ImpactLettering.Draw("12,480",new(42,63),30,new(.38f,.9f,.77f,1),true,Poly);Text("DPS",193,73,13,muted);
-    Text("Sneak 43.1%    Reckless IN 81.8%",42,111,12,muted);Text("Physical evade 72.4%",42,132,12,muted);
+    Text("Sneak 43.1%    Reckless ON · power 65%",42,111,12,muted);Text("Physical evade 72.4%",42,132,12,muted);
     float drift=(float)Math.Max(0,age-.2)*32;
     void Crit(string number,string caption,Vector2 center,Vector4 color)
     {
@@ -62,7 +64,8 @@ static string Frame(double age)
     Quiet("380","SNEAK ×3",new(785,455),new(.92f,.64f,1,.8f));
     Quiet("281","POISON ×3",new(785,510),acid);
     Text("SPACE RESERVED FOR CHARACTER",459,650,11,muted);
-    Text("0123456789",24,698,11,muted);ImpactLettering.Draw("0123456789",new(24,719),24,gold,true,Poly);
+    Text("COMPACT · DIGITS ONLY",24,681,11,muted);ImpactArt.Plate(new(24,700),new(145,46),new(.38f,.9f,.77f,1),age,Poly);ImpactLettering.Draw("1,473",new(32,705),36,new(.38f,.9f,.77f,1),true,Poly);
+    Text("ULTRA · FLOAT LAYER · LOCK TO CLICK THROUGH",240,681,11,muted);ImpactLettering.Draw("1,473",new(240,705),36,new(.38f,.9f,.77f,1),true,Poly);
     Text("Synthetic design review · shared vector geometry · 100% scale",645,720,12,muted);
     return b.Append("</svg>").ToString();
 }

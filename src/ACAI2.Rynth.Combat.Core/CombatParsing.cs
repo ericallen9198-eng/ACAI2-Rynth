@@ -48,6 +48,7 @@ namespace ACAI2.Rynth.Combat.Core
         private static readonly Regex DrainSelf = Rx("^"+Prefix+@"You gain (?<amount>[\d,]+) points of health due to casting Drain Health Other I on (?<mob>.+?)[.!]?$");
         private static readonly Regex DrainPet = Rx("^"+Prefix+@"Your (?<owner>.+?)'s (?<pet>.+?) gains (?<amount>[\d,]+) points of health due to your Drain Health Other I on (?<mob>.+?)[.!]?$");
         private static readonly Regex PeriodicHeal = Rx("^"+Prefix+@"You receive (?<amount>[\d,]+) points of periodic healing\.$");
+        private static readonly Regex PeriodicTaken = Rx("^"+Prefix+@"You receive (?<damage>[\d,]+) points? of periodic (?<element>[A-Za-z]+) damage[.!]$");
         private static readonly Regex KitHeal = Rx("^"+Prefix+@"You heal yourself for (?<amount>[\d,]+) Health points\. Your .+$");
         private static readonly Regex Block = Rx(@"^You block (?<mob>.+?)'s attack with your shield!$");
         private static readonly Regex ChargeReady = Rx(@"^Kinetic charge at full \((?<amount>\d+)/\d+\) - your next attack spends it\.$");
@@ -146,6 +147,11 @@ namespace ACAI2.Rynth.Combat.Core
             {
                 if (!Special(text, match, "PeriodicHeal", "Healing", "Healing", "None", out record)) return false;
                 record.Recipient = character; record.Ability = "Periodic healing (source unspecified)"; return true;
+            }
+            if ((match = PeriodicTaken.Match(text)).Success)
+            {
+                if(!Special(text,match,"PeriodicDamage","Incoming","Damage",NormalizeElement(match.Groups["element"].Value),out record))return false;
+                record.AttackType="Periodic";return true;
             }
             if ((match = KitHeal.Match(text)).Success)
             {

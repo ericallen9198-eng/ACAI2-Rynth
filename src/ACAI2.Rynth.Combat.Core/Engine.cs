@@ -13,13 +13,14 @@ public sealed class FloatStream
         if(index>=0){var old=events[index];events[index]=old with{Count=old.Count+1,Target=old.Target==target?target:"Multiple targets"};return;}
         events.Add(new(++serial,now,kind,label,target,amount,1,(int)(serial%4),incoming,critical,attackType));if(events.Count>48)events.RemoveAt(0);
     }
+    public static bool HasNumber(FloatEvent e)=>e.Amount>0||e.Kind=="KineticRelease"&&e.AttackType.Length>0;
     public static string Format(FloatEvent e)
     {
         string tag=e.Critical?"CRIT"+(e.Label.Length>0?" "+e.Label:""):e.Label;
-        string label=e.Amount>0?(e.Kind=="Healing"?"+":e.Kind=="Taken"?"-":"")+e.Amount.ToString("N0")+(tag.Length>0?" "+tag:""):tag;
+        string label=HasNumber(e)?(e.Kind=="Healing"?"+":e.Kind=="Taken"?"-":"")+e.Amount.ToString("N0")+(tag.Length>0?" "+tag:""):tag;
         return label+(e.Count>1?" ×"+e.Count:"");
     }
-    public static bool Regular(FloatEvent e)=>!e.Critical&&e.Amount>0&&e.Kind is not ("Healing" or "Ward");
+    public static bool Regular(FloatEvent e)=>!e.Critical&&e.Amount>0&&e.Kind is not ("Healing" or "Ward" or "KineticRelease");
     public FloatEvent[] Read(double now)=>events.Where(e=>now>=e.Start&&now-e.Start<5).ToArray();
     public static (float X,float Y,float Alpha) Arc(FloatEvent e,double now,Appearance a)
     {
@@ -45,6 +46,7 @@ internal sealed class RateRing
 }
 public sealed class CombatEngine(string server,string character)
 {
+    public const string ParserVersion="0.1.6";
     private readonly CombatMessageParser parser=new();
     public Totals Session {get;private set;}=new();
     public List<RunRecord> Runs {get;}=[];
@@ -54,6 +56,9 @@ public sealed class CombatEngine(string server,string character)
     public long Revision {get;private set;}
     public FloatStream Floats {get;}=new();
     public EffectHistory Effects {get;}=new();
+    public PackTracker Pack {get;}=new();
+    public RecklessActivity Reckless {get;}=new();
+    public KineticActivity Kinetic {get;}=new();
     public int BigHitMinimum {get;set;}=100;
     private readonly List<IncomingHit> recentHits=[];
     private readonly HashSet<uint> seen=[];
@@ -76,7 +81,7 @@ public sealed class CombatEngine(string server,string character)
         if(!Native(raw,type))return false;string text=Regex.Replace(raw.Trim(),@"^\d{2}:\d{2}:\d{2}\s+","");var open=Opener.Match(text);
         if(open.Success)
         {
-            Pause(utc);Current=new(){Server=server,Character=character,ParserVersion="0.1.2",Name=open.Groups["name"].Value,Opened=utc};Runs.Add(Current);if(Runs.Count>50)Runs.RemoveAt(0);Revision++;return true;
+            Pause(utc);Current=new(){Server=server,Character=character,ParserVersion=ParserVersion,Name=open.Groups["name"].Value,Opened=utc};Runs.Add(Current);if(Runs.Count>50)Runs.RemoveAt(0);Revision++;return true;
         }
         var realm=Realm.Match(text);
         if(realm.Success)
@@ -102,7 +107,7 @@ public sealed class CombatEngine(string server,string character)
             if(damage<=0||max<=0||hp>max)return false;
             string killer=DeathSource.Parse(text);var context=Effects.At(utc);
             var matched=recentHits.LastOrDefault(h=>h.Damage==damage&&h.Attacker==killer&&(utc-h.Utc).TotalSeconds is >=0 and <=1);
-            var lethal=matched!=null?matched with{KillingBlow=true,HealthBefore=hp,Overkill=Math.Max(0,damage-hp),Evidence="Correlated with preceding hit by attacker and damage within one second"}:new IncomingHit(utc,killer,damage,"Unknown","Unknown","",false,Regex.IsMatch(text,@"^(?:Critical hit! )?Reckless(?:ness)?!"),true,hp,Math.Max(0,damage-hp),context,"Server death notice; attack type unconfirmed");
+            var lethal=matched!=null?matched with{KillingBlow=true,HealthBefore=hp,Overkill=Math.Max(0,damage-hp),Evidence="Correlated with preceding hit by attacker and damage within one second"}:new IncomingHit(utc,killer,damage,"Unknown","Unknown","",false,false,true,hp,Math.Max(0,damage-hp),context,"Server death notice; attack type unconfirmed");
             if(lastDeath==null||(utc-lastDeath.Utc).TotalSeconds>=2||lastDeath.Message!=text){SaveHit(Session,lethal);if(Inside&&Current is {Cleared:null} fatalRun)SaveHit(fatalRun.Stats,lethal);}
             AddDeath(new(utc,killer,damage,hp,max,Math.Max(0,damage-hp),text,lethal.Context),now);return true;
         }
@@ -126,22 +131,26 @@ public sealed class CombatEngine(string server,string character)
         }
         e.Raw=""; // Only explicit server death notices survive as message text.
         if(e.Result=="Death"){if(lastDeath==null||(utc-lastDeath.Utc).TotalSeconds>2)AddDeath(new(utc,"Unspecified killer",null,null,null,null,text),now);return true;}
+        if(!Kinetic.Accept(e,now))return true;
+        Pack.Observe(e,now);Reckless.Observe(e,now);
         Add(Session,e);sessionRate.Add(e,now);
         if(Inside&&Current is {Cleared:null} active){Add(active.Stats,e);runRate.Add(e,now);Revision++;}
         if(e.Result=="Damage"&&e.Direction=="Incoming")
         {
             string spell=e.AttackType=="Magic"?Regex.Match(text,@"\bwith (?<spell>[^.!]+)").Groups["spell"].Value:"";
-            var hit=new IncomingHit(utc,e.Mob,e.Damage,e.AttackType,e.Element,spell,e.Critical,e.RecklessTagged,false,null,null,Effects.At(utc));
+            var hit=new IncomingHit(utc,e.Mob.Length>0?e.Mob:"Unattributed periodic damage",e.Damage,e.AttackType,e.Element,spell,e.Critical,false,false,null,null,Effects.At(utc));
             recentHits.Add(hit);if(recentHits.Count>16)recentHits.RemoveAt(0);
             if(e.Damage>=BigHitMinimum){SaveHit(Session,hit);if(Inside&&Current is {Cleared:null} hitRun)SaveHit(hitRun.Stats,hit);}
         }
-        string kind=e.Direction=="Healing"?"Healing":e.Direction=="Incoming"?e.Result=="Damage"?"Taken":e.Result:e.Component!="Direct"?e.Component:e.SneakAttack?"Sneak":e.Critical?"Critical":e.Element;
-        if(e.Result=="Damage"&&e.Damage>0)Floats.Add(now,kind,e.Direction=="Incoming"?"HIT":e.Component=="Direct"?e.SneakAttack?"SNEAK":"":e.Component.ToUpperInvariant(),e.Mob,e.Damage,e.Direction=="Incoming",e.Critical,e.AttackType);
+        bool kineticHit=Kinetic.ClaimHit(e,now);
+        string kind=kineticHit?"KineticRelease":e.Direction=="Healing"?"Healing":e.Direction=="Incoming"?e.Result=="Damage"?"Taken":e.Result:e.Component!="Direct"?e.Component:e.SneakAttack?"Sneak":e.Critical?"Critical":e.Element;
+        if(e.Result=="Damage"&&(e.Damage>0||kineticHit))Floats.Add(now,kind,kineticHit?"KINETIC RELEASE":e.Direction=="Incoming"?e.AttackType=="Periodic"?"DOT":"HIT":e.Component=="Direct"?e.SneakAttack?"SNEAK":"":e.Component.ToUpperInvariant(),e.Mob,e.Damage,e.Direction=="Incoming",e.Critical,e.AttackType);
         else if(e.Result=="Healing"&&e.Amount>0)Floats.Add(now,"Healing",e.Component=="Summons"?"PET HEAL":"HEAL",e.Recipient,e.Amount,incoming:true,critical:e.Critical);
         else if(e.Result is "Evade" or "Resist"&&e.Direction=="Incoming")Floats.Add(now,kind,e.Result.ToUpperInvariant(),e.Mob,0,true);
         else if(e.Result=="Block")Floats.Add(now,"Ward","BLOCK",e.Mob,incoming:true);
         else if(e.Result is "Evade" or "Resist"&&e.Direction=="Outgoing")Floats.Add(now,"Utility",e.Result=="Evade"?"EVADED":"RESISTED",e.Mob);
         else if(e.Result=="Kill")Floats.Add(now,"Kill","DOWN",e.Mob);
+        else if(e.Component=="Kinetic"){if(e.Result=="ChargeReady")Floats.Add(now,"KineticReady","KINETIC READY");else if(e.Result=="ChargeExpired")Floats.Add(now,"Utility","KINETIC FADED");}
         else if(e.Direction=="Utility")Floats.Add(now,"Utility",e.Ability.Length>0?e.Ability:e.Result,e.Mob);
         return true;
     }
@@ -168,8 +177,9 @@ public sealed class CombatEngine(string server,string character)
         else if(e.Result=="Damage"&&e.Direction=="Incoming")
         {
             t.Taken+=e.Damage;
-            if(e.AttackType=="Magic"){t.MagicDamage+=e.Damage;t.MagicHits++;t.MagicHigh=Math.Max(t.MagicHigh,e.Damage);if(m!=null){m.MagicDamage+=e.Damage;m.MagicHits++;m.MagicHigh=Math.Max(m.MagicHigh,e.Damage);}}
-            else if(e.AttackType=="Melee/Missile") {if(e.RecklessTagged)t.RecklessIncoming.Add(e.Damage);t.PhysicalDamage+=e.Damage;t.PhysicalHits++;t.PhysicalHigh=Math.Max(t.PhysicalHigh,e.Damage);if(m!=null){m.PhysicalDamage+=e.Damage;m.PhysicalHits++;m.PhysicalHigh=Math.Max(m.PhysicalHigh,e.Damage);}}
+            if(e.AttackType=="Periodic"){t.PeriodicTaken+=e.Damage;t.PeriodicTicks++;t.PeriodicHigh=Math.Max(t.PeriodicHigh,e.Damage);}
+            else if(e.AttackType=="Magic"){t.MagicDamage+=e.Damage;t.MagicHits++;t.MagicHigh=Math.Max(t.MagicHigh,e.Damage);if(m!=null){m.MagicDamage+=e.Damage;m.MagicHits++;m.MagicHigh=Math.Max(m.MagicHigh,e.Damage);}}
+            else if(e.AttackType=="Melee/Missile") {t.PhysicalDamage+=e.Damage;t.PhysicalHits++;t.PhysicalHigh=Math.Max(t.PhysicalHigh,e.Damage);if(m!=null){m.PhysicalDamage+=e.Damage;m.PhysicalHits++;m.PhysicalHigh=Math.Max(m.PhysicalHigh,e.Damage);}}
             else {t.UnclassifiedDamage+=e.Damage;t.UnclassifiedHits++;t.UnclassifiedHigh=Math.Max(t.UnclassifiedHigh,e.Damage);if(m!=null){m.UnclassifiedDamage+=e.Damage;m.UnclassifiedHits++;m.UnclassifiedHigh=Math.Max(m.UnclassifiedHigh,e.Damage);}}
         }
         else if(e.Result=="Healing"){if(e.Recipient==""||e.Component!="Summons")t.Healing+=e.Amount;string source=e.Component=="PeriodicHeal"?"Periodic healing (source unspecified)":e.Component=="Recovery"?"Healing kit":e.Ability.Length>0?e.Ability:e.Component;t.HealingSources[source]=t.HealingSources.GetValueOrDefault(source)+e.Amount;}
@@ -177,6 +187,8 @@ public sealed class CombatEngine(string server,string character)
         else if(e.Direction=="Incoming"&&e.Result=="Resist"){t.Resists++;if(m!=null)m.Resists++;}
         else if(e.Result=="Block")t.Blocks++;
         else if(e.Result=="Kill"){t.Kills++;if(m!=null)m.Kills++;}
+        else if(e.Component=="Kinetic")
+        {if(e.Result=="ChargeReady")t.KineticReady++;else if(e.Result=="ChargeReleased")t.KineticReleases++;else if(e.Result=="ChargeExpired")t.KineticExpired++;}
         else if(e.Direction=="Utility")t.Procs[e.Component]=t.Procs.GetValueOrDefault(e.Component)+1;
     }
     private static void SaveHit(Totals totals,IncomingHit hit)
@@ -195,16 +207,18 @@ public sealed class CombatEngine(string server,string character)
         if(lastDeath!=null&&(death.Utc-lastDeath.Utc).TotalSeconds<2&&lastDeath.Message==death.Message)return;
         void Save(Totals t){if(t.Deaths.Count>0&&(death.Utc-t.Deaths[^1].Utc).TotalSeconds<2&&t.Deaths[^1].Blow==null)t.Deaths.RemoveAt(t.Deaths.Count-1);else t.DeathCount++;t.Deaths.Add(death);if(t.Deaths.Count>64){t.Deaths.RemoveAt(0);t.Truncated=true;}}
         Save(Session);if(Inside&&Current is {Cleared:null} r){Save(r.Stats);Revision++;}
+        Reckless.Stop();
         lastDeath=death;Floats.Add(now,"Death","DOWN"+(death.Overkill.HasValue?" · "+death.Overkill+" OVERKILL":""),incoming:true);Tick(death.Utc);
     }
     public void Enter(DateTime utc)
     {if(Current is not {Ended:null} r)return;Inside=true;EntryConfirmed=true;tick=utc;r.Entered??=utc;Revision++;}
-    public void Pause(DateTime utc,bool transient=false){Tick(utc);Inside=false;if(!transient)EntryConfirmed=false;tick=null;}
+    public void Pause(DateTime utc,bool transient=false){Pack.Finish();Reckless.Stop();Kinetic.Stop();Tick(utc);Inside=false;if(!transient)EntryConfirmed=false;tick=null;}
     public void Tick(DateTime utc)
     {
         if(Inside&&Current is {Cleared:null} r&&tick.HasValue){double dt=(utc-tick.Value).TotalSeconds;if(dt is >=0 and <=2)r.Observed+=dt;else r.Gaps=true;Revision++;}
         tick=utc;
     }
+    public void Advance(double now){if(Kinetic.UnmatchedRelease(now))Floats.Add(now,"KineticRelease","KINETIC RELEASE");}
     public void Gap(){if(Current!=null){Current.Gaps=true;Revision++;}}
     public void Seen(uint id,string name)
     {if(!Inside||Current is not {Cleared:null} r||seen.Contains(id))return;if(seen.Count>=4096){r.Stats.Truncated=true;return;}seen.Add(id);r.Stats.Mob(name).Seen++;Session.Mob(name).Seen++;Revision++;}
@@ -215,5 +229,5 @@ public sealed class CombatEngine(string server,string character)
         Current??=Runs.Where(r=>r.Ended==null).OrderByDescending(r=>r.Opened).FirstOrDefault();
         Revision++;
     }
-    public void NewSession(){Session=new();sessionRate=new();lastDeath=null;recentHits.Clear();}
+    public void NewSession(){Session=new();sessionRate=new();lastDeath=null;recentHits.Clear();Pack.Reset();Reckless.Reset();Kinetic.Reset();}
 }

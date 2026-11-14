@@ -7,13 +7,14 @@ namespace ACAI2.Rynth.Combat.Plugin;
 
 public sealed class CombatPlugin : RynthPluginBase
 {
-    public const string Version="0.1.5";
+    public const string Version="0.1.6";
     public override uint MinimumApiVersion=>92;
     private readonly ConcurrentQueue<(string Text,int Type,DateTime Utc,double Now,long Epoch,uint EffectId,bool Added,double Duration)> incoming=new();
     private readonly ConcurrentQueue<string> commands=new();
     private readonly object settingsGate=new();
     private Appearance appearance=new();
     private readonly CombatPanel panel=new();
+    private readonly RequestedPowerReader powerReader=new();
     private CombatEngine? engine;
     private CombatArchive? archive;
     private CombatView view=CombatView.Empty;
@@ -94,25 +95,28 @@ public sealed class CombatPlugin : RynthPluginBase
         if(engine==null||archive==null)return;
         if(archive.Ready&&!profileApplied){lock(settingsGate){appearance=archive.LoadedAppearance;panel.Reset();}engine.RestoreRuns(archive.History);profileApplied=true;}
         if(!profileApplied){if(!archive.Completion.IsCompleted)return;profileApplied=true;notice=archive.Notice;}
-        engine.BigHitMinimum=appearance.BigHitMinimum;
+        engine.BigHitMinimum=appearance.BigHitMinimum;engine.Pack.IdleSeconds=appearance.PackIdleSeconds;
         long lostAt=Interlocked.Exchange(ref droppedSinceTicks,0);if(lostAt!=0)engine.Effects.Lost(new DateTime(lostAt,DateTimeKind.Utc));
-        if(now>=nextEffects){nextEffects=now+.1;SampleEffects(DateTime.UtcNow);}
+        if(now>=nextEffects){nextEffects=now+.1;SampleEffects(DateTime.UtcNow);float? power=powerReader.Sample(Host.GetCurrentCombatMode());engine.Reckless.Sample(Now,power);}
         for(int i=0;i<128&&incoming.TryDequeue(out var line);i++)
         {
             Interlocked.Decrement(ref queued);if(line.Epoch!=Volatile.Read(ref epoch))continue;
             try{if(line.EffectId!=0)engine.Effects.Changed(line.Utc,line.EffectId,line.Added,line.Duration);else engine.Observe(line.Text,line.Type,line.Utc,line.Now);}catch(Exception ex){notice="Combat line skipped: "+ex.GetType().Name;engine.Gap();}
         }
-        if(dropped>0)engine.Gap();
+        if(lostAt!=0)engine.Gap();
+        if(incoming.IsEmpty)engine.Advance(now);
         bool portaling=Host.HasIsPortaling&&Host.IsPortaling();if(portaling)engine.Pause(DateTime.UtcNow,true);else{if(engine.EntryConfirmed&&!engine.Inside)engine.Enter(DateTime.UtcNow);engine.Tick(DateTime.UtcNow);}
         while(commands.TryDequeue(out string? cmd))
         {
             if(cmd is "show" or "" or "setup"){lock(settingsGate)appearance.Visible=true;panel.Setup=cmd=="setup";renderFailed=false;}
+            else if(cmd is "normal" or "compact" or "ultra"){lock(settingsGate){appearance.MeterMode=cmd=="normal"?MeterMode.Normal:cmd=="compact"?MeterMode.Compact:MeterMode.UltraCompact;appearance.Visible=true;panel.ResetPlacement();panel.Dirty=true;}}
+            else if(cmd is "lock" or "unlock"){lock(settingsGate){appearance.DigitsLocked=cmd=="lock";panel.Dirty=true;}}
             else if(cmd=="hide"){lock(settingsGate)appearance.Visible=false;panel.Dirty=true;}
             else if(cmd=="preview"){previewUntil=previewUntil>now?0:now+30;}
             else if(cmd=="entered")engine.Enter(DateTime.UtcNow);
             else if(cmd=="outside")engine.Pause(DateTime.UtcNow);
             else if(cmd=="new"){engine.NewSession();lock(settingsGate){appearance.AutoThread=false;panel.Dirty=true;}}
-            else if(cmd=="status")Local("v"+Version+" | "+notice+" | "+archive.Notice+" | queued "+queued+" dropped "+dropped);
+            else if(cmd=="status")Local("v"+Version+" | "+notice+" | "+archive.Notice+" | queued "+queued+" dropped "+dropped+" | Kinetic repeats "+engine.Kinetic.Suppressed+" | "+powerReader.Status);
             else if(cmd=="export")Export();
         }
         if(now>=nextScan&&engine.Inside&&!portaling)
@@ -137,9 +141,10 @@ public sealed class CombatPlugin : RynthPluginBase
         }
         if(now<previewUntil&&now>=nextPreview)
         {
-            nextPreview=now+.4;int n=(int)(now*2.5)%11;
-            string[] kinds=["Acid","Poison","Healing","Critical","Sneak","Ward","Taken","VulnLightning","VulnFrost","VulnAcid","Imperil"];
-            string kind=kinds[n];string label=kind switch{"Critical"=>"", "Taken"=>"HIT", "VulnLightning"=>"LIGHT VULN","VulnFrost"=>"FROST VULN","VulnAcid"=>"ACID VULN",_=>kind.ToUpperInvariant()};preview.Add(now,kind,label,amount:kind.StartsWith("Vuln")||kind=="Imperil"?0:kind=="Critical"?2313:kind=="Healing"?118:249,incoming:kind is "Healing" or "Ward" or "Taken" or "Imperil"||kind.StartsWith("Vuln"),critical:kind is "Critical" or "Taken");
+            nextPreview=now+.4;
+            string[] kinds=["Acid","Poison","Healing","Critical","Sneak","Ward","Taken","VulnLightning","VulnFrost","VulnAcid","Imperil","KineticReady","KineticRelease"];
+            int n=(int)(now*2.5)%kinds.Length;
+            string kind=kinds[n];string label=kind switch{"Critical"=>"", "Taken"=>"HIT", "KineticReady"=>"KINETIC READY", "KineticRelease"=>"KINETIC RELEASE", "VulnLightning"=>"LIGHT VULN","VulnFrost"=>"FROST VULN","VulnAcid"=>"ACID VULN",_=>kind.ToUpperInvariant()};preview.Add(now,kind,label,amount:kind.StartsWith("Vuln")||kind is "Imperil" or "KineticReady"?0:kind=="Critical"?2313:kind=="Healing"?118:249,incoming:kind is "Healing" or "Ward" or "Taken" or "Imperil"||kind.StartsWith("Vuln"),critical:kind is "Critical" or "Taken");
         }
         if(now>=nextView)
         {
@@ -151,7 +156,7 @@ public sealed class CombatPlugin : RynthPluginBase
             foreach(string id in frozenRuns.Keys.Where(id=>!engine.Runs.Any(r=>r.Id==id)).ToArray())frozenRuns.Remove(id);
             foreach(var r in engine.Runs.Where(r=>r.Entered!=null&&r.Id!=current?.Id))if(!frozenRuns.ContainsKey(r.Id))frozenRuns[r.Id]=JsonSerializer.Deserialize<RunRecord>(JsonSerializer.Serialize(r))!;
             var history=(current is {Entered:not null}?new[]{current}:Array.Empty<RunRecord>()).Concat(frozenRuns.Values).Concat(archive.History).GroupBy(r=>r.Id).Select(g=>g.First()).OrderByDescending(r=>r.Opened).Take(50).ToArray();
-            Volatile.Write(ref view,new(engine.Session.Copy(),current,history,previewUntil>now?preview.Read(now):engine.Floats.Read(now),rates.Dps,rates.Taken,run,run?"Thread: "+engine.Current!.Name:"Session",notice.Length>0?notice:archive.Notice,dropped,previewUntil>now));
+            Volatile.Write(ref view,new(engine.Session.Copy(),current,history,previewUntil>now?preview.Read(now):engine.Floats.Read(now),engine.Pack.Read(now).Dps,rates.Taken,run,run?"Thread: "+engine.Current!.Name:"Session",notice.Length>0?notice:archive.Notice,dropped,previewUntil>now){Pack=engine.Pack.Read(now),Reckless=engine.Reckless.Read(now),KineticDuplicates=engine.Kinetic.Suppressed});
         }
     }
     private void Export()

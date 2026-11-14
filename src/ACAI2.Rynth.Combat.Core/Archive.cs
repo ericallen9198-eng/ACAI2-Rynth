@@ -51,6 +51,9 @@ public sealed class CombatArchive : IDisposable
 }
 public sealed record CombatView(Totals Session,RunRecord? Current,RunRecord[] History,FloatEvent[] Floats,double Dps,double Taken,bool RunScope,string Scope,string Notice,int Dropped,bool Preview)
 {
+    public PackView Pack {get;init;}=PackView.Empty;
+    public RecklessView Reckless {get;init;}=RecklessView.Empty;
+    public int KineticDuplicates {get;init;}
     public Totals Stats=>RunScope&&Current!=null?Current.Stats:Session;
     public static CombatView Empty=new(new(),null,[],[],0,0,false,"Session","Loading",0,false);
 }

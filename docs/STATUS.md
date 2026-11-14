@@ -70,3 +70,18 @@ explicit impact layout preset preserves colors and meter position. Older profile
 receive the custom-lettering toggle without resetting saved layout. Combat 100,
 Keyfer 99 and Threads 83 controlled checks passed locally. Live CoreCLR/ImGui
 appearance and performance remain an in-game check; the preview is synthetic.
+
+Combat v0.1.6 adds saved Normal/Compact/Ultra-compact display modes with one
+chat-observed pack DPS lifecycle (default 4s idle cutoff, event-span DPS, frozen
+final result). Locked ultra digits draw only on the existing foreground layer;
+unlocked dragging reuses the meter's transparent input target. Normal spacing
+and header height are reduced. Reckless is outgoing-only ON/OFF with bounded
+pre-hit read-only requested-power samples; unsupported native layouts stay unknown.
+Kinetic ready/release/expiry are separate, with state-repeat filtering, a charged
+ready graphic and next-weapon-hit correlation that replaces the regular float
+instead of adding damage again. All supported floating labels use block lettering;
+healing/poison are amplified and acid has local fog/drips. Periodic incoming damage
+is separate from direct spell rates. Controlled Combat checks: 126. A private
+provided sample was replayed and compared with an independent outgoing-damage
+count; no private transcript is checked in. Live drag/click-through, effects and
+native power reads still require client validation.

@@ -123,7 +123,7 @@ race.Changed(utc.AddMilliseconds(30),4312,false,0);Check(race.At(utc.AddMillisec
 race.Lost(utc.AddMilliseconds(50));Check(!race.At(utc.AddMilliseconds(60)).Available,"dropped observations explicitly invalidate affected context");race.SampleAt(utc.AddMilliseconds(70),true,[]);Check(race.At(utc.AddMilliseconds(80)).Available,"a fresh complete snapshot restores context after an observation gap");
 var big=new CombatEngine("DreamWeave","Samm");big.Effects.SampleAt(utc,true,[new(4312,utc.AddMinutes(1)),new(4477,utc.AddMinutes(1))]);
 big.Observe("Reckless! Critical hit! Bone Chanter impales you for 150 points with Incantation of Force Bolt.",0,utc.AddMilliseconds(100),.1);
-Check(big.Session.BigHits.Single() is{Attacker:"Bone Chanter",Damage:150,Delivery:"Magic",RecklessTagged:true,Critical:true}&&big.Session.BigHits[0].Spell=="Incantation of Force Bolt"&&big.Session.BigHits[0].Context.Imperiled==true,"big hits retain attacker, spell, classification, crit, Reckless marker and pre-hit effects");
+Check(big.Session.BigHits.Single() is{Attacker:"Bone Chanter",Damage:150,Delivery:"Magic",RecklessTagged:false,Critical:true}&&big.Session.BigHits[0].Spell=="Incantation of Force Bolt"&&big.Session.BigHits[0].Context.Imperiled==true,"big hits retain attacker, spell, classification, crit and pre-hit effects without incoming Reckless tracking");
 big.Effects.SampleAt(utc.AddMilliseconds(150),true,[]);big.Observe("You suffer a frozen fate at the hands of Bone Chanter! (Killing blow: 150 damage. You had 81/469 health.)",0,utc.AddMilliseconds(200),.2);
 Check(big.Session.BigHits.Count==1&&big.Session.BigHits[0].KillingBlow&&big.Session.BigHits[0].Context.Imperiled==true&&big.Session.Taken==150,"a correlated killing blow upgrades the existing hit without double counting or using post-hit effects");
 var fatalOnly=new CombatEngine("DreamWeave","Toe");fatalOnly.Observe("Threadbound Sodden Undead Ruschk smites you mightily! (Killing blow: 633 damage. You had 462/462 health.)",0,utc,0);
@@ -133,9 +133,9 @@ Check(deathTexts.All(t=>DeathSource.Parse(t)!="Unspecified killer"),"the additio
 var reckless=new CombatEngine("DreamWeave","Samm");
 reckless.Observe("Reckless! Mob scratches your chest for 0 points of slashing damage!",0,utc,0);reckless.Observe("Critical hit! Reckless! Mob scratches your chest for 100 points of slashing damage!",0,utc.AddMilliseconds(10),.01);reckless.Observe("Mob scratches your chest for 20 points of slashing damage!",0,utc.AddMilliseconds(20),.02);
 reckless.Observe("Reckless! You bash Mob for 200 points of bludgeoning damage!",0,utc.AddMilliseconds(30),.03);reckless.Observe("You bash Mob for 100 points of bludgeoning damage!",0,utc.AddMilliseconds(40),.04);reckless.Observe("Your poison deals 100 additional points of damage to Mob!",0,utc.AddMilliseconds(50),.05);
-Check(reckless.Session.RecklessIncoming.Count==2&&reckless.Session.RecklessIncoming.Average==50&&reckless.Session.RecklessIncoming.High==100&&reckless.Session.RecklessIncoming.Low==0&&reckless.Session.PhysicalHits==3&&Math.Abs(reckless.Session.RecklessIncomingPercent-200d/3)<.01,"incoming Reckless tracks tagged percentage numerator, average, high and zero-inclusive low");
+Check(reckless.Session.RecklessIncoming.Count==0&&reckless.Session.PhysicalHits==3&&reckless.Session.PhysicalDamage==120,"incoming Reckless markers are ignored while their actual incoming damage and physical hits remain accurate");
 Check(reckless.Session.RecklessOutgoing.Count==1&&reckless.Session.RecklessOutgoing.Average==200&&reckless.Session.RecklessOutgoing.High==200&&reckless.Session.RecklessOutgoing.Low==200&&reckless.Session.DirectHits==2&&reckless.Session.RecklessOutgoingPercent==50,"outgoing Reckless is separate and poison cannot inflate its physical denominator");
-Check(reckless.Session.Copy().RecklessIncoming.Low==0&&reckless.Session.Copy().RecklessIncoming.High==100&&reckless.Session.Copy().RecklessIncomingPercent>66,"Reckless metrics retain their low/high and percentage across snapshot serialization");
+Check(reckless.Session.Copy().RecklessOutgoing.Low==200&&reckless.Session.Copy().RecklessOutgoing.High==200&&reckless.Session.Copy().RecklessOutgoingPercent==50,"retained outgoing Reckless summaries still roundtrip without restoring incoming tracking");
 Check(!reckless.Session.Mobs.Keys.Any(n=>n.StartsWith("Reckless!"))&&reckless.Session.Mobs.ContainsKey("Mob"),"Reckless remains hit metadata rather than a fake separate mob name");
 var legacyDeathTotals=new Totals();legacyDeathTotals.Deaths.Add(new(utc,"Unspecified killer",633,462,462,171,"legacy"));Check(legacyDeathTotals.HighestObserved==633,"old death records contribute their known numerical peak without inventing historical effects");
 var capped=new CombatEngine("DreamWeave","Samm");for(int i=0;i<40;i++)capped.Observe($"Mob scratches your chest for {100+i} points of slashing damage!",0,utc.AddMilliseconds(i),i*.001);Check(capped.Session.BigHits.Count==24&&capped.Session.BigHits.Min(h=>h.Damage)==116&&capped.Session.HighestObserved==139,"only the twenty-four largest incoming snapshots are retained");
@@ -185,4 +185,71 @@ Check(layout.TryPlace(new(620,450),new(170,75),-1,out var incomingBox)&&incoming
 Check(layout.TryPlace(new(500,450),new(170,75),1,out var outgoingBox)&&outgoingBox.X>=602,"outgoing crit boxes stay right of center instead of colliding with incoming notices");
 Check(layout.TryPlace(new(620,450),new(170,75),-1,out var secondBox)&&secondBox.Y+75+6<incomingBox.Y,"measured text boxes stack without overlapping critical numbers and captions");
 Check(!layout.TryPlace(new(578,300),new(2000,75),1,out _),"a display too narrow for a notice omits it visually instead of drawing across both lanes");
+
+var packs=new CombatEngine("DreamWeave","Samm");
+void P(string text,double n)=>packs.Observe(text,0,utc.AddSeconds(n),n);
+P("You receive 20 points of periodic healing.",0);P("Kinetic charge at full (5/5) - your next attack spends it.",.1);
+Check(!packs.Pack.Read(.2).HasCombat,"healing and Kinetic readiness do not create a damage pack");
+P("You bash Mob for 100 points of bludgeoning damage!",1);P("You bash Mob for 300 points of bludgeoning damage!",3);
+Check(packs.Pack.Read(3.1) is{Number:1,Damage:400,Dps:200,Active:true},"pack DPS uses the whole observed event span, shared independently of display or Thread scope");
+var frozenPack=packs.Pack.Read(8);Check(!frozenPack.Active&&packs.Pack.Read(800).Dps==frozenPack.Dps&&frozenPack.Dps==200,"idle final pack DPS freezes instead of decaying through time between packs");
+P("You receive 30 points of periodic healing.",9);Check(packs.Pack.Read(10).Number==1&&!packs.Pack.Read(10).Active,"post-combat healing neither reopens the pack nor clears its final result");
+P("You bash Mob for 75 points of bludgeoning damage!",11);Check(packs.Pack.Read(11) is{Number:2,Damage:75,Dps:75,Active:true},"the next pack automatically resets only the shared pack meter, preserving session totals");
+P("Your poison deals 100 additional points of damage to Mob!",12);Check(packs.Pack.Read(12).Damage==175&&packs.Session.Damage==575,"proc damage contributes once to the same pack and session totals");
+packs.Pause(utc.AddSeconds(12));P("You bash Mob for 50 points of bludgeoning damage!",12.1);Check(packs.Pack.Read(12.1) is{Number:3,Damage:50},"portaling/outside boundaries finish a pack so the next encounter starts cleanly");
+packs.NewSession();Check(!packs.Pack.Read(13).HasCombat,"New session resets the pack result without persisting another combat transcript");
+
+var activity=new CombatEngine("DreamWeave","Samm");
+activity.Reckless.Sample(.9,65);activity.Reckless.Sample(1.1,25);
+activity.Observe("Recklessness! You bash Mob for 400 points of bludgeoning damage!",0,utc.AddSeconds(1),1);
+Check(activity.Reckless.Read(1.2) is{Discovered:true,On:true,PowerPercent:65},"outgoing Recklessness activates ON and takes only a validated pre-hit power sample, never a later slider value");
+activity.Observe("Reckless! Mob scratches your chest for 0 points of slashing damage!",0,utc.AddSeconds(4),4);
+Check(!activity.Reckless.Read(5.1).On,"incoming Reckless hits cannot extend the player's four-second ON interval");
+activity.Reckless.Sample(6,99);activity.Observe("Recklessness! You bash Mob for 30 points of bludgeoning damage!",0,utc.AddSeconds(7),7);
+Check(activity.Reckless.Read(7.1) is{On:true,PowerPercent:null},"stale/missing power stays unavailable instead of assuming a value inside the Recklessness range");
+activity.Reckless.Sample(7.2,null);activity.Reckless.Sample(7.1,70);activity.Reckless.Sample(7.3,null);
+activity.Observe("Recklessness! You bash Mob for 30 points of bludgeoning damage!",0,utc.AddSeconds(7.4),7.4);
+Check(activity.Reckless.Read(7.4).PowerPercent==null,"a failed newer power read cannot silently reuse an older valid reading");
+var otherOwner=new CombatEngine("DreamWeave","Samm");otherOwner.Observe("Reckless! Mob scratches your hand for 0 points of slashing damage!",0,utc,0);
+Check(!otherOwner.Reckless.Read(.1).Discovered&&!otherOwner.Reckless.Read(.1).On,"incoming-only Reckless cannot discover the player's module");
+
+var kinetic=new CombatEngine("DreamWeave","Samm");
+void K(string text,double n)=>kinetic.Observe(text,0,utc.AddSeconds(n),n);
+K("Kinetic charge at full (5/5) - your next attack spends it.",0);K("Kinetic charge at full (5/5) - your next attack spends it.",.05);
+K("You release your kinetic charge! (+40% damage, cleaving 2 more targets)",1);K("You release your kinetic charge! (+40% damage, cleaving 2 more targets)",1.01);
+K("Your poison deals 60 additional points of damage to Mob!",1.05);K("Samm's Fire Elemental hits Mob for 40 damage!",1.06);
+K("Recklessness! You bash Mob for 558 points of bludgeoning damage!",1.1);K("You bash Mob for 200 points of bludgeoning damage!",1.2);
+K("Your kinetic charge dissipates.",2);
+Check(kinetic.Session is{KineticReady:1,KineticReleases:1,KineticExpired:1}&&!kinetic.Session.Procs.ContainsKey("Kinetic")&&kinetic.Kinetic.Suppressed==2,"one readiness/release/expiry cycle counts as one Kinetic release, with duplicate state callbacks suppressed");
+var kineticText=kinetic.Floats.Read(2);Check(kineticText.Any(f=>f.Kind=="KineticReady")&&kineticText.Count(f=>f.Kind=="KineticRelease")==1&&kineticText.Single(f=>f.Kind=="KineticRelease").Amount==558,"Kinetic has a separate ready cue and decorates the first following weapon hit, skipping poison and pets");
+Check(kinetic.Session.Damage==858&&kinetic.Session.DirectHits==2&&kineticText.Count(f=>f.Amount==558)==1,"Kinetic's damage number replaces that hit's normal float and never adds its damage a second time");
+K("Kinetic charge at full (5/5) - your next attack spends it.",2.05);K("You release your kinetic charge! (+40% damage, cleaving 2 more targets)",2.1);K("You bash Mob for 0 points of bludgeoning damage!",2.15);
+Check(kinetic.Session.KineticReleases==2&&kinetic.Floats.Read(2.2).Any(f=>f.Kind=="KineticRelease"&&f.Amount==0&&FloatStream.HasNumber(f)),"a new ready transition allows the next genuine release and its zero-damage hit is not lost");
+var missingKinetic=new CombatEngine("DreamWeave","Samm");missingKinetic.Observe("You release your kinetic charge! (+40% damage, cleaving 2 more targets)",0,utc,0);missingKinetic.Advance(2);missingKinetic.Advance(3);
+Check(missingKinetic.Floats.Read(3).Count(f=>f.Kind=="KineticRelease")==1&&missingKinetic.Session.Damage==0,"an unmatched release falls back to one amount-free notice without inventing extra damage");
+var laterHit=new CombatEngine("DreamWeave","Samm");laterHit.Observe("You release your kinetic charge! (+40% damage, cleaving 2 more targets)",0,utc,0);laterHit.Observe("You bash Mob for 100 points of bludgeoning damage!",0,utc.AddSeconds(2),2);laterHit.Advance(2);
+Check(laterHit.Floats.Read(2).All(f=>f.Kind!="KineticRelease"||f.Amount==0),"a late unrelated hit is not attributed to a stale release");
+
+var repeated=new CombatEngine("DreamWeave","Samm");
+for(int j=0;j<3;j++){repeated.Observe("You evaded Olthoi Hive Warrior!",0,utc,j*.001);repeated.Observe("You bash Olthoi Hive Warrior for 100 points of bludgeoning damage!",0,utc,j*.001);repeated.Observe("Your poison deals 50 additional points of damage to Olthoi Hive Warrior!",0,utc,j*.001);repeated.Observe("You receive 20 points of periodic healing.",0,utc,j*.001);}
+Check(repeated.Session is{Evades:3,DirectHits:3,Damage:450,Healing:60},"identical real evades, hits, poison ticks and heals are preserved even within one callback batch");
+var singleRoute=new CombatEngine("DreamWeave","Samm");
+singleRoute.Observe("Critical hit! You burn Mob for 100 points of fire damage with Incantation of Flame Bolt.",0,utc,0);
+singleRoute.Observe("Mob scratches your chest for 20 points of slashing damage!",0,utc,.1);
+singleRoute.Observe("Mob blisters you for 30 points with Incantation of Acid Stream.",0,utc,.2);
+singleRoute.Observe("Your runic ward shatters after absorbing 135 points of damage.",0,utc,.3);
+singleRoute.Observe("You catch your second wind.",0,utc,.4);
+Check(singleRoute.Session is{Damage:100,DirectHits:0,Taken:50,PhysicalHits:1,MagicHits:1,WardAbsorbed:135}&&singleRoute.Session.Procs["Second Wind"]==1,"explicit spell, physical fallback, ward and proc paths each contribute exactly once without falling through another parser");
+singleRoute.Observe("You receive 20 points of periodic nether damage.",0,utc,.5);
+Check(singleRoute.Session is{Taken:70,PeriodicTaken:20,PeriodicTicks:1,PhysicalHits:1,MagicHits:1},"periodic nether damage contributes to taken totals without inventing an attacker or direct spell attempt");
+
+var onlyPeriodic=new CombatEngine("DreamWeave","Samm");onlyPeriodic.Observe("You receive 55 points of periodic nether damage.",0,utc,0);
+Check(onlyPeriodic.Session.HighestObserved==55&&onlyPeriodic.Session.MagicHits==0&&onlyPeriodic.Session.UnclassifiedHits==0,"periodic damage retains its true numerical peak without masquerading as a direct spell or unknown physical hit");
+var questSpam=new CombatEngine("DreamWeave","Samm");
+questSpam.Observe("You have killed 50 Olthoi Hive Warriors! Your task is complete!",0,utc,0);questSpam.Observe("The thunder of crushing Olthoi Hive Warrior is followed by the deafening silence of death!",0,utc,.01);questSpam.Observe("You have killed 50 Olthoi Hive Warriors! Your task is complete!",0,utc,.02);questSpam.Observe("You knock Olthoi Hive Warrior into next Morningthaw!",0,utc,.03);
+Check(questSpam.Session.Kills==2,"repeated quest-completion announcements do not double count actual combat kill notices");
+var savedMode=JsonSerializer.Deserialize<Appearance>(JsonSerializer.Serialize(new Appearance{MeterMode=MeterMode.UltraCompact,DigitsLocked=false,DigitsX=321,DigitsY=456,DigitsSize=48,PackIdleSeconds=6,Opacity=.37f}))!;savedMode.Validate();
+Check(savedMode is{MeterMode:MeterMode.UltraCompact,DigitsLocked:false,DigitsX:321,DigitsY:456,DigitsSize:48,PackIdleSeconds:6,Opacity:.37f},"display mode, click-through lock, digit position/size and pack cutoff survive character profile roundtrip");
+var oldMode=JsonSerializer.Deserialize<Appearance>("{\"Schema\":1,\"X\":175,\"FontSize\":27}")!;oldMode.Validate();
+Check(oldMode is{MeterMode:MeterMode.Normal,DigitsLocked:true,X:175,FontSize:27},"older character preferences load in Normal mode without losing their prior appearance settings");
 Console.WriteLine($"All {checks} Combat checks passed. No game actions, production network or AI calls were made.");

@@ -9,17 +9,18 @@ internal sealed class CombatPanel
     private bool place=true,details;
     private int frame=-1;
     private string selected="";
+    public void ResetPlacement()=>place=true;
     public void Reset(){place=true;Setup=false;Dirty=false;selected="";}
     private static Vector4 Accent=>new(.38f,.9f,.77f,1);
     public void Draw(string character,Appearance a,CombatView v,double now,Action<string> command,IntPtr floatFont,IntPtr boldFont)
     {
         if(ImGui.GetCurrentContext()==IntPtr.Zero)return;int f=ImGui.GetFrameCount();if(f==frame)return;frame=f;
         Vector2 screen=ImGui.GetIO().DisplaySize;if(screen.X<=0||screen.Y<=0)return;
-        if(a.Visible)
+        if(a.Visible&&a.MeterMode==MeterMode.Normal)
         {
             if(place){ImGui.SetNextWindowPos(new(Math.Clamp(a.X,0,Math.Max(0,screen.X-340)),Math.Clamp(a.Y,0,Math.Max(0,screen.Y-200))),ImGuiCond.Always);place=false;}
-            ImGui.SetNextWindowSize(new(330*a.Scale,0),ImGuiCond.Always);ImGui.SetNextWindowBgAlpha(a.Opacity);
-            ImGui.PushStyleVar(ImGuiStyleVar.WindowRounding,9);ImGui.PushStyleColor(ImGuiCol.WindowBg,new Vector4(.025f,.045f,.055f,1));
+            ImGui.SetNextWindowSize(new(310*a.Scale,0),ImGuiCond.Always);ImGui.SetNextWindowBgAlpha(a.Opacity);
+            ImGui.PushStyleVar(ImGuiStyleVar.WindowRounding,7);ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing,new Vector2(4,2)*a.Scale);ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding,new Vector2(7,5)*a.Scale);ImGui.PushStyleColor(ImGuiCol.WindowBg,new Vector4(.025f,.045f,.055f,1));
             var flags=ImGuiWindowFlags.NoTitleBar|ImGuiWindowFlags.AlwaysAutoResize|ImGuiWindowFlags.NoResize|ImGuiWindowFlags.NoCollapse;if(a.Locked)flags|=ImGuiWindowFlags.NoMove;
             ImGui.Begin("ACAI2 COMBAT###acai2-combat-meter",flags);
             try
@@ -28,7 +29,7 @@ internal sealed class CombatPanel
                 if(a.CustomLettering)
                 {
                     var header=ImGui.GetCursorScreenPos()-new Vector2(5,3);var tint=Accent;tint.W=a.Opacity;
-                    ImpactArt.Plate(header,new Vector2(ImGui.GetWindowSize().X-ImGui.GetStyle().WindowPadding.X*2+10,76*a.Scale),tint,.5,(points,color)=>Polygon(ImGui.GetWindowDrawList(),points,color));
+                    ImpactArt.Plate(header,new Vector2(ImGui.GetWindowSize().X-ImGui.GetStyle().WindowPadding.X*2+10,57*a.Scale),tint,.5,(points,color)=>Polygon(ImGui.GetWindowDrawList(),points,color));
                 }
                 ImGui.TextUnformatted("COMBAT / "+character);ImGui.SameLine();if(ImGui.SmallButton("Setup"))Setup=!Setup;
                 ImGui.Separator();
@@ -36,13 +37,12 @@ internal sealed class CombatPanel
                 {
                     var origin=ImGui.GetCursorScreenPos();string dps=v.Dps.ToString("N0",System.Globalization.CultureInfo.InvariantCulture);float numberSize=30*a.Scale;
                     ImpactLettering.Draw(dps,origin,numberSize,Accent,a.Bold,(points,tint)=>Polygon(ImGui.GetWindowDrawList(),points,tint));
-                    ImGui.Dummy(new Vector2(ImpactLettering.Width(dps,numberSize)+5,numberSize));ImGui.SameLine();ImGui.TextUnformatted("DPS");
-                    ImGui.TextDisabled($"{v.Taken:N0} incoming / sec");
+                    ImGui.Dummy(new Vector2(ImpactLettering.Width(dps,numberSize)+5,numberSize));ImGui.SameLine();ImGui.TextUnformatted($"DPS  ·  {v.Taken:N0} in/s");
                 }
                 else{ImGui.TextColored(Accent,$"{v.Dps:N0} DPS");ImGui.SameLine();ImGui.TextUnformatted($"   {v.Taken:N0} taken/s");}
-                ImGui.TextDisabled(v.Scope+(v.Preview?" | PREVIEW":" | 60s rolling"));
-                if(v.RunScope&&v.Current?.ParserVersion!="0.1.2")ImGui.TextDisabled("Includes earlier parser totals; New session starts a clean sample.");
-                var t=v.Stats;ImGui.TextUnformatted($"Damage {t.Damage:N0}   Heals {t.Healing:N0}   Kills {t.Kills}");
+                ImGui.TextDisabled(v.Preview?"EFFECT PREVIEW · real pack DPS":v.Pack.HasCombat?$"Pack {v.Pack.Number} · {(v.Pack.Active?"ACTIVE":"FINAL")} · {v.Pack.Seconds:N1}s":"Waiting for the next pack");
+                if(v.RunScope&&v.Current?.ParserVersion!=CombatEngine.ParserVersion)ImGui.TextDisabled("Includes earlier run data");
+                var t=v.Stats;ImGui.TextUnformatted($"{(v.RunScope?"Thread":"Session")} · Dmg {t.Damage:N0}  Heal {t.Healing:N0}  Kills {t.Kills}");
                 if(Show(a,t,"Sneak")){ImGui.TextColored(new(.94f,.66f,1,1),$"Sneak {t.SneakPercent:N1}%  ·  {t.Sneaks}/{t.DirectHits} landed physical hits");Tip("Denominator: your landed direct melee/missile hits, including zero damage. Excludes magic, poison, acid, pets and reflected damage. Discovery occurs on the first observed sneak hit.");}
                 if(t.PhysicalHits+t.Evades>0)ImGui.TextUnformatted($"Physical evade {t.EvadePercent:N1}%   Avg hit {t.PhysicalDamage/(double)Math.Max(1,t.PhysicalHits):N0}   High {t.PhysicalHigh:N0}");
                 Tip("Physical includes melee and missile: chat does not reliably separate them. Zero-damage landed hits count; shield blocks are listed separately.");
@@ -50,27 +50,71 @@ internal sealed class CombatPanel
                 foreach(string kind in new[]{"Acid","Poison","Summons","Thorns"})if(Show(a,t,kind))ImGui.TextColored(Color(a,kind),$"{kind} {t.Components.GetValueOrDefault(kind):N0}  ({100d*t.Components.GetValueOrDefault(kind)/Math.Max(1,t.Damage):N1}%)");
                 if(Show(a,t,"Ward"))ImGui.TextUnformatted($"Runic Ward  absorbed {t.WardAbsorbed:N0}  ·  last ready capacity {t.WardCapacity}");
                 if(t.Blocks>0)ImGui.TextUnformatted($"Shield blocks {t.Blocks}");
-                if(t.Procs.ContainsKey("Kinetic"))ImGui.TextUnformatted($"Kinetic charge events {t.Procs["Kinetic"]}");
-                if(Show(a,t,"Reckless")){RecklessLine("OUT",t.RecklessOutgoing,t.DirectHits,t.RecklessOutgoingPercent);RecklessLine("IN",t.RecklessIncoming,t.PhysicalHits,t.RecklessIncomingPercent);}
+                if(t.KineticReady+t.KineticReleases+t.KineticExpired>0)ImGui.TextUnformatted($"Kinetic · {t.KineticReleases} releases");
+                if(Show(a,t,"Reckless"))LiveReckless(v.Reckless);
                 if(Show(a,t,"Second Wind"))ImGui.TextUnformatted($"Second Wind {t.Procs.GetValueOrDefault("Second Wind")} procs (heal amount not stated)");
                 if(ImGui.SmallButton(details?"Less":"Details"))details=!details;ImGui.SameLine();if(ImGui.SmallButton("Export"))command("export");ImGui.SameLine();if(ImGui.SmallButton("New session"))command("new");
                 if(details)Details(v,a,command);
                 if(v.Dropped>0)ImGui.TextColored(new(1,.6f,.3f,1),$"{v.Dropped} messages dropped · incomplete observation");
                 var pos=ImGui.GetWindowPos();if(pos.X!=a.X||pos.Y!=a.Y){a.X=pos.X;a.Y=pos.Y;Dirty=true;}
             }
-            finally{ImGui.End();ImGui.PopStyleColor();ImGui.PopStyleVar();}
+            finally{ImGui.End();ImGui.PopStyleColor();ImGui.PopStyleVar(3);}
         }
+        if(a.Visible&&a.MeterMode==MeterMode.Compact)Compact(a,v,screen);
+        if(a.Visible&&a.MeterMode==MeterMode.UltraCompact)Ultra(a,v,screen);
         if(Setup)Settings(a,v,command);
         if(a.Floating||v.Preview)Floating(a,v.Floats,screen,now,floatFont,boldFont);
     }
-    private static bool Show(Appearance a,Totals t,string kind)=>a.Modules.TryGetValue(kind,out bool enabled)?enabled:kind=="Sneak"?t.Sneaks>0:kind=="Reckless"?t.RecklessIncoming.Count+t.RecklessOutgoing.Count>0:t.Components.ContainsKey(kind)||t.Procs.ContainsKey(kind);
+    private static string Digits(CombatView v)=>v.Dps.ToString("N0",System.Globalization.CultureInfo.InvariantCulture);
+    private static void DrawDigits(ImDrawListPtr draw,string text,Vector2 origin,float size,Appearance a)
+        =>ImpactLettering.Draw(text,Pixel(origin),size,Accent,a.Bold,(points,color)=>Polygon(draw,points,color));
+    private void Compact(Appearance a,CombatView v,Vector2 screen)
+    {
+        string text=Digits(v);float size=a.DigitsSize*a.Scale;float width=ImpactLettering.Width(text,size)+14;
+        ImGui.SetNextWindowPos(new(Math.Clamp(a.X,0,Math.Max(0,screen.X-width)),Math.Clamp(a.Y,0,Math.Max(0,screen.Y-size-12))),ImGuiCond.Always);
+        ImGui.SetNextWindowSize(new(ImpactLettering.Width(text,size)+14,size+10),ImGuiCond.Always);ImGui.SetNextWindowBgAlpha(a.Opacity);
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding,new Vector2(7,5));
+        var flags=ImGuiWindowFlags.NoTitleBar|ImGuiWindowFlags.NoResize|ImGuiWindowFlags.NoCollapse|ImGuiWindowFlags.NoScrollbar|ImGuiWindowFlags.NoMove;
+        ImGui.Begin("ACAI2 COMBAT###acai2-combat-meter",flags);
+        try{DrawDigits(ImGui.GetWindowDrawList(),text,ImGui.GetCursorScreenPos(),size,a);ImGui.InvisibleButton("##compact-digits",new(ImpactLettering.Width(text,size),size));Tip($"Pack {v.Pack.Number}: {(v.Pack.Active?"active":"final")} · {v.Pack.Seconds:N1}s. /acai2combat setup");if(!a.Locked&&ImGui.IsItemActive()&&ImGui.IsMouseDragging(ImGuiMouseButton.Left)){var p=Vector2.Clamp(new Vector2(a.X,a.Y)+ImGui.GetIO().MouseDelta,Vector2.Zero,Vector2.Max(Vector2.Zero,screen-new Vector2(width,size+10)));a.X=p.X;a.Y=p.Y;Dirty=true;}}
+        finally{ImGui.End();ImGui.PopStyleVar();}
+    }
+    private void Ultra(Appearance a,CombatView v,Vector2 screen)
+    {
+        string text=Digits(v);float size=a.DigitsSize*a.Scale;Vector2 bounds=new(ImpactLettering.Width(text,size),size);
+        Vector2 p=new(Math.Clamp(a.DigitsX,0,Math.Max(0,screen.X-bounds.X)),Math.Clamp(a.DigitsY,0,Math.Max(0,screen.Y-bounds.Y)));
+        // Locked: no ImGui window, widgets or capture request. This is the floating-text layer.
+        // Unlocked: reuse the existing meter's window ID solely for its transparent drag target.
+        if(!a.DigitsLocked)
+        {
+            ImGui.SetNextWindowPos(p,ImGuiCond.Always);ImGui.SetNextWindowSize(bounds+new Vector2(8),ImGuiCond.Always);
+            ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding,Vector2.Zero);ImGui.PushStyleVar(ImGuiStyleVar.WindowBorderSize,0);
+            ImGui.Begin("ACAI2 COMBAT###acai2-combat-meter",ImGuiWindowFlags.NoBackground|ImGuiWindowFlags.NoDecoration|ImGuiWindowFlags.NoMove|ImGuiWindowFlags.NoSavedSettings);
+            try
+            {
+                ImGui.InvisibleButton("##drag-dps-digits",bounds+new Vector2(8));
+                if(ImGui.IsItemActive()&&ImGui.IsMouseDragging(ImGuiMouseButton.Left))
+                {p+=ImGui.GetIO().MouseDelta;p=Vector2.Clamp(p,Vector2.Zero,Vector2.Max(Vector2.Zero,screen-bounds));a.DigitsX=p.X;a.DigitsY=p.Y;Dirty=true;}
+                if(ImGui.IsItemHovered()){ImGui.GetForegroundDrawList().AddRect(p-Vector2.One,p+bounds+Vector2.One,0x9968bbaa);Tip("Drag DPS digits. /acai2combat lock enables click-through.");}
+            }
+            finally{ImGui.End();ImGui.PopStyleVar(2);}
+        }
+        DrawDigits(ImGui.GetForegroundDrawList(),text,p,size,a);
+    }
+    private static void LiveReckless(RecklessView r)
+    {
+        string power=r.On?(r.PowerPercent.HasValue?$" · power {r.PowerPercent:N0}%":" · power unavailable"):"";
+        ImGui.TextUnformatted("Reckless "+(r.On?"ON":"OFF")+power);
+        Tip("ON = an outgoing direct physical Recklessness-tagged hit in the last 4 seconds. OFF = no recent tag, not proof the skill is disabled. Power is the last validated pre-hit requested-power sample (at most 500ms old), not the momentary charging animation. 10–90% is the stated Recklessness range.");
+    }
+    private static bool Show(Appearance a,Totals t,string kind)=>a.Modules.TryGetValue(kind,out bool enabled)?enabled:kind=="Sneak"?t.Sneaks>0:kind=="Reckless"?t.RecklessOutgoing.Count>0:t.Components.ContainsKey(kind)||t.Procs.ContainsKey(kind);
     private static void Tip(string text){if(ImGui.IsItemHovered()){ImGui.BeginTooltip();ImGui.PushTextWrapPos(420);ImGui.TextUnformatted(text);ImGui.PopTextWrapPos();ImGui.EndTooltip();}}
     private static Vector4 Color(Appearance a,string kind)=>ImGui.ColorConvertU32ToFloat4(a.Colors.GetValueOrDefault(kind,a.Colors["Direct"]));
     private void Details(CombatView v,Appearance a,Action<string> command)
     {
         var t=v.Stats;ImGui.Separator();
         if(ImGui.TreeNode("Damage sources"))
-        {foreach(var p in t.Components.OrderByDescending(p=>p.Value))ImGui.TextUnformatted($"{p.Key}: {p.Value:N0}");if(t.UnclassifiedHits>0)ImGui.TextUnformatted($"Unclassified incoming: {t.UnclassifiedHits} hits / {t.UnclassifiedDamage:N0} damage (excluded from defense rates)");foreach(var p in t.IncomingEffects)ImGui.TextUnformatted($"Incoming {p.Key}: {p.Value} applied/refreshed");foreach(var p in t.HealingSources)ImGui.TextUnformatted($"{p.Key}: +{p.Value:N0}");foreach(var p in t.Procs)ImGui.TextUnformatted($"{p.Key}: {p.Value} notices");ImGui.TextUnformatted($"Blocks {t.Blocks} · Physical crits {t.Crits}/{t.DirectHits}");ImGui.TreePop();}
+        {if(t.RecklessOutgoing.Count>0)RecklessLine("OUT",t.RecklessOutgoing,t.DirectHits,t.RecklessOutgoingPercent);ImGui.TextUnformatted($"Kinetic: {t.KineticReleases} releases · {t.KineticReady} ready · {t.KineticExpired} expired");ImGui.TextUnformatted($"Kinetic repeated state notices suppressed this login: {v.KineticDuplicates}");if(t.Procs.TryGetValue("Kinetic",out int legacyKinetic))ImGui.TextDisabled($"Legacy Kinetic notices {legacyKinetic} (not a release count)");if(t.PeriodicTicks>0)ImGui.TextUnformatted($"Periodic incoming: {t.PeriodicTicks} ticks / {t.PeriodicTaken:N0} damage (excluded from direct spell resist rate)");foreach(var p in t.Components.OrderByDescending(p=>p.Value))ImGui.TextUnformatted($"{p.Key}: {p.Value:N0}");if(t.UnclassifiedHits>0)ImGui.TextUnformatted($"Unclassified incoming: {t.UnclassifiedHits} hits / {t.UnclassifiedDamage:N0} damage (excluded from defense rates)");foreach(var p in t.IncomingEffects)ImGui.TextUnformatted($"Incoming {p.Key}: {p.Value} applied/refreshed");foreach(var p in t.HealingSources)ImGui.TextUnformatted($"{p.Key}: +{p.Value:N0}");foreach(var p in t.Procs)ImGui.TextUnformatted($"{p.Key}: {p.Value} notices");ImGui.TextUnformatted($"Blocks {t.Blocks} · Physical crits {t.Crits}/{t.DirectHits}");ImGui.TreePop();}
         if(ImGui.TreeNode("Big hits · "+t.HighestObserved+" highest observed")){BigHits(t);ImGui.TreePop();}
         if(ImGui.TreeNode("Mob breakdown")){MobTable(t);ImGui.TreePop();}
         if(ImGui.TreeNode("Deaths ("+t.DeathCount+")")){Deaths(t);ImGui.TreePop();}
@@ -87,8 +131,7 @@ internal sealed class CombatPanel
             if(chosen!=null)
             {
                 RunHeader(chosen);
-                if(chosen.Stats.RecklessIncoming.Count+chosen.Stats.RecklessOutgoing.Count>0)
-                {RecklessLine("OUT",chosen.Stats.RecklessOutgoing,chosen.Stats.DirectHits,chosen.Stats.RecklessOutgoingPercent);RecklessLine("IN",chosen.Stats.RecklessIncoming,chosen.Stats.PhysicalHits,chosen.Stats.RecklessIncomingPercent);}
+                if(chosen.Stats.RecklessOutgoing.Count>0)RecklessLine("OUT",chosen.Stats.RecklessOutgoing,chosen.Stats.DirectHits,chosen.Stats.RecklessOutgoingPercent);
                 if(ImGui.TreeNode("Big hits##"+chosen.Id)){BigHits(chosen.Stats);ImGui.TreePop();}
                 MobTable(chosen.Stats);Deaths(chosen.Stats);
             }
@@ -99,7 +142,7 @@ internal sealed class CombatPanel
     }
     private static void RunHeader(RunRecord r)
     {
-        if(r.ParserVersion!="0.1.2")ImGui.TextDisabled("Includes earlier parser totals; old aggregates are not reclassified.");
+        if(r.ParserVersion!=CombatEngine.ParserVersion)ImGui.TextDisabled("Includes earlier parser totals; old aggregates are not reclassified.");
         ImGui.TextWrapped(r.Name+(r.Entered==null?" · awaiting entry":r.Cleared==null?" · in progress":" · CLEARED"));
         ImGui.TextUnformatted($"Observed inside: {TimeSpan.FromSeconds(r.Observed):hh\\:mm\\:ss}"+(r.Gaps?" · gaps":""));
         if(r.CompletionSeconds.HasValue)ImGui.TextUnformatted($"Entry to clear: {TimeSpan.FromSeconds(r.CompletionSeconds.Value):hh\\:mm\\:ss} (wall time)");
@@ -139,7 +182,7 @@ internal sealed class CombatPanel
             if(!ImGui.TreeNode($"{h.Damage:N0} · {h.Attacker}"+(h.KillingBlow?" · LETHAL":"")+"##"+h.Utc.Ticks))continue;
             ImGui.TextUnformatted(h.Utc.ToLocalTime().ToString("T")+" · "+h.Delivery+" · "+h.Element);
             if(h.Spell.Length>0)ImGui.TextWrapped("Spell: "+h.Spell);
-            ImGui.TextUnformatted("Crit: "+(h.Critical?"yes":"not marked")+" · Reckless: "+(h.RecklessTagged?"tagged":"not marked"));
+            ImGui.TextUnformatted("Crit: "+(h.Critical?"yes":"not marked"));
             if(h.HealthBefore.HasValue)ImGui.TextUnformatted($"Health before {h.HealthBefore} · overkill {h.Overkill}");
             ImGui.TextWrapped(h.Evidence);Context(h.Context);ImGui.TreePop();
         }
@@ -158,6 +201,12 @@ internal sealed class CombatPanel
         try
         {
             ImGui.TextWrapped("Standalone display. Debuff icons remain owned by Rynth. Events discover their own meter modules.");
+            int mode=(int)a.MeterMode;if(ImGui.Combo("Display mode",ref mode,"Normal\0Compact\0Ultra-compact\0")){a.MeterMode=(MeterMode)mode;place=true;Dirty=true;}
+            Slider("Pack idle cutoff (seconds)",a.PackIdleSeconds,2,12,x=>a.PackIdleSeconds=x);
+            ImGui.TextDisabled("All modes share pack DPS; a quiet gap freezes it and the next pack resets it.");
+            Slider("Compact / ultra digit size",a.DigitsSize,18,90,x=>a.DigitsSize=x);
+            Toggle("Lock ultra digits (click-through)",a.DigitsLocked,x=>a.DigitsLocked=x);
+            if(a.MeterMode==MeterMode.UltraCompact)ImGui.TextWrapped("Unlock to drag the digits. Locked digits use only the existing floating draw layer. /acai2combat unlock or setup restores editing.");
             Toggle("Lock meter position",a.Locked,x=>a.Locked=x);Toggle("Show meter",a.Visible,x=>a.Visible=x);Toggle("Floating combat text",a.Floating,x=>a.Floating=x);
             Toggle("Custom combat lettering",a.CustomLettering,x=>a.CustomLettering=x);
             Toggle("Subdued effects",a.Subdued,x=>a.Subdued=x);Toggle("Bold effects and crits",a.Bold,x=>a.Bold=x);
@@ -216,13 +265,13 @@ internal sealed class CombatPanel
         var layout=new FloatLayout(viewport,anchor);
         // New important notices claim space first. Quiet events yield visually when the screen is full;
         // the underlying combat counters and event compression are never changed by layout.
-        foreach(var e in events.OrderByDescending(e=>e.Critical||e.Kind=="Critical"?2:e.Kind=="Healing"||e.Kind=="Imperil"||e.Kind.StartsWith("Vuln")?1:0).ThenByDescending(e=>e.Id))
+        foreach(var e in events.OrderByDescending(e=>e.Kind=="KineticReady"?3:e.Critical||e.Kind is "Critical" or "KineticRelease"?2:e.Kind=="Healing"||e.Kind=="KineticReady"||e.Kind=="Imperil"||e.Kind.StartsWith("Vuln")?1:0).ThenByDescending(e=>e.Id))
         {
             double age=now-e.Start;if(age<0||age>=a.Lifetime)continue;
             var arc=FloatStream.Arc(e,now,a);float alpha=arc.Alpha;
             string label=FloatStream.Format(e);if(label.Length==0)continue;
-            bool regular=FloatStream.Regular(e),impact=e.Critical||e.Kind=="Critical",effect=e.Kind=="Imperil"||e.Kind.StartsWith("Vuln",StringComparison.Ordinal);
-            bool numeric=e.Amount>0&&a.CustomLettering;
+            bool regular=FloatStream.Regular(e),impact=e.Critical||e.Kind is "Critical" or "KineticRelease",effect=e.Kind=="KineticReady"||e.Kind=="Imperil"||e.Kind.StartsWith("Vuln",StringComparison.Ordinal);
+            bool numeric=FloatStream.HasNumber(e)&&a.CustomLettering;
             float size=MathF.Round(a.FontSize*(impact?a.CritScale*(a.CustomLettering?1.3f:1):regular?a.RegularScale:1)*(impact?ImpactLettering.Punch(age):1));
             if(effect)size=MathF.Round(a.FontSize*1.08f);
             if(regular)alpha*=a.RegularAlpha;
@@ -232,14 +281,15 @@ internal sealed class CombatPanel
             try
             {
                 string headline=label,caption="";
-                if(numeric||impact&&e.Amount>0)
+                if(numeric||impact&&FloatStream.HasNumber(e))
                 {
                     headline=ImpactLettering.Number(e);
                     caption=ImpactLettering.Caption(e)+(e.Count>1?" ×"+e.Count:"");
                 }
+                if(a.CustomLettering){headline=headline.ToUpperInvariant();caption=caption.ToUpperInvariant();}
                 float Width(string text,float pixels)=>ImGui.CalcTextSize(text).X*pixels/ImGui.GetFontSize();
                 float captionSize=MathF.Round(Math.Max(12,Math.Min(18,size*.52f)));
-                bool vectorHeadline=numeric||effect&&a.CustomLettering&&ImpactLettering.Supports(headline);
+                bool vectorHeadline=a.CustomLettering&&ImpactLettering.Supports(headline);
                 bool vectorCaption=a.CustomLettering&&ImpactLettering.Supports(caption);
                 float headlineWidth=vectorHeadline?ImpactLettering.Width(headline,size):Width(headline,size);
                 float captionWidth=vectorCaption?ImpactLettering.Width(caption,captionSize):Width(caption,captionSize);
@@ -257,7 +307,7 @@ internal sealed class CombatPanel
                 c.X=l+(c.X-l)*saturation;c.Y=l+(c.Y-l)*saturation;c.Z=l+(c.Z-l)*saturation;c.W*=alpha;
                 if(effect)ImpactArt.Plate(p,bounds,c,age,(points,tint)=>Polygon(draw,points,tint));
                 Vector2 textP=p+padding;
-                if(!a.Subdued&&a.Intensity>.05f&&(!regular||e.Kind is "Acid" or "Poison" or "Sneak"))Art(draw,e,textP,new(width,height),c,age,a.Intensity*(regular?.55f:1));
+                if(!a.Subdued&&a.Intensity>.05f&&(!regular||e.Kind is "Acid" or "Poison" or "Sneak"))Art(draw,e,textP,new(width,height),c,age,a.Intensity*(regular?.85f:1));
                 if(vectorHeadline)ImpactLettering.Draw(headline,textP+new Vector2((width-headlineWidth)/2,0),size,c,a.Bold,(points,tint)=>Polygon(draw,points,tint));
                 else Lettering(draw,headline,textP+new Vector2((width-headlineWidth)/2,0),size,c,a.Outline);
                 if(caption.Length>0)
@@ -277,25 +327,49 @@ internal sealed class CombatPanel
         // Decoration stays outside the lettering's bounding box.
         if(e.Kind=="Healing")
         {
-            float fade=MathF.Exp(-t*1.8f),r=8+24*Math.Min(t,1);
-            Vector2 halo=new(center.X,p.Y+text.Y+9);
-            d.AddEllipse(halo,new(r,r*.26f),Tint(fade*.6f),0,24,1.5f);
-            for(int side=-1;side<=1;side+=2)for(int i=0;i<4;i++)
+            float fade=MathF.Exp(-t*1.3f),r=12+28*Math.Min(t,1);
+            Vector2 halo=new(center.X,p.Y+text.Y+10);
+            d.AddEllipse(halo,new(r,r*.26f),Tint(fade*.8f),0,24,1.6f);
+            d.AddEllipse(halo+new Vector2(0,3),new(r*.72f,r*.15f),Tint(fade*.4f),0,24,1);
+            for(int side=-1;side<=1;side+=2)for(int i=0;i<6;i++)
             {
-                float phase=t*3+i*.8f;
-                Vector2 q=new(center.X+side*(text.X*.5f+10+MathF.Sin(phase)*4),p.Y+text.Y-i*9-t*12);
-                d.AddCircleFilled(Pixel(q),1.5f,Tint(fade*.65f),6);
+                float phase=t*3+i*.8f;Vector2 q=new(center.X+side*(text.X*.5f+11+MathF.Sin(phase)*6),p.Y+text.Y-i*8-t*13);
+                d.AddCircleFilled(Pixel(q),2,Tint(fade*.7f),8);
+                if(i is 1 or 4){d.AddLine(q-new Vector2(3,0),q+new Vector2(3,0),Tint(fade*.5f),1.3f);d.AddLine(q-new Vector2(0,3),q+new Vector2(0,3),Tint(fade*.5f),1.3f);}
             }
         }
-        else if(e.Kind is "Acid" or "Poison")
+        else if(e.Kind=="Acid")
         {
+            float fade=MathF.Exp(-t*.9f);
+            // Thin local mist sits behind/below the lettering, not over the character.
+            for(int i=0;i<3;i++)
+            {
+                Vector2 fog=new(p.X+text.X*(.18f+i*.32f)+MathF.Sin(t*2+i)*4,p.Y+text.Y+6);
+                d.AddEllipseFilled(fog,new(Math.Max(10,text.X*.26f),6+i),Tint(fade*.10f),0,20);
+            }
             for(int side=-1;side<=1;side+=2)for(int i=0;i<3;i++)
             {
-                Vector2 q=new(center.X+side*(text.X*.5f+8+i*4),center.Y+(i-1)*7+t*9);
-                d.AddCircleFilled(Pixel(q),e.Kind=="Acid"?2:1.3f,Tint(MathF.Exp(-t*2)*.55f),6);
+                Vector2 q=new(center.X+side*(text.X*.5f+7+i*4),p.Y+i*7+t*17);
+                d.AddLine(q-new Vector2(0,5),q+new Vector2(0,2),Tint(fade*.65f),1.4f);
+                d.AddTriangleFilled(q-new Vector2(0,5),q+new Vector2(-2,1),q+new Vector2(2,1),Tint(fade*.7f));
+                d.AddCircleFilled(q+new Vector2(0,1),2,Tint(fade*.7f),8);
             }
         }
-        if(e.Critical||e.Kind is "Critical" or "Kill")
+        else if(e.Kind=="Poison")
+        {
+            float fade=MathF.Exp(-t*.8f);
+            for(int side=-1;side<=1;side+=2)for(int i=0;i<6;i++)
+            {
+                float phase=i*.65f+t*3;Vector2 q=new(center.X+side*(text.X*.5f+9+MathF.Sin(phase)*5),p.Y+text.Y-i*6-t*9);
+                d.AddCircleFilled(Pixel(q),1.6f+i*.13f,Tint(fade*.6f),8);
+                Vector2 trail=q+new Vector2(side*MathF.Cos(phase)*3,5);d.AddLine(q,trail,Tint(fade*.35f),1.4f);
+            }
+        }
+        else if(e.Kind=="KineticReady")
+        {
+            ImpactArt.Charge(p,text,color,age,intensity,(from,to,tint,width)=>d.AddLine(Pixel(from),Pixel(to),ImGui.ColorConvertFloat4ToU32(tint),width));
+        }
+        if(e.Critical||e.Kind is "Critical" or "Kill" or "KineticRelease")
         {
             ImpactArt.Burst(p,text,color,age,intensity,(from,to,tint,thickness)=>d.AddLine(Pixel(from),Pixel(to),ImGui.ColorConvertFloat4ToU32(tint),thickness),(points,tint)=>Polygon(d,points,tint));
         }
