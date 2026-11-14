@@ -6,9 +6,9 @@ on:
         description: Successful Windows verification run ID
         required: true
       version:
-        description: Package version (e.g. 0.1.1)
+        description: Package version (e.g. 0.1.2)
         required: true
-        default: '0.1.1'
+        default: '0.1.2'
       commit_sha:
         description: Full tested source commit SHA
         required: true
@@ -63,7 +63,7 @@ jobs:
           cd "$RUNNER_TEMP"
           sha256sum "$zip_name" > "$zip_name.sha256"
           cat > release-notes.md <<NOTES
-          v0.1.1 adds strict defense classification, identical-hit xN compression, louder criticals, quieter regular hits, incoming elemental vuln/imperil text and centered healing with new art. Standalone ACAI2 Combat: adaptive DPS/defense meter, outlined artistic floating combat text, compact Thread run summaries, mob breakdowns and exact server death/overkill details. Built from $SOURCE_SHA using the genuine Rynth SDK and Windows manifest tooling.
+          v0.1.2 adds bounded big-hit snapshots with attacker/spell, crit/Reckless markers and pre-hit native imperil/vuln context, plus separate incoming/outgoing Reckless percent/average/high/low readouts. Missing/stale/unclassified/layer-ambiguous context stays unknown. Standalone ACAI2 Combat: adaptive DPS/defense meter, outlined artistic floating combat text, compact Thread run summaries, mob breakdowns and exact server death/overkill details. Built from $SOURCE_SHA using the genuine Rynth SDK and Windows manifest tooling.
 
           Requires managed CoreCLR RynthCore API 92+ and matching engine ImGui bindings. No Bridge, Keyfer, Threads or RynthAi dependency; no attacks, casts, bank/vendor commands or debuff renderer. Disable RynthVision floating numbers separately with /rv plates numbers off; keep its debuff icons.
 

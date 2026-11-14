@@ -6,9 +6,9 @@ namespace ACAI2.Rynth.Combat.Plugin;
 
 public sealed class CombatPlugin : RynthPluginBase
 {
-    public const string Version="0.1.1";
+    public const string Version="0.1.2";
     public override uint MinimumApiVersion=>92;
-    private readonly ConcurrentQueue<(string Text,int Type,DateTime Utc,double Now,long Epoch)> incoming=new();
+    private readonly ConcurrentQueue<(string Text,int Type,DateTime Utc,double Now,long Epoch,uint EffectId,bool Added,double Duration)> incoming=new();
     private readonly ConcurrentQueue<string> commands=new();
     private readonly object settingsGate=new();
     private Appearance appearance=new();
@@ -20,7 +20,10 @@ public sealed class CombatPlugin : RynthPluginBase
     private string server="",character="",notice="Waiting for login";
     private bool waiting,profileApplied,renderFailed;
     private int lifecycle,queued,dropped;
-    private long epoch,savedRevision=-1;
+    private long epoch,savedRevision=-1,droppedSinceTicks;
+    private double nextEffects;
+    private readonly uint[] effectIds=new uint[512];
+    private readonly double[] effectExpiry=new double[512];
     private double nextProbe,nextView,nextScan,nextSave,nextProfile,previewUntil,nextPreview;
     private FloatStream preview=new();
     private readonly Dictionary<string,RunRecord> frozenRuns=[];
@@ -34,10 +37,36 @@ public sealed class CombatPlugin : RynthPluginBase
     public override void OnChatWindowText(string? text,int type,ref int eat)
     {
         if(waiting||player==0||Volatile.Read(ref lifecycle)!=0||text==null||text.Length>4096||type is 2 or 3 or 4 or 17 or 18)return;
-        bool relevant=text.Contains("you",StringComparison.OrdinalIgnoreCase)||text.StartsWith("Your ",StringComparison.Ordinal)||text.StartsWith("[REALM]",StringComparison.Ordinal)||text.StartsWith("The Thread Gem ",StringComparison.Ordinal)||text.StartsWith("Monsters killed ",StringComparison.Ordinal)||text.Contains(" is cleared.",StringComparison.Ordinal)||text.EndsWith("!",StringComparison.Ordinal);
+        bool relevant=text.Contains("you",StringComparison.OrdinalIgnoreCase)||text.StartsWith("Your ",StringComparison.Ordinal)||text.StartsWith("[REALM]",StringComparison.Ordinal)||text.StartsWith("The Thread Gem ",StringComparison.Ordinal)||text.StartsWith("Monsters killed ",StringComparison.Ordinal)||text.Contains(" is cleared.",StringComparison.Ordinal)||text.EndsWith("!",StringComparison.Ordinal)||text.EndsWith(" has expired.",StringComparison.Ordinal);
         if(!relevant)return;
-        if(Interlocked.Increment(ref queued)<=512)incoming.Enqueue((text,type,DateTime.UtcNow,Now,Volatile.Read(ref epoch)));
-        else{Interlocked.Decrement(ref queued);Interlocked.Increment(ref dropped);}
+        if(Interlocked.Increment(ref queued)<=512)incoming.Enqueue((text,type,DateTime.UtcNow,Now,Volatile.Read(ref epoch),0,false,0));
+        else{Interlocked.Decrement(ref queued);Interlocked.Increment(ref dropped);Interlocked.CompareExchange(ref droppedSinceTicks,DateTime.UtcNow.Ticks,0);}
+    }
+    public override void OnEnchantmentAdded(uint id,double duration)=>QueueEffect(id,true,duration);
+    public override void OnEnchantmentRemoved(uint id)=>QueueEffect(id,false,0);
+    private void QueueEffect(uint id,bool added,double duration)
+    {
+        if(waiting||player==0||id==0||Volatile.Read(ref lifecycle)!=0)return;
+        if(Interlocked.Increment(ref queued)<=512)incoming.Enqueue(("",0,DateTime.UtcNow,Now,Volatile.Read(ref epoch),id,added,duration));
+        else{Interlocked.Decrement(ref queued);Interlocked.Increment(ref dropped);Interlocked.CompareExchange(ref droppedSinceTicks,DateTime.UtcNow.Ticks,0);}
+    }
+    private void SampleEffects(DateTime utc)
+    {
+        if(engine==null)return;
+        try
+        {
+            if(!Host.HasReadPlayerEnchantments||!Host.IsPlayerReady()){engine.Effects.SampleAt(utc,false,[],"Player enchantment snapshot unavailable");return;}
+            int n=Host.ReadPlayerEnchantments(effectIds,effectExpiry,512);double serverTime=Host.GetServerTime();
+            if(n<0||n>=512||!double.IsFinite(serverTime)||serverTime<=0){engine.Effects.SampleAt(utc,false,[],"Native enchantment snapshot missing, truncated or clock unavailable");return;}
+            var active=new List<ActiveEffect>();
+            for(int i=0;i<n;i++)
+            {
+                double remaining=effectExpiry[i]-serverTime;if(double.IsNaN(remaining)||remaining<=0)continue;
+                active.Add(new(effectIds[i],remaining<31536000?utc.AddSeconds(remaining):null));
+            }
+            engine.Effects.SampleAt(utc,true,active.ToArray());
+        }
+        catch(Exception ex){engine.Effects.SampleAt(utc,false,[],"Enchantment snapshot failed: "+ex.GetType().Name);}
     }
     public override void OnChatBarEnter(string? text,ref int eat)
     {
@@ -61,10 +90,13 @@ public sealed class CombatPlugin : RynthPluginBase
         if(engine==null||archive==null)return;
         if(archive.Ready&&!profileApplied){lock(settingsGate){appearance=archive.LoadedAppearance;panel.Reset();}engine.RestoreRuns(archive.History);profileApplied=true;}
         if(!profileApplied){if(!archive.Completion.IsCompleted)return;profileApplied=true;notice=archive.Notice;}
+        engine.BigHitMinimum=appearance.BigHitMinimum;
+        long lostAt=Interlocked.Exchange(ref droppedSinceTicks,0);if(lostAt!=0)engine.Effects.Lost(new DateTime(lostAt,DateTimeKind.Utc));
+        if(now>=nextEffects){nextEffects=now+.1;SampleEffects(DateTime.UtcNow);}
         for(int i=0;i<128&&incoming.TryDequeue(out var line);i++)
         {
             Interlocked.Decrement(ref queued);if(line.Epoch!=Volatile.Read(ref epoch))continue;
-            try{engine.Observe(line.Text,line.Type,line.Utc,line.Now);}catch(Exception ex){notice="Combat line skipped: "+ex.GetType().Name;engine.Gap();}
+            try{if(line.EffectId!=0)engine.Effects.Changed(line.Utc,line.EffectId,line.Added,line.Duration);else engine.Observe(line.Text,line.Type,line.Utc,line.Now);}catch(Exception ex){notice="Combat line skipped: "+ex.GetType().Name;engine.Gap();}
         }
         if(dropped>0)engine.Gap();
         bool portaling=Host.HasIsPortaling&&Host.IsPortaling();if(portaling)engine.Pause(DateTime.UtcNow,true);else{if(engine.EntryConfirmed&&!engine.Inside)engine.Enter(DateTime.UtcNow);engine.Tick(DateTime.UtcNow);}
@@ -130,7 +162,7 @@ public sealed class CombatPlugin : RynthPluginBase
     }
     private void End()
     {
-        Interlocked.Increment(ref epoch);player=0;
+        Interlocked.Increment(ref epoch);player=0;nextEffects=0;Interlocked.Exchange(ref droppedSinceTicks,0);
         while(incoming.TryDequeue(out _))Interlocked.Decrement(ref queued);while(commands.TryDequeue(out _)){}
         if(archive is {Ready:true,ProfileReadable:true}&&profileApplied&&panel.Dirty){try{lock(settingsGate){appearance.Validate();Profiles.Save(Path.Combine(archive.Folder,"ui.json"),appearance);}}catch(Exception ex){Host.Log("[ACAI2 Combat] Final UI save failed: "+ex.Message);}}
         if(engine!=null&&archive!=null){engine.Pause(DateTime.UtcNow);engine.Gap();if(engine.Current is {Entered:not null} active)archive.Save(active);foreach(var r in engine.Runs.Where(r=>r.Entered!=null||r.Ended!=null))archive.Save(r);archive.Dispose();closing=archive.Completion;}

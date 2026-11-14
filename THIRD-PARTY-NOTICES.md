@@ -32,3 +32,8 @@ combat parser (fa363107 provenance retained in the source) and adds new aggregat
 run/death, persistence and ImGui rendering code. No RynthVision implementation,
 engine binary, RynthAi automation or third-party combat assets are copied into its
 package. It references the same genuine SDK and matching ImGui bindings above.
+
+Combat v0.1.2 embeds a compact known-ID/hostile-effect reference derived from the
+spell ID/name facts in MIT-licensed RynthSuite Combat/SpellData.txt at 44571693.
+See origin/COMBAT-SPELL-METADATA.md and the retained RynthSuite license. This is
+reference metadata, not a RynthAi runtime dependency or copied bot implementation.

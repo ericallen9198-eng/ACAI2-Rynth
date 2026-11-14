@@ -53,6 +53,9 @@ public sealed class CombatEngine(string server,string character)
     public bool EntryConfirmed {get;private set;}
     public long Revision {get;private set;}
     public FloatStream Floats {get;}=new();
+    public EffectHistory Effects {get;}=new();
+    public int BigHitMinimum {get;set;}=100;
+    private readonly List<IncomingHit> recentHits=[];
     private readonly HashSet<uint> seen=[];
     private RateRing sessionRate=new(),runRate=new();
     private DateTime? tick;
@@ -73,7 +76,7 @@ public sealed class CombatEngine(string server,string character)
         if(!Native(raw,type))return false;string text=Regex.Replace(raw.Trim(),@"^\d{2}:\d{2}:\d{2}\s+","");var open=Opener.Match(text);
         if(open.Success)
         {
-            Pause(utc);Current=new(){Server=server,Character=character,ParserVersion="0.1.1",Name=open.Groups["name"].Value,Opened=utc};Runs.Add(Current);if(Runs.Count>50)Runs.RemoveAt(0);Revision++;return true;
+            Pause(utc);Current=new(){Server=server,Character=character,ParserVersion="0.1.2",Name=open.Groups["name"].Value,Opened=utc};Runs.Add(Current);if(Runs.Count>50)Runs.RemoveAt(0);Revision++;return true;
         }
         var realm=Realm.Match(text);
         if(realm.Success)
@@ -97,11 +100,16 @@ public sealed class CombatEngine(string server,string character)
         {
             int damage=Number(death.Groups["damage"].Value),hp=Number(death.Groups["hp"].Value),max=Number(death.Groups["max"].Value);
             if(damage<=0||max<=0||hp>max)return false;
-            var killer=Regex.Match(text,@"^(?<mob>.+?)'s attack stops you cold!");
-            AddDeath(new(utc,killer.Success?killer.Groups["mob"].Value:"Unspecified killer",damage,hp,max,Math.Max(0,damage-hp),text),now);return true;
+            string killer=DeathSource.Parse(text);var context=Effects.At(utc);
+            var matched=recentHits.LastOrDefault(h=>h.Damage==damage&&h.Attacker==killer&&(utc-h.Utc).TotalSeconds is >=0 and <=1);
+            var lethal=matched!=null?matched with{KillingBlow=true,HealthBefore=hp,Overkill=Math.Max(0,damage-hp),Evidence="Correlated with preceding hit by attacker and damage within one second"}:new IncomingHit(utc,killer,damage,"Unknown","Unknown","",false,Regex.IsMatch(text,@"^(?:Critical hit! )?Reckless(?:ness)?!"),true,hp,Math.Max(0,damage-hp),context,"Server death notice; attack type unconfirmed");
+            if(lastDeath==null||(utc-lastDeath.Utc).TotalSeconds>=2||lastDeath.Message!=text){SaveHit(Session,lethal);if(Inside&&Current is {Cleared:null} fatalRun)SaveHit(fatalRun.Stats,lethal);}
+            AddDeath(new(utc,killer,damage,hp,max,Math.Max(0,damage-hp),text,lethal.Context),now);return true;
         }
+        if(text.EndsWith(" has expired.",StringComparison.Ordinal)&&EffectCatalog.LabelName(text[..^13]) is {} expired)Effects.Notice(utc,"Expired "+expired);
         if(TryIncomingEffect(text,out string effectKind,out string effectLabel))
         {
+            Effects.Notice(utc,effectLabel);
             Session.IncomingEffects[effectLabel]=Session.IncomingEffects.GetValueOrDefault(effectLabel)+1;
             if(Inside&&Current is {Cleared:null} affected){affected.Stats.IncomingEffects[effectLabel]=affected.Stats.IncomingEffects.GetValueOrDefault(effectLabel)+1;Revision++;}
             Floats.Add(now,effectKind,effectLabel,incoming:true);return true;
@@ -112,13 +120,21 @@ public sealed class CombatEngine(string server,string character)
         if(text is "Your frenzy subsides." or "Your killer instinct fades."){Utility("Class status",0,text.TrimEnd('.').ToUpperInvariant(),now);return true;}
         if(!parser.TryParse(text,character,out var e))
         {
-            var hit=SimpleIncoming.Match(text);bool physical=hit.Success;if(!physical)hit=UnknownIncoming.Match(text);if(!hit.Success)return false;
-            e=new(){Direction="Incoming",Result="Damage",AttackType=physical?"Melee/Missile":"Unknown",Component="Defense",Mob=hit.Groups["mob"].Value,Damage=Number(hit.Groups["damage"].Value),Element=hit.Groups["element"].Value,Critical=text.StartsWith("Critical hit!",StringComparison.Ordinal)};
+            string prefix=Regex.Match(text,"^"+CombatMessageParser.Prefix).Value;string body=text[prefix.Length..];
+            var hit=SimpleIncoming.Match(body);bool physical=hit.Success;if(!physical)hit=UnknownIncoming.Match(body);if(!hit.Success)return false;
+            e=new(){Direction="Incoming",Result="Damage",AttackType=physical?"Melee/Missile":"Unknown",Component="Defense",Mob=hit.Groups["mob"].Value,Damage=Number(hit.Groups["damage"].Value),Element=hit.Groups["element"].Value,Critical=prefix.Contains("Critical hit!",StringComparison.Ordinal),RecklessTagged=Regex.IsMatch(prefix,@"Reckless(?:ness)?!")};
         }
         e.Raw=""; // Only explicit server death notices survive as message text.
         if(e.Result=="Death"){if(lastDeath==null||(utc-lastDeath.Utc).TotalSeconds>2)AddDeath(new(utc,"Unspecified killer",null,null,null,null,text),now);return true;}
         Add(Session,e);sessionRate.Add(e,now);
         if(Inside&&Current is {Cleared:null} active){Add(active.Stats,e);runRate.Add(e,now);Revision++;}
+        if(e.Result=="Damage"&&e.Direction=="Incoming")
+        {
+            string spell=e.AttackType=="Magic"?Regex.Match(text,@"\bwith (?<spell>[^.!]+)").Groups["spell"].Value:"";
+            var hit=new IncomingHit(utc,e.Mob,e.Damage,e.AttackType,e.Element,spell,e.Critical,e.RecklessTagged,false,null,null,Effects.At(utc));
+            recentHits.Add(hit);if(recentHits.Count>16)recentHits.RemoveAt(0);
+            if(e.Damage>=BigHitMinimum){SaveHit(Session,hit);if(Inside&&Current is {Cleared:null} hitRun)SaveHit(hitRun.Stats,hit);}
+        }
         string kind=e.Direction=="Healing"?"Healing":e.Direction=="Incoming"?e.Result=="Damage"?"Taken":e.Result:e.Component!="Direct"?e.Component:e.SneakAttack?"Sneak":e.Critical?"Critical":e.Element;
         if(e.Result=="Damage"&&e.Damage>0)Floats.Add(now,kind,e.Direction=="Incoming"?"HIT":e.Component=="Direct"?e.SneakAttack?"SNEAK":"":e.Component.ToUpperInvariant(),e.Mob,e.Damage,e.Direction=="Incoming",e.Critical,e.AttackType);
         else if(e.Result=="Healing"&&e.Amount>0)Floats.Add(now,"Healing",e.Component=="Summons"?"PET HEAL":"HEAL",e.Recipient,e.Amount,incoming:true,critical:e.Critical);
@@ -147,14 +163,14 @@ public sealed class CombatEngine(string server,string character)
         if(e.Result=="Damage"&&e.Direction=="Outgoing")
         {
             t.Damage+=e.Damage;if(m!=null)m.Dealt+=e.Damage;t.Components[e.Component]=t.Components.GetValueOrDefault(e.Component)+e.Damage;
-            if(CombatComponents.IsDirect(e)&&e.AttackType=="Melee/Missile"){t.DirectHits++;if(e.Critical)t.Crits++;if(e.SneakAttack){t.Sneaks++;t.SneakDamage+=e.Damage;}}
+            if(CombatComponents.IsDirect(e)&&e.AttackType=="Melee/Missile"){t.DirectHits++;if(e.RecklessTagged)t.RecklessOutgoing.Add(e.Damage);if(e.Critical)t.Crits++;if(e.SneakAttack){t.Sneaks++;t.SneakDamage+=e.Damage;}}
         }
         else if(e.Result=="Damage"&&e.Direction=="Incoming")
         {
             t.Taken+=e.Damage;
             if(e.AttackType=="Magic"){t.MagicDamage+=e.Damage;t.MagicHits++;t.MagicHigh=Math.Max(t.MagicHigh,e.Damage);if(m!=null){m.MagicDamage+=e.Damage;m.MagicHits++;m.MagicHigh=Math.Max(m.MagicHigh,e.Damage);}}
-            else if(e.AttackType=="Melee/Missile") {t.PhysicalDamage+=e.Damage;t.PhysicalHits++;t.PhysicalHigh=Math.Max(t.PhysicalHigh,e.Damage);if(m!=null){m.PhysicalDamage+=e.Damage;m.PhysicalHits++;m.PhysicalHigh=Math.Max(m.PhysicalHigh,e.Damage);}}
-            else {t.UnclassifiedDamage+=e.Damage;t.UnclassifiedHits++;if(m!=null){m.UnclassifiedDamage+=e.Damage;m.UnclassifiedHits++;}}
+            else if(e.AttackType=="Melee/Missile") {if(e.RecklessTagged)t.RecklessIncoming.Add(e.Damage);t.PhysicalDamage+=e.Damage;t.PhysicalHits++;t.PhysicalHigh=Math.Max(t.PhysicalHigh,e.Damage);if(m!=null){m.PhysicalDamage+=e.Damage;m.PhysicalHits++;m.PhysicalHigh=Math.Max(m.PhysicalHigh,e.Damage);}}
+            else {t.UnclassifiedDamage+=e.Damage;t.UnclassifiedHits++;t.UnclassifiedHigh=Math.Max(t.UnclassifiedHigh,e.Damage);if(m!=null){m.UnclassifiedDamage+=e.Damage;m.UnclassifiedHits++;m.UnclassifiedHigh=Math.Max(m.UnclassifiedHigh,e.Damage);}}
         }
         else if(e.Result=="Healing"){if(e.Recipient==""||e.Component!="Summons")t.Healing+=e.Amount;string source=e.Component=="PeriodicHeal"?"Periodic healing (source unspecified)":e.Component=="Recovery"?"Healing kit":e.Ability.Length>0?e.Ability:e.Component;t.HealingSources[source]=t.HealingSources.GetValueOrDefault(source)+e.Amount;}
         else if(e.Direction=="Incoming"&&e.Result=="Evade"){t.Evades++;if(m!=null)m.Evades++;}
@@ -162,6 +178,12 @@ public sealed class CombatEngine(string server,string character)
         else if(e.Result=="Block")t.Blocks++;
         else if(e.Result=="Kill"){t.Kills++;if(m!=null)m.Kills++;}
         else if(e.Direction=="Utility")t.Procs[e.Component]=t.Procs.GetValueOrDefault(e.Component)+1;
+    }
+    private static void SaveHit(Totals totals,IncomingHit hit)
+    {
+        int found=totals.BigHits.FindIndex(h=>h.Utc==hit.Utc&&h.Attacker==hit.Attacker&&h.Damage==hit.Damage);
+        if(found>=0){if(hit.KillingBlow)totals.BigHits[found]=hit;return;}
+        totals.BigHits.Add(hit);totals.BigHits=totals.BigHits.OrderByDescending(h=>h.Damage).ThenByDescending(h=>h.KillingBlow).ThenByDescending(h=>h.Utc).Take(24).ToList();
     }
     private void Utility(string kind,int n,string label,double now,bool ready=false)
     {
@@ -193,5 +215,5 @@ public sealed class CombatEngine(string server,string character)
         Current??=Runs.Where(r=>r.Ended==null).OrderByDescending(r=>r.Opened).FirstOrDefault();
         Revision++;
     }
-    public void NewSession(){Session=new();sessionRate=new();lastDeath=null;}
+    public void NewSession(){Session=new();sessionRate=new();lastDeath=null;recentHits.Clear();}
 }

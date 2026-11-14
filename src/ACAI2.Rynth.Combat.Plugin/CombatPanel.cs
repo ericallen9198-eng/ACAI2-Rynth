@@ -28,7 +28,7 @@ internal sealed class CombatPanel
                 ImGui.TextUnformatted("COMBAT / "+character);ImGui.SameLine();if(ImGui.SmallButton("Setup"))Setup=!Setup;
                 ImGui.Separator();ImGui.TextColored(Accent,$"{v.Dps:N0} DPS");ImGui.SameLine();ImGui.TextUnformatted($"   {v.Taken:N0} taken/s");
                 ImGui.TextDisabled(v.Scope+(v.Preview?" | PREVIEW":" | 60s rolling"));
-                if(v.RunScope&&v.Current?.ParserVersion!="0.1.1")ImGui.TextDisabled("Includes earlier parser totals; New session starts a clean sample.");
+                if(v.RunScope&&v.Current?.ParserVersion!="0.1.2")ImGui.TextDisabled("Includes earlier parser totals; New session starts a clean sample.");
                 var t=v.Stats;ImGui.TextUnformatted($"Damage {t.Damage:N0}   Heals {t.Healing:N0}   Kills {t.Kills}");
                 if(Show(a,t,"Sneak")){ImGui.TextColored(new(.94f,.66f,1,1),$"Sneak {t.SneakPercent:N1}%  ·  {t.Sneaks}/{t.DirectHits} landed physical hits");Tip("Denominator: your landed direct melee/missile hits, including zero damage. Excludes magic, poison, acid, pets and reflected damage. Discovery occurs on the first observed sneak hit.");}
                 if(t.PhysicalHits+t.Evades>0)ImGui.TextUnformatted($"Physical evade {t.EvadePercent:N1}%   Avg hit {t.PhysicalDamage/(double)Math.Max(1,t.PhysicalHits):N0}   High {t.PhysicalHigh:N0}");
@@ -38,6 +38,7 @@ internal sealed class CombatPanel
                 if(Show(a,t,"Ward"))ImGui.TextUnformatted($"Runic Ward  absorbed {t.WardAbsorbed:N0}  ·  last ready capacity {t.WardCapacity}");
                 if(t.Blocks>0)ImGui.TextUnformatted($"Shield blocks {t.Blocks}");
                 if(t.Procs.ContainsKey("Kinetic"))ImGui.TextUnformatted($"Kinetic charge events {t.Procs["Kinetic"]}");
+                if(Show(a,t,"Reckless")){RecklessLine("OUT",t.RecklessOutgoing,t.DirectHits,t.RecklessOutgoingPercent);RecklessLine("IN",t.RecklessIncoming,t.PhysicalHits,t.RecklessIncomingPercent);}
                 if(Show(a,t,"Second Wind"))ImGui.TextUnformatted($"Second Wind {t.Procs.GetValueOrDefault("Second Wind")} procs (heal amount not stated)");
                 if(ImGui.SmallButton(details?"Less":"Details"))details=!details;ImGui.SameLine();if(ImGui.SmallButton("Export"))command("export");ImGui.SameLine();if(ImGui.SmallButton("New session"))command("new");
                 if(details)Details(v,a,command);
@@ -49,7 +50,7 @@ internal sealed class CombatPanel
         if(Setup)Settings(a,v,command);
         if(a.Floating||v.Preview)Floating(a,v.Floats,screen,now);
     }
-    private static bool Show(Appearance a,Totals t,string kind)=>a.Modules.TryGetValue(kind,out bool enabled)?enabled:kind=="Sneak"?t.Sneaks>0:t.Components.ContainsKey(kind)||t.Procs.ContainsKey(kind);
+    private static bool Show(Appearance a,Totals t,string kind)=>a.Modules.TryGetValue(kind,out bool enabled)?enabled:kind=="Sneak"?t.Sneaks>0:kind=="Reckless"?t.RecklessIncoming.Count+t.RecklessOutgoing.Count>0:t.Components.ContainsKey(kind)||t.Procs.ContainsKey(kind);
     private static void Tip(string text){if(ImGui.IsItemHovered()){ImGui.BeginTooltip();ImGui.PushTextWrapPos(420);ImGui.TextUnformatted(text);ImGui.PopTextWrapPos();ImGui.EndTooltip();}}
     private static Vector4 Color(Appearance a,string kind)=>ImGui.ColorConvertU32ToFloat4(a.Colors.GetValueOrDefault(kind,a.Colors["Direct"]));
     private void Details(CombatView v,Appearance a,Action<string> command)
@@ -57,6 +58,7 @@ internal sealed class CombatPanel
         var t=v.Stats;ImGui.Separator();
         if(ImGui.TreeNode("Damage sources"))
         {foreach(var p in t.Components.OrderByDescending(p=>p.Value))ImGui.TextUnformatted($"{p.Key}: {p.Value:N0}");if(t.UnclassifiedHits>0)ImGui.TextUnformatted($"Unclassified incoming: {t.UnclassifiedHits} hits / {t.UnclassifiedDamage:N0} damage (excluded from defense rates)");foreach(var p in t.IncomingEffects)ImGui.TextUnformatted($"Incoming {p.Key}: {p.Value} applied/refreshed");foreach(var p in t.HealingSources)ImGui.TextUnformatted($"{p.Key}: +{p.Value:N0}");foreach(var p in t.Procs)ImGui.TextUnformatted($"{p.Key}: {p.Value} notices");ImGui.TextUnformatted($"Blocks {t.Blocks} · Physical crits {t.Crits}/{t.DirectHits}");ImGui.TreePop();}
+        if(ImGui.TreeNode("Big hits · "+t.HighestObserved+" highest observed")){BigHits(t);ImGui.TreePop();}
         if(ImGui.TreeNode("Mob breakdown")){MobTable(t);ImGui.TreePop();}
         if(ImGui.TreeNode("Deaths ("+t.DeathCount+")")){Deaths(t);ImGui.TreePop();}
         if(ImGui.TreeNode("Thread runs"))
@@ -77,7 +79,7 @@ internal sealed class CombatPanel
     }
     private static void RunHeader(RunRecord r)
     {
-        if(r.ParserVersion!="0.1.1")ImGui.TextDisabled("Includes earlier parser totals; old aggregates are not reclassified.");
+        if(r.ParserVersion!="0.1.2")ImGui.TextDisabled("Includes earlier parser totals; old aggregates are not reclassified.");
         ImGui.TextWrapped(r.Name+(r.Entered==null?" · awaiting entry":r.Cleared==null?" · in progress":" · CLEARED"));
         ImGui.TextUnformatted($"Observed inside: {TimeSpan.FromSeconds(r.Observed):hh\\:mm\\:ss}"+(r.Gaps?" · gaps":""));
         if(r.CompletionSeconds.HasValue)ImGui.TextUnformatted($"Entry to clear: {TimeSpan.FromSeconds(r.CompletionSeconds.Value):hh\\:mm\\:ss} (wall time)");
@@ -93,11 +95,40 @@ internal sealed class CombatPanel
             {ImGui.TextUnformatted($"Dealt {m.Dealt:N0}");ImGui.TextUnformatted($"Physical: avg {m.PhysicalDamage/(double)Math.Max(1,m.PhysicalHits):N1} · high {m.PhysicalHigh} · evade {100d*m.Evades/Math.Max(1,m.Evades+m.PhysicalHits):N1}%");ImGui.TextUnformatted($"Magic: avg {m.MagicDamage/(double)Math.Max(1,m.MagicHits):N1} · high {m.MagicHigh} · resist {100d*m.Resists/Math.Max(1,m.Resists+m.MagicHits):N1}%");ImGui.TreePop();}
         }
     }
+    private static void RecklessLine(string direction,TaggedHits hits,int total,double percent)
+    {
+        ImGui.TextUnformatted($"Reckless {direction} {percent:N1}% · avg {hits.Average:N1} · H {hits.High} · L {hits.Low?.ToString()??"-"}");
+        Tip($"Reckless-tagged landed physical hits / all landed physical hits in this direction: {hits.Count}/{total}. Includes zeros and tagged crits; excludes spells, poison, acid and summons. Marker evidence does not assign the skill to a particular participant or infer its multiplier.");
+    }
+    private static void Context(HitContext? context)
+    {
+        if(context==null){ImGui.TextDisabled("No historical at-hit effect snapshot was recorded.");return;}
+        ImGui.TextUnformatted("Imperil: "+(context.Imperiled==true?"PRESENT":context.Imperiled==false?"not observed in complete sample":"UNKNOWN"));
+        ImGui.TextWrapped("Snapshot vulns: "+(context.Vulnerabilities.Length>0?string.Join(", ",context.Vulnerabilities):!context.Available||context.UnknownSpellIds.Length>0||context.ChangesSinceSample.Length>0?"UNKNOWN / no classified vuln observed":"none observed in complete sample"));
+        ImGui.TextWrapped(context.Status+(context.AgeMilliseconds.HasValue?$" · sample age {context.AgeMilliseconds:N0}ms":""));
+        if(context.UnknownSpellIds.Length>0)ImGui.TextWrapped("Unclassified spell IDs: "+string.Join(", ",context.UnknownSpellIds));
+        if(context.ChangesSinceSample.Length>0)ImGui.TextWrapped("Changes after sample: "+string.Join(", ",context.ChangesSinceSample));
+    }
+    private static void BigHits(Totals t)
+    {
+        var historical=t.Deaths.Where(d=>d.Blow.HasValue&&!t.BigHits.Any(h=>h.KillingBlow&&h.Damage==d.Blow&&Math.Abs((h.Utc-d.Utc).TotalSeconds)<=1)).Select(d=>new IncomingHit(d.Utc,d.Killer=="Unspecified killer"?DeathSource.Parse(d.Message):d.Killer,d.Blow!.Value,"Unknown","Unknown","",false,false,true,d.Health,d.Overkill,d.Context??HitContext.Unknown("Historical death: at-hit effects were not recorded"),"Historical server death notice; attack type unconfirmed"));
+        var hits=t.BigHits.Concat(historical).OrderByDescending(h=>h.Damage).Take(24).ToArray();
+        if(hits.Length==0)ImGui.TextDisabled("No qualifying hit snapshots. Older run files cannot reconstruct past debuffs.");
+        foreach(var h in hits)
+        {
+            if(!ImGui.TreeNode($"{h.Damage:N0} · {h.Attacker}"+(h.KillingBlow?" · LETHAL":"")+"##"+h.Utc.Ticks))continue;
+            ImGui.TextUnformatted(h.Utc.ToLocalTime().ToString("T")+" · "+h.Delivery+" · "+h.Element);
+            if(h.Spell.Length>0)ImGui.TextWrapped("Spell: "+h.Spell);
+            ImGui.TextUnformatted("Crit: "+(h.Critical?"yes":"not marked")+" · Reckless: "+(h.RecklessTagged?"tagged":"not marked"));
+            if(h.HealthBefore.HasValue)ImGui.TextUnformatted($"Health before {h.HealthBefore} · overkill {h.Overkill}");
+            ImGui.TextWrapped(h.Evidence);Context(h.Context);ImGui.TreePop();
+        }
+    }
     private static void Deaths(Totals t)
     {
         if(t.Deaths.Count==0)ImGui.TextDisabled("No observed death notices.");
         foreach(var d in t.Deaths.AsEnumerable().Reverse())
-        {ImGui.TextColored(new(1,.45f,.45f,1),d.Utc.ToLocalTime().ToString("T")+" · "+d.Killer);ImGui.TextWrapped(d.Message);if(d.Blow.HasValue)ImGui.TextUnformatted($"Blow {d.Blow} · HP {d.Health}/{d.Maximum} · overkill {d.Overkill}");}
+        {ImGui.TextColored(new(1,.45f,.45f,1),d.Utc.ToLocalTime().ToString("T")+" · "+(d.Killer=="Unspecified killer"?DeathSource.Parse(d.Message):d.Killer));ImGui.TextWrapped(d.Message);if(d.Blow.HasValue)ImGui.TextUnformatted($"Blow {d.Blow} · HP {d.Health}/{d.Maximum} · overkill {d.Overkill}");Context(d.Context);}
     }
     private void Toggle(string label,bool value,Action<bool> set){if(ImGui.Checkbox(label,ref value)){set(value);Dirty=true;}}
     private void Slider(string label,float value,float min,float max,Action<float> set){if(ImGui.SliderFloat(label,ref value,min,max)){set(value);Dirty=true;}}
@@ -123,10 +154,12 @@ internal sealed class CombatPanel
                 foreach(string key in a.Colors.Keys.ToArray())
                 {Vector4 c=Color(a,key);if(ImGui.TreeNode(key+" color")){if(ImGui.ColorPicker4("##"+key,ref c,ImGuiColorEditFlags.PickerHueWheel|ImGuiColorEditFlags.AlphaBar)){a.Colors[key]=ImGui.ColorConvertFloat4ToU32(c);Dirty=true;}ImGui.TreePop();}}
             }
+            int threshold=a.BigHitMinimum;if(ImGui.InputInt("Big hit minimum",ref threshold)){a.BigHitMinimum=Math.Clamp(threshold,1,10000);Dirty=true;}
+            ImGui.TextDisabled("Keep 24 largest hits per run; killing blows always qualify for ranking.");
             if(ImGui.CollapsingHeader("Meter modules · overrides"))
             {
                 ImGui.TextDisabled("Unchecked automatic discovery can be overridden per module.");
-                foreach(string kind in new[]{"Sneak","Acid","Poison","Summons","Thorns","Ward","Second Wind"})
+                foreach(string kind in new[]{"Sneak","Acid","Poison","Summons","Thorns","Ward","Second Wind","Reckless"})
                 {bool enabled=Show(a,v.Stats,kind);if(ImGui.Checkbox(kind,ref enabled)){a.Modules[kind]=enabled;Dirty=true;}ImGui.SameLine();if(ImGui.SmallButton("Auto##"+kind)){a.Modules.Remove(kind);Dirty=true;}}
             }
             if(ImGui.CollapsingHeader("RynthVision compatibility"))

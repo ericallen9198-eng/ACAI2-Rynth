@@ -90,3 +90,13 @@ is permitted while icons remain Rynth-owned. Keep physical hits/evades separate
 from magic hits/resists; unknown delivery must not enter either denominator.
 Repeated identical float values may use xN without changing true damage totals;
 criticals remain separate and visually stronger than regular hits of every kind.
+
+The user authorized compact big-hit records with attacker, delivery/spell,
+crit/Reckless markers and at-hit imperil/vuln context, plus an automatic Reckless
+percentage/average/high/low module. Keep at most 24 structured big hits per run and
+bounded death records; do not retain an ordinary combat transcript. Native player
+enchantment reads and confirmed change events are allowed, without identification
+or game actions. Use pre-hit samples/deltas; missing/stale/partial data is unknown,
+not proof of no debuffs. Preserve Reckless as hit metadata, not part of a mob name
+or an inferred damage multiplier/skill owner. Never retroactively invent context
+for old aggregates, or double-count a correlated hit and its killing-blow notice.

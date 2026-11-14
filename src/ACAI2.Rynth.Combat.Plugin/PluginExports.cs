@@ -41,4 +41,8 @@ public static unsafe class PluginExports
     public static void Update(uint id) { try { Runtime.OnUpdateObject(id); } catch { } }
     [UnmanagedCallersOnly(EntryPoint="RynthPluginOnUpdateObjectInventory",CallConvs=[typeof(CallConvCdecl)])]
     public static void Inventory(uint id) { try { Runtime.OnUpdateObjectInventory(id); } catch { } }
+    [UnmanagedCallersOnly(EntryPoint="RynthPluginOnEnchantmentAdded",CallConvs=[typeof(CallConvCdecl)])]
+    public static void EnchantmentAdded(uint id,double duration){try{Runtime.OnEnchantmentAdded(id,duration);}catch{}}
+    [UnmanagedCallersOnly(EntryPoint="RynthPluginOnEnchantmentRemoved",CallConvs=[typeof(CallConvCdecl)])]
+    public static void EnchantmentRemoved(uint id){try{Runtime.OnEnchantmentRemoved(id);}catch{}}
 }

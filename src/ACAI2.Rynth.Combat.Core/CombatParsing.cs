@@ -28,6 +28,7 @@ namespace ACAI2.Rynth.Combat.Core
         public string Element = "Unknown";
         public int Damage;
         public bool Critical;
+        public bool RecklessTagged;
         public bool SneakAttack;
         public string Component = "Direct";
         public string Summon = "";
@@ -60,7 +61,7 @@ namespace ACAI2.Rynth.Combat.Core
         private static readonly Regex OutgoingResist = Rx(@"^(?<mob>.+?) resists your spell[.!]?$");
         private static readonly Regex IncomingResist = Rx(@"^You resist the spell cast by (?<mob>.+?)[.!]?$");
 
-        private const string Prefix = @"(?:(?:Critical hit!|Critical heal!|Sneak Attack!|Recklessness!|Overpower!)\s*)*";
+        internal const string Prefix = @"(?:(?:Critical hit!|Critical heal!|Sneak Attack!|Recklessness!|Reckless!|Overpower!)\s*)*";
         private static readonly Regex OutgoingPhysical = Rx("^" + Prefix + @"You\s+\w+\s+(?<mob>.+?)\s+for\s+(?<damage>[\d,]+)\s+points?\s+of\s+(?<element>[A-Za-z]+)\s+damage.*$");
         private static readonly Regex OutgoingMagic = Rx("^" + Prefix + @"You\s+(?<verb>\w+)\s+(?<mob>.+?)\s+for\s+(?<damage>[\d,]+)\s+points?\s+with\s+.+$");
         private static readonly Regex IncomingPhysical = Rx("^" + Prefix + @"(?<mob>.+?)\s+\w+\s+your\s+.+?\s+for\s+(?<damage>[\d,]+)\s+points?\s+of\s+(?<element>[A-Za-z]+)\s+damage.*$");
@@ -110,8 +111,9 @@ namespace ACAI2.Rynth.Combat.Core
             if (!TryParseCore(clean, character, out record)) return false;
             record.Raw = text;
             record.Critical = Regex.IsMatch(Regex.Match(clean,"^"+Prefix).Value,@"Critical (?:hit|heal)!",RegexOptions.IgnoreCase,TimeSpan.FromMilliseconds(100));
+            record.RecklessTagged = Regex.IsMatch(Regex.Match(clean,"^"+Prefix).Value,@"Reckless(?:ness)?!",RegexOptions.IgnoreCase);
             record.SneakAttack = record.Direction == "Outgoing" && record.Result == "Damage" && CombatComponents.IsDirect(record) &&
-                Regex.IsMatch(clean, @"^(?:(?:Critical hit!|Recklessness!|Overpower!)\s*)*Sneak Attack!", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(100));
+                Regex.IsMatch(clean, @"^(?:(?:Critical hit!|Recklessness!|Reckless!|Overpower!)\s*)*Sneak Attack!", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(100));
             return true;
         }
         private bool TryParseCore(string text, string character, out CombatEventRecord record)

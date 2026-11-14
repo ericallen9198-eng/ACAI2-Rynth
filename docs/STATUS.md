@@ -47,3 +47,10 @@ Combat v0.1.1 keeps physical/spell defense evidence separate, excludes ambiguous
 delivery from both rates, compresses equal float numbers as xN, emphasizes every
 recognized critical kind, centers healing above the anchor, and adds short incoming
 elemental vuln/imperil notifications. Rynth still owns debuff icons and XP gains.
+
+Combat v0.1.2 adds a bounded big-hit ledger with source/spell and pre-hit native
+enchantment context, plus separate incoming/outgoing Reckless percentage and
+average/high/low metrics. Unknown/stale/unclassified/layer-ambiguous effect state
+is explicit. Lethal peaks and additional death phrasings are retained without
+guessing delivery type or re-adding correlated damage. Legacy records have no
+retroactively invented debuff snapshot. No game actions or debuff icons are added.

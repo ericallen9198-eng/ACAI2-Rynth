@@ -110,6 +110,38 @@ var spellOut=new CombatEngine("DreamWeave","Toe");spellOut.Observe("You burn Mob
 Check(spellOut.Session.DirectHits==0&&spellOut.Session.Damage==500,"outgoing spells with explicit elemental damage do not inflate physical or sneak denominators");
 Check(!separated.Observe("Orb cast Imperil Protection Self on you",0,utc,2),"a beneficial spell mentioning imperil is not mislabeled as landed imperil");
 
+Check(EffectCatalog.Label(4312)=="IMPERIL"&&EffectCatalog.Label(4477)=="BLUDGE VULN"&&EffectCatalog.IsKnown(2),"embedded retail IDs distinguish imperil, vulnerability and known unrelated buffs");
+var effects=new EffectHistory();effects.SampleAt(utc,true,[new(4312,utc.AddSeconds(1)),new(4477,utc.AddSeconds(1))]);
+var pre=effects.At(utc.AddMilliseconds(50));Check(pre.Imperiled==true&&pre.Vulnerabilities.Contains("BLUDGE VULN")&&pre.AgeMilliseconds==50,"a fresh pre-hit sample records actual known imperil and vuln IDs");
+effects.SampleAt(utc.AddMilliseconds(200),true,[]);Check(effects.At(utc.AddMilliseconds(100)).Imperiled==true,"a post-hit cleared snapshot never rewrites the earlier hit state");
+Check(effects.At(utc.AddSeconds(2)).Imperiled==null&&!effects.At(utc.AddSeconds(2)).Available,"stale snapshots are unknown, not a false clean bill of health");
+var expired=new EffectHistory();expired.SampleAt(utc,true,[new(4312,utc.AddMilliseconds(20))]);Check(expired.At(utc.AddMilliseconds(30)).Imperiled==false,"an effect that expired before the hit is excluded");
+var unclassified=new EffectHistory();unclassified.SampleAt(utc,true,[new(999999,null)]);Check(unclassified.At(utc.AddMilliseconds(50)).Imperiled==null&&unclassified.At(utc.AddMilliseconds(50)).UnknownSpellIds.Contains(999999u),"unclassified custom spell IDs prevent a false no-imperil conclusion");
+var race=new EffectHistory();race.SampleAt(utc,true,[]);race.Notice(utc.AddMilliseconds(10),"IMPERIL");Check(race.At(utc.AddMilliseconds(20)).Imperiled==null,"a new cast between snapshot and hit is labeled uncertain until confirmed");
+race.Changed(utc.AddMilliseconds(11),4312,true,300);Check(race.At(utc.AddMilliseconds(20)).Imperiled==true&&race.At(utc.AddMilliseconds(20)).ChangesSinceSample.Length==0,"confirmed native enchantment additions resolve the snapshot race");
+race.Changed(utc.AddMilliseconds(30),4312,false,0);Check(race.At(utc.AddMilliseconds(20)).Imperiled==true&&race.At(utc.AddMilliseconds(40)).Imperiled==false,"native removals affect later hits and never erase the earlier hit context");
+race.Lost(utc.AddMilliseconds(50));Check(!race.At(utc.AddMilliseconds(60)).Available,"dropped observations explicitly invalidate affected context");race.SampleAt(utc.AddMilliseconds(70),true,[]);Check(race.At(utc.AddMilliseconds(80)).Available,"a fresh complete snapshot restores context after an observation gap");
+var big=new CombatEngine("DreamWeave","Samm");big.Effects.SampleAt(utc,true,[new(4312,utc.AddMinutes(1)),new(4477,utc.AddMinutes(1))]);
+big.Observe("Reckless! Critical hit! Bone Chanter impales you for 150 points with Incantation of Force Bolt.",0,utc.AddMilliseconds(100),.1);
+Check(big.Session.BigHits.Single() is{Attacker:"Bone Chanter",Damage:150,Delivery:"Magic",RecklessTagged:true,Critical:true}&&big.Session.BigHits[0].Spell=="Incantation of Force Bolt"&&big.Session.BigHits[0].Context.Imperiled==true,"big hits retain attacker, spell, classification, crit, Reckless marker and pre-hit effects");
+big.Effects.SampleAt(utc.AddMilliseconds(150),true,[]);big.Observe("You suffer a frozen fate at the hands of Bone Chanter! (Killing blow: 150 damage. You had 81/469 health.)",0,utc.AddMilliseconds(200),.2);
+Check(big.Session.BigHits.Count==1&&big.Session.BigHits[0].KillingBlow&&big.Session.BigHits[0].Context.Imperiled==true&&big.Session.Taken==150,"a correlated killing blow upgrades the existing hit without double counting or using post-hit effects");
+var fatalOnly=new CombatEngine("DreamWeave","Toe");fatalOnly.Observe("Threadbound Sodden Undead Ruschk smites you mightily! (Killing blow: 633 damage. You had 462/462 health.)",0,utc,0);
+Check(fatalOnly.Session.HighestObserved==633&&fatalOnly.Session.BigHits.Single() is{Delivery:"Unknown",Attacker:"Threadbound Sodden Undead Ruschk",Overkill:171},"unmatched lethal blows still appear in the peak ledger without guessing physical versus magic");
+string[] deathTexts=["You are utterly destroyed by Threadbound Sodden Undead Ruschk's attack!","Your body is shattered by Threadbound Duskstone Golem's attack!","Elite Carrion Sovereign reduces you to a sizzling, oozing mass!","You catch Elite Carrion Sovereign's attack, with dire consequences!"];
+Check(deathTexts.All(t=>DeathSource.Parse(t)!="Unspecified killer"),"the additional supplied death phrasings resolve their killer names");
+var reckless=new CombatEngine("DreamWeave","Samm");
+reckless.Observe("Reckless! Mob scratches your chest for 0 points of slashing damage!",0,utc,0);reckless.Observe("Critical hit! Reckless! Mob scratches your chest for 100 points of slashing damage!",0,utc.AddMilliseconds(10),.01);reckless.Observe("Mob scratches your chest for 20 points of slashing damage!",0,utc.AddMilliseconds(20),.02);
+reckless.Observe("Reckless! You bash Mob for 200 points of bludgeoning damage!",0,utc.AddMilliseconds(30),.03);reckless.Observe("You bash Mob for 100 points of bludgeoning damage!",0,utc.AddMilliseconds(40),.04);reckless.Observe("Your poison deals 100 additional points of damage to Mob!",0,utc.AddMilliseconds(50),.05);
+Check(reckless.Session.RecklessIncoming.Count==2&&reckless.Session.RecklessIncoming.Average==50&&reckless.Session.RecklessIncoming.High==100&&reckless.Session.RecklessIncoming.Low==0&&reckless.Session.PhysicalHits==3&&Math.Abs(reckless.Session.RecklessIncomingPercent-200d/3)<.01,"incoming Reckless tracks tagged percentage numerator, average, high and zero-inclusive low");
+Check(reckless.Session.RecklessOutgoing.Count==1&&reckless.Session.RecklessOutgoing.Average==200&&reckless.Session.RecklessOutgoing.High==200&&reckless.Session.RecklessOutgoing.Low==200&&reckless.Session.DirectHits==2&&reckless.Session.RecklessOutgoingPercent==50,"outgoing Reckless is separate and poison cannot inflate its physical denominator");
+Check(reckless.Session.Copy().RecklessIncoming.Low==0&&reckless.Session.Copy().RecklessIncoming.High==100&&reckless.Session.Copy().RecklessIncomingPercent>66,"Reckless metrics retain their low/high and percentage across snapshot serialization");
+Check(!reckless.Session.Mobs.Keys.Any(n=>n.StartsWith("Reckless!"))&&reckless.Session.Mobs.ContainsKey("Mob"),"Reckless remains hit metadata rather than a fake separate mob name");
+var legacyDeathTotals=new Totals();legacyDeathTotals.Deaths.Add(new(utc,"Unspecified killer",633,462,462,171,"legacy"));Check(legacyDeathTotals.HighestObserved==633,"old death records contribute their known numerical peak without inventing historical effects");
+var capped=new CombatEngine("DreamWeave","Samm");for(int i=0;i<40;i++)capped.Observe($"Mob scratches your chest for {100+i} points of slashing damage!",0,utc.AddMilliseconds(i),i*.001);Check(capped.Session.BigHits.Count==24&&capped.Session.BigHits.Min(h=>h.Damage)==116&&capped.Session.HighestObserved==139,"only the twenty-four largest incoming snapshots are retained");
+
+var layered=new EffectHistory();layered.SampleAt(utc,true,[new(4312,utc.AddMinutes(1)),new(4312,utc.AddMinutes(2))]);layered.Changed(utc.AddMilliseconds(10),4312,false,0);Check(!layered.At(utc.AddMilliseconds(20)).Available,"a layer-ambiguous removal cannot falsely declare imperil gone");
+
 string root=Path.Combine(Path.GetTempPath(),"acai2-combat-test-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);
 try
 {
@@ -121,7 +153,8 @@ try
  var record=run.Current!;Check(archive.Save(record),"a completed snapshot can be queued without blocking native observation");archive.Dispose();await archive.Completion;
  string raw=File.ReadAllText(Path.Combine(folder,"run-"+record.Id+".json"));
  Check(raw.Contains("Killing blow")&&!raw.Contains("RawChat")&&!raw.Contains("You bash Burun"),"saved run records retain explicit death notices but no ordinary combat transcript");
- var reloaded=new CombatArchive(root,"DreamWeave","Toe");for(int i=0;i<300&&!reloaded.Ready;i++)await Task.Delay(10);Check(reloaded.History.Single().Stats.Deaths.Single().Overkill==40,"compact run files roundtrip the server's death details");reloaded.Dispose();await reloaded.Completion;
+ var reloaded=new CombatArchive(root,"DreamWeave","Toe");for(int i=0;i<300&&!reloaded.Ready;i++)await Task.Delay(10);Check(reloaded.History.Single().Stats.BigHits.Any(h=>h.KillingBlow&&h.Damage==151&&!h.Context.Available),"big-hit context roundtrips without turning unknown into a false clean state");
+ Check(reloaded.History.Single().Stats.Deaths.Single().Overkill==40,"compact run files roundtrip the server's death details");reloaded.Dispose();await reloaded.Completion;
 }
 finally{Directory.Delete(root,true);}
 string dll=Path.GetFullPath("src/ACAI2.Rynth.Combat.Plugin/bin/Release/net10.0-windows/win-x86/ACAI2.Rynth.Combat.Plugin.dll");

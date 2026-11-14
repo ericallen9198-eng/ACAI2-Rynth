@@ -28,7 +28,7 @@ public sealed class CombatArchive : IDisposable
             var list=new List<RunRecord>();
             foreach(string file in Directory.EnumerateFiles(Folder,"run-*.json").OrderByDescending(File.GetLastWriteTimeUtc).Take(50))
             {
-                try{if(new FileInfo(file).Length>2*1024*1024)continue;var r=JsonSerializer.Deserialize<RunRecord>(File.ReadAllText(file));if(r is {Schema:1}&&r.Server==server&&r.Character==character&&r.Id.Length==32&&r.Id.All(Uri.IsHexDigit)&&r.Stats.Mobs.Count<=257&&r.Stats.Deaths.Count<=64)list.Add(r);}catch{notice="Some unreadable run records were skipped.";}
+                try{if(new FileInfo(file).Length>2*1024*1024)continue;var r=JsonSerializer.Deserialize<RunRecord>(File.ReadAllText(file));if(r is {Schema:1}&&r.Server==server&&r.Character==character&&r.Id.Length==32&&r.Id.All(Uri.IsHexDigit)&&r.Stats.Mobs.Count<=257&&r.Stats.Deaths.Count<=64&&r.Stats.BigHits.Count<=24)list.Add(r);}catch{notice="Some unreadable run records were skipped.";}
             }
             Volatile.Write(ref history,list.OrderByDescending(r=>r.Opened).ToArray());Volatile.Write(ref ready,1);
             if(notice=="Loading local combat records")notice="Compact run records only; no combat CSV or chat transcript.";

@@ -1,4 +1,4 @@
-# ACAI2 Combat v0.1.1 — standalone Rynth plugin
+# ACAI2 Combat v0.1.2 — standalone Rynth plugin
 
 A separate read-only combat meter and floating text app. Requires managed CoreCLR
 RynthCore API 92+ and the engine's matching ImGui bindings. It does not need
@@ -18,6 +18,47 @@ vendor/bank or renders debuff icons. Settings and data are separate from Threads
    Keep floating XP/Luminance with `/rv plates gains on`. These commands
    leave Rynth's nameplates and debuff icons enabled. The app does not change
    Rynth settings automatically. Restore either with the command ending in `on`.
+
+## v0.1.2 big hits and Reckless module
+
+Details → Big hits keeps the **24 largest incoming hit snapshots** for the session
+and each tracked Thread. Default minimum is 100 reported damage; adjust Big hit
+minimum in Setup. Killing-blow notices always qualify for ranking and remain in
+the separate bounded death history even if they fall outside the top 24.
+
+Each snapshot records time, attacker, damage, physical/spell/unknown delivery,
+element, named spell when present, critical and Reckless markers, and effect
+context. A matched preceding hit is upgraded to lethal by name/damage within one
+second; the evidence explicitly describes that correlation. Unmatched killing
+blows stay unclassified rather than entering the physical or magic denominator.
+The overall peak includes server death-blow numbers, including legacy records,
+without blindly adding a killing blow to already-counted damage.
+
+The context comes from native player-enchantment samples about every 100ms and
+confirmed enchantment changes. Only samples/events at or before the hit may be
+used. Samples older than 500ms, missing/truncated registry data, observation gaps,
+layer-ambiguous changes and unconfirmed cast changes are labeled unknown/uncertain.
+Snapshot age, unclassified custom spell IDs and uncertainty are visible. A recent
+sample describes last observed client state, not a guarantee of exact server-tick
+state. Retail Imperil/vuln IDs come from embedded reference metadata, requiring no
+RynthAi plugin or identification actions. Native expiration is used; no duration
+is invented from a spell's nominal base duration. Rynth still owns debuff icons.
+
+Reckless discovers itself from explicit Reckless!/Recklessness! hit prefixes.
+Incoming and outgoing rows separately show tagged physical-hit percentage,
+average, high and low, including zero-damage landed hits and tagged crits.
+Spells, procs, summons and evades do not enter these physical-hit denominators.
+The prefix is preserved as hit metadata and removed from the mob name. A marker
+does not establish which participant owns the skill or prove a damage multiplier.
+Old summaries cannot recover missing low values or at-hit effects. Start a new
+Thread/session for clean new-module percentages; legacy totals remain labeled.
+
+Big-hit context persists with tracked Thread records, with the existing five-second
+save and logout flush. Session-only hits outside a tracked Thread remain in memory
+unless exported, as before. No ordinary combat transcript or full enchantment
+history is written. Old death names can be interpreted from the preserved text;
+historical debuff states remain unknown. Damage is the server-reported hit amount,
+not an invented pre-armor/pre-Ward value; ward absorption stays separate.
 
 ## v0.1.1 display and defense changes
 
