@@ -1,0 +1,37 @@
+name: Publish command guide PDF
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install document tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y fonts-dejavu-core
+          python -m pip install reportlab==4.4.9 pypdf==6.10.0
+      - name: Build and verify PDF
+        run: |
+          python tools/ACAI2.CommandGuide/build_guide.py --output artifacts/command-guide/ACAI2-Rynth-Commands.pdf
+          python - <<'PY'
+          from pypdf import PdfReader
+          doc = PdfReader('artifacts/command-guide/ACAI2-Rynth-Commands.pdf')
+          assert len(doc.pages) == 6
+          text = '\n'.join(p.extract_text() for p in doc.pages)
+          for command in ['/acai2combat ultra', '/acai2threads stop', '/acai2r keyfer reload', '!arena']:
+              assert command in text, command
+          PY
+      - name: Publish desktop reference
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          cd artifacts/command-guide
+          sha256sum ACAI2-Rynth-Commands.pdf > ACAI2-Rynth-Commands.pdf.sha256
+          gh release create commands-guide-v1 ACAI2-Rynth-Commands.pdf ACAI2-Rynth-Commands.pdf.sha256 --target "$GITHUB_SHA" --title "ACAI2 Rynth command guide" --notes "Printable six-page command reference for Combat, Threads and Keyfer, with short setup and desktop-saving instructions. Documentation only; no plugin update required." --latest=false
