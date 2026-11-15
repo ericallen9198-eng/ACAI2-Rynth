@@ -25,7 +25,7 @@ public sealed class FloatStream
     public static (float X,float Y,float Alpha) Arc(FloatEvent e,double now,Appearance a)
     {
         float age=(float)Math.Max(0,now-e.Start),p=Math.Clamp(age/a.Lifetime,0,1);
-        if(e.Kind=="Healing")return(0,-a.HealOffset-a.Rise*p-e.Slot*8,Math.Clamp((1-p)*4,0,1));
+        if(e.Kind is "Healing" or "Cleanse")return(0,-a.HealOffset-a.Rise*p-e.Slot*8,Math.Clamp((1-p)*4,0,1));
         bool left=e.Incoming;
         float bend=Math.Min(a.Curve,a.Gap-24),spacing=44-26*a.Overlap;
         return ((left?-1:1)*(a.Gap-bend*p*p),-a.Rise*p-e.Slot*spacing,Math.Clamp((1-p)*4,0,1));
@@ -46,7 +46,7 @@ internal sealed class RateRing
 }
 public sealed class CombatEngine(string server,string character)
 {
-    public const string ParserVersion="0.1.6";
+    public const string ParserVersion="0.1.8";
     private readonly CombatMessageParser parser=new();
     public Totals Session {get;private set;}=new();
     public List<RunRecord> Runs {get;}=[];
@@ -71,6 +71,7 @@ public sealed class CombatEngine(string server,string character)
     private static readonly Regex Realm=Rx(@"^\[REALM\] id=(\d+) inst=(\d+) eph=([01]) name=.+$");
     private static readonly Regex Progress=Rx(@"^Monsters killed (\d+)/(\d+)\.");
     private static readonly Regex Death=Rx(@"^.+! \(Killing blow: (?<damage>[\d,]+) damage\. You had (?<hp>[\d,]+)/(?<max>[\d,]+) health\.\)$");
+    private static readonly Regex Cleanse=Rx(@"^Your weapon cleanses (?<spell>[^\r\n.!]{1,160}) from you\.$");
     private static readonly Regex WardReady=Rx(@"^Your runic ward is fully inscribed, absorbing your next (?<n>[\d,]+) points of damage\.$");
     private static readonly Regex WardSpent=Rx(@"^Your runic ward (?:shatters|fades) after absorbing (?<n>[\d,]+) points of damage\.$");
     private static readonly Regex SimpleIncoming=Rx(@"^(?:Critical hit! )?(?<mob>.+?) (?:hits|strikes|shoots) you for (?<damage>[\d,]+) points? of (?<element>[A-Za-z]+) damage!$");
@@ -118,6 +119,17 @@ public sealed class CombatEngine(string server,string character)
             Session.IncomingEffects[effectLabel]=Session.IncomingEffects.GetValueOrDefault(effectLabel)+1;
             if(Inside&&Current is {Cleared:null} affected){affected.Stats.IncomingEffects[effectLabel]=affected.Stats.IncomingEffects.GetValueOrDefault(effectLabel)+1;Revision++;}
             Floats.Add(now,effectKind,effectLabel,incoming:true);return true;
+        }
+        var cleanse=Cleanse.Match(text);
+        if(cleanse.Success)
+        {
+            string? removed=EffectCatalog.LabelName(cleanse.Groups["spell"].Value);
+            if(removed!=null)Effects.Notice(utc,"Cleansed "+removed);
+            Session.Procs["Cleanse"]=Session.Procs.GetValueOrDefault("Cleanse")+1;
+            if(Inside&&Current is {Cleared:null} cleaned)cleaned.Stats.Procs["Cleanse"]=cleaned.Stats.Procs.GetValueOrDefault("Cleanse")+1;
+            Revision++;
+            Floats.Add(now,"Cleanse",removed==null?"EFFECT REMOVED":removed+" REMOVED",group:NoticeGroup.Buff);
+            return true;
         }
         var ward=WardReady.Match(text);if(ward.Success){Utility("Ward",Number(ward.Groups["n"].Value),"WARD READY",now,true);return true;}
         ward=WardSpent.Match(text);if(ward.Success){Utility("Ward",Number(ward.Groups["n"].Value),"ABSORBED",now,false);return true;}

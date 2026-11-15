@@ -58,7 +58,7 @@ public sealed class EffectHistory
         var active=activeList.ToArray();
         var labels=active.Select(e=>EffectCatalog.Label(e.SpellId)).Where(x=>x!=null).Distinct().Cast<string>().ToArray();
         var unknown=active.Where(e=>!EffectCatalog.IsKnown(e.SpellId)).Select(e=>e.SpellId).Distinct().ToArray();
-        var changed=changes.Where(c=>c.Utc>s.Utc&&c.Utc<=utc).Where(c=>!applied.Any(d=>EffectCatalog.Label(d.Id)==c.Label.Replace("Expired ",""))).Select(c=>c.Label).Distinct().Take(8).ToArray();
+        var changed=changes.Where(c=>c.Utc>s.Utc&&c.Utc<=utc).Where(c=>!applied.Any(d=>EffectCatalog.Label(d.Id)==c.Label.Replace("Expired ","").Replace("Cleansed ","")&&(!c.Label.StartsWith("Cleansed ",StringComparison.Ordinal)||!d.Added))).Select(c=>c.Label).Distinct().Take(8).ToArray();
         bool? imp=labels.Contains("IMPERIL")?true:unknown.Length==0?false:null;
         if(changed.Any(c=>c.Contains("IMPERIL",StringComparison.Ordinal)))imp=null;
         return new(s.Utc,Math.Round(age,1),true,imp,labels.Where(l=>l!="IMPERIL").ToArray(),unknown.Take(24).ToArray(),changed,changed.Length>0?"Effects changed after the pre-hit sample; state uncertain":unknown.Length>0?"Pre-hit sample; unclassified spell IDs present":applied.Length>0?"Pre-hit native sample plus confirmed enchantment events":"Pre-hit native sample (last observed state, not an exact server-tick guarantee)");

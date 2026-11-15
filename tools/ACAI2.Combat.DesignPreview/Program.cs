@@ -9,6 +9,7 @@ CultureInfo.CurrentCulture=CultureInfo.InvariantCulture;
 string output=args.Length>0?args[0]:"/tmp/acai2-combat-design";Directory.CreateDirectory(output);
 string[] frames=[Frame(.04),Frame(.18),Frame(.55),Frame(1.1)];
 File.WriteAllText(Path.Combine(output,"combat-design.svg"),frames[1]);
+File.WriteAllText(Path.Combine(output,"cleanse-preview.svg"),frames[1]);
 File.WriteAllText(Path.Combine(output,"notice-scales.svg"),GroupReview());
 string html="""
 <!doctype html><html lang="en"><meta charset="utf-8"><title>ACAI2 Combat · vector lettering review</title>
@@ -54,6 +55,13 @@ static string Frame(double age)
     Crit("2,313","CRIT",new(785,350),gold);Crit("-344","CRIT",new(343,416),red);
     float hw=ImpactLettering.Width("+118",23);ImpactLettering.Draw("+118",new(578-hw/2,232-drift),23,heal,true,Poly);ImpactLettering.Draw("HEAL",new(561,258-drift),12,heal,false,Poly);
     b.Append("<ellipse cx=\"578\" cy=\"283\" rx=\"26\" ry=\"7\" fill=\"none\" stroke=\"#99f5b0\" opacity=\".5\"/>");
+    float cleanseWidth=Math.Max(ImpactLettering.Width("CLEANSED",18),ImpactLettering.Width("IMPERIL REMOVED",10));
+    Vector2 cleanseP=new(578-cleanseWidth/2,290-drift);
+    b.Append("<g data-group=\"Buff\" data-pivot=\"578,290\">");
+    CleanseArt.Draw(cleanseP,new(cleanseWidth,31),age,.9f,1,Line);
+    ImpactLettering.Draw("CLEANSED",cleanseP+new Vector2((cleanseWidth-ImpactLettering.Width("CLEANSED",18))/2,0),18,new(.78f,.95f,.9f,.78f),false,Poly);
+    ImpactLettering.Draw("IMPERIL REMOVED",cleanseP+new Vector2((cleanseWidth-ImpactLettering.Width("IMPERIL REMOVED",10))/2,21),10,new(.78f,.95f,.9f,.58f),false,Poly);
+    b.Append("</g>");
     void Effect(string label,Vector2 p,Vector4 c)
     {
         var effect=new FloatEvent(1,0,"Imperil",label,"",0,1,0,true);float focus=NoticeStyle.Focus(effect,age);float font=25*focus;Vector2 size=new(ImpactLettering.Width(label,font),font);b.Append($"<g data-group=\"Debuff\" data-pivot=\"{N(p.X+size.X/2)},{N(p.Y)}\">");ImpactArt.Notice(p,size,c,age,.85f,Line,focus);ImpactLettering.Draw(label,p,font,c,true,Poly);b.Append("</g>");

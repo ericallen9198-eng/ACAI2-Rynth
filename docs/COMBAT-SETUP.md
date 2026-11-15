@@ -1,4 +1,4 @@
-# ACAI2 Combat v0.1.7 — standalone Rynth plugin
+# ACAI2 Combat v0.1.8 — standalone Rynth plugin
 
 A separate read-only combat meter and floating text app. Requires managed CoreCLR
 RynthCore API 92+ and the engine's matching ImGui bindings. It does not need
@@ -333,3 +333,29 @@ This build has real-SDK, parser, aggregation, lifecycle, persistence and package
 checks. It has not been exercised in a live AC ImGui frame here. First verify
 preview, one fight, run entry/clear and reload settings in-game. A display error
 hides the panel with a local message; observation and records remain independent.
+
+## v0.1.8 weapon cleanse bubbles
+
+The exact native message `Your weapon cleanses <spell> from you.` triggers a
+central `CLEANSED` cue with a short removed-effect subtitle, such as `IMPERIL
+REMOVED` or `ACID VULN REMOVED`. Unknown spell names use `EFFECT REMOVED`.
+Smaller, lighter block lettering is surrounded by translucent iridescent soap-film
+rings that drift up and pop. No filled backing, texture assets or new window.
+
+Use **Buffs scale** to resize the whole cue and **Healing height** to position the
+shared central lane. Subdued mode / color intensity can reduce decorative effects;
+the Cleanse color is editable alongside the other float colors. Your existing
+character preferences and saved runs are preserved.
+
+Details / damage sources shows a Cleanse proc count for the session/active Thread.
+These are proc notices, not healing amounts or damage, and do not change DPS,
+healing, melee evade or spell resist rates. Chat quotations cannot trigger them.
+Cleanse chat marks a pre-hit effect snapshot uncertain until native enchantment
+removal or a fresh sample confirms the state; it does not assume every debuff was
+removed. No ordinary chat transcript is stored.
+
+Try `/acai2combat preview` to see a synthetic cleanse among the other effects;
+it never changes real totals. `COMBAT-PREVIEW.html` and `cleanse-preview.svg` in the
+ZIP use the actual shared bubble geometry, rather than an artistic mockup.
+Close the game and replace all Combat package files together when updating.
+Keyfer and Threads are separate plugins and do not need another update.

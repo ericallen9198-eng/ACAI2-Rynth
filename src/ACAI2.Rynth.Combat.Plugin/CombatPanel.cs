@@ -269,7 +269,7 @@ internal sealed class CombatPanel
         var layout=new FloatLayout(viewport,anchor);
         // New important notices claim space first. Quiet events yield visually when the screen is full;
         // the underlying combat counters and event compression are never changed by layout.
-        foreach(var e in events.OrderByDescending(e=>e.Kind=="KineticReady"?3:e.Critical||e.Kind is "Critical" or "KineticRelease"?2:e.Kind=="Healing"||e.Kind=="KineticReady"||e.Kind=="Imperil"||e.Kind.StartsWith("Vuln")?1:0).ThenByDescending(e=>e.Id))
+        foreach(var e in events.OrderByDescending(e=>e.Kind=="KineticReady"?3:e.Critical||e.Kind is "Critical" or "KineticRelease"?2:e.Kind is "Healing" or "Cleanse"||e.Kind=="KineticReady"||e.Kind=="Imperil"||e.Kind.StartsWith("Vuln")?1:0).ThenByDescending(e=>e.Id))
         {
             double age=now-e.Start;if(age<0||age>=a.Lifetime)continue;
             var arc=FloatStream.Arc(e,now,a);float alpha=arc.Alpha;
@@ -277,6 +277,7 @@ internal sealed class CombatPanel
             bool regular=FloatStream.Regular(e),impact=e.Critical||e.Kind is "Critical" or "KineticRelease",effect=e.Kind=="KineticReady"||e.Kind=="Imperil"||e.Kind.StartsWith("Vuln",StringComparison.Ordinal);
             bool numeric=FloatStream.HasNumber(e)&&a.CustomLettering;
             float baseSize=MathF.Round(a.FontSize*(impact?a.CritScale*(a.CustomLettering?1.3f:1):regular?a.RegularScale:1)*(impact?ImpactLettering.Punch(age):1));
+            if(e.Kind=="Cleanse")baseSize=MathF.Round(a.FontSize*.78f);
             if(effect)baseSize=MathF.Round(a.FontSize*1.08f);
             float noticeScale=NoticeStyle.Scale(e,a)*NoticeStyle.Focus(e,age);
             float size=baseSize*noticeScale;
@@ -286,7 +287,7 @@ internal sealed class CombatPanel
             bool pushed=chosen!=IntPtr.Zero;if(pushed)ImGui.PushFont(new ImFontPtr(chosen));
             try
             {
-                string headline=label,caption="";
+                string headline=e.Kind=="Cleanse"?"CLEANSED":label,caption=e.Kind=="Cleanse"?label:"";
                 if(numeric||impact&&FloatStream.HasNumber(e))
                 {
                     headline=ImpactLettering.Number(e);
@@ -294,19 +295,19 @@ internal sealed class CombatPanel
                 }
                 if(a.CustomLettering){headline=headline.ToUpperInvariant();caption=caption.ToUpperInvariant();}
                 float Width(string text,float pixels)=>ImGui.CalcTextSize(text).X*pixels/ImGui.GetFontSize();
-                float captionSize=MathF.Round(Math.Max(12,Math.Min(18,baseSize*.52f)))*noticeScale;
+                float captionSize=MathF.Round(e.Kind=="Cleanse"?Math.Max(9,baseSize*.58f):Math.Max(12,Math.Min(18,baseSize*.52f)))*noticeScale;
                 bool vectorHeadline=a.CustomLettering&&ImpactLettering.Supports(headline);
                 bool vectorCaption=a.CustomLettering&&ImpactLettering.Supports(caption);
                 float headlineWidth=vectorHeadline?ImpactLettering.Width(headline,size):Width(headline,size);
                 float captionWidth=vectorCaption?ImpactLettering.Width(caption,captionSize):Width(caption,captionSize);
                 float width=Math.Max(headlineWidth,captionWidth);
                 float height=size+(caption.Length>0?captionSize+3*noticeScale:0);
-                Vector2 padding=(effect?new Vector2(6,4):impact?new Vector2(32,8):Vector2.Zero)*noticeScale;
+                Vector2 padding=(e.Kind=="Cleanse"?new Vector2(36,28):effect?new Vector2(6,4):impact?new Vector2(32,8):Vector2.Zero)*noticeScale;
                 Vector2 bounds=new(width+padding.X*2,height+padding.Y*2);
                 // Large group sizes are capped to their screen lane rather than disappearing.
                 if(NoticeStyle.Group(e)!=NoticeGroup.None)
                 {
-                    float laneWidth=e.Kind=="Healing"?viewport.X-36:e.Incoming?anchor.X-42:viewport.X-anchor.X-42;
+                    float laneWidth=e.Kind is "Healing" or "Cleanse"?viewport.X-36:e.Incoming?anchor.X-42:viewport.X-anchor.X-42;
                     float fit=Math.Min(1,Math.Min((laneWidth-8)/bounds.X,(viewport.Y-32)/bounds.Y));
                     if(fit<=0||size*fit<8)continue;
                     noticeScale*=fit;size*=fit;captionSize*=fit;headlineWidth*=fit;captionWidth*=fit;width*=fit;height*=fit;padding*=fit;bounds*=fit;
@@ -314,17 +315,19 @@ internal sealed class CombatPanel
                 Vector2 p=anchor+new Vector2(arc.X,arc.Y);
                 // Hold crits briefly, then let them drift. Entry is an outward punch, never screen shake.
                 if(impact){p.X+=(e.Incoming?-1:1)*14*MathF.Exp(-(float)age*9);p.Y+=a.Rise*Math.Min((float)age,.20f)/a.Lifetime;}
-                if(!layout.TryPlace(p,bounds,e.Kind=="Healing"?0:e.Incoming?-1:1,out p))continue;
+                if(!layout.TryPlace(p,bounds,e.Kind is "Healing" or "Cleanse"?0:e.Incoming?-1:1,out p))continue;
                 Vector4 c=Color(a,e.Kind);
                 if(impact&&e.Incoming&&e.Kind=="Taken")c=new(1,.32f,.29f,c.W);
                 float l=(c.X+c.Y+c.Z)/3,saturation=(impact||effect?1:a.Intensity)*(a.Subdued?.65f:1);
                 c.X=l+(c.X-l)*saturation;c.Y=l+(c.Y-l)*saturation;c.Z=l+(c.Z-l)*saturation;c.W*=alpha;
                 Vector2 textP=p+padding;
                 if(!a.Subdued&&a.Intensity>.05f&&(!regular||e.Kind is "Acid" or "Poison" or "Sneak"))Art(draw,e,textP,new(width,height),c,age,a.Intensity*(regular?.85f:1),noticeScale);
-                if(vectorHeadline)ImpactLettering.Draw(headline,textP+new Vector2((width-headlineWidth)/2,0),size,c,a.Bold,(points,tint)=>Polygon(draw,points,tint));
+                if(e.Kind=="Cleanse")c.W*=.78f;
+                if(vectorHeadline)ImpactLettering.Draw(headline,textP+new Vector2((width-headlineWidth)/2,0),size,c,e.Kind!="Cleanse"&&a.Bold,(points,tint)=>Polygon(draw,points,tint));
                 else Lettering(draw,headline,textP+new Vector2((width-headlineWidth)/2,0),size,c,a.Outline*noticeScale);
                 if(caption.Length>0)
                 {
+                    if(e.Kind=="Cleanse")c.W*=.75f;
                     Vector2 captionP=textP+new Vector2((width-captionWidth)/2,size+3*noticeScale);
                     if(vectorCaption)ImpactLettering.Draw(caption,captionP,captionSize,c,false,(points,tint)=>Polygon(draw,points,tint));
                     else Lettering(draw,caption,captionP,captionSize,c,a.Outline*noticeScale);
@@ -338,7 +341,9 @@ internal sealed class CombatPanel
         float t=(float)age;Vector2 center=p+text*.5f;
         uint Tint(float alpha){var c=color;c.W*=Math.Clamp(alpha*intensity,0,1);return ImGui.ColorConvertFloat4ToU32(c);}
         // Decoration stays outside the lettering's bounding box.
-        if(e.Kind=="Healing")
+        if(e.Kind=="Cleanse")
+        {CleanseArt.Draw(p,text,age,intensity,scale,(from,to,tint,width)=>d.AddLine(Pixel(from),Pixel(to),ImGui.ColorConvertFloat4ToU32(tint),width));}
+        else if(e.Kind=="Healing")
         {
             float fade=MathF.Exp(-t*1.3f),r=12+28*Math.Min(t,1);
             Vector2 halo=new(center.X,p.Y+text.Y+10);
