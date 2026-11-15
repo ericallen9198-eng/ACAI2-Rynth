@@ -4,6 +4,7 @@
   "keyferServer": "DreamWeave",
   "keyferCharacter": "Keyfer Sutherland",
   "keyferPublicReplies": true,
+  "keyferAmbientReactions": true,
   "keyferWorldEvents": true,
   "treasureEnabled": true,
   "treasurePrizeCommand": "",

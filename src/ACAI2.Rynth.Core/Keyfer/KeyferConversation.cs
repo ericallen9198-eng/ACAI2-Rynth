@@ -39,6 +39,38 @@ namespace ACAI2.Rynth.Core.Keyfer
         private bool TimedOut(string server, string character, string speaker, out DateTime until) =>
             playerTimeouts.TryGetValue(TimeoutKey(server, character, speaker), out until) && until > config.UtcNow;
         private DateTime lastTreasureErrorUtc;
+        private readonly System.Collections.Generic.HashSet<string> publicNames = new(StringComparer.OrdinalIgnoreCase);
+        private DateTime nextAmbientUtc;
+        private DateTime arenaQuietUntil;
+        private int ambientSample;
+        private volatile bool timeoutStateDirty;
+        private void SaveState(string server,string character)
+        {
+            timeoutStateDirty=false;
+            foreach(var old in playerTimeouts.Where(x=>x.Value<=config.UtcNow).Select(x=>x.Key).ToArray())playerTimeouts.TryRemove(old,out _);
+            foreach(var old in playerTimeouts.OrderByDescending(x=>x.Value).Skip(256).Select(x=>x.Key).ToArray())playerTimeouts.TryRemove(old,out _);
+            string prefix=server+"::"+character+"::";
+            state.Timeouts=playerTimeouts.Where(x=>x.Key.StartsWith(prefix,StringComparison.Ordinal)&&x.Value>config.UtcNow)
+                .Take(256).ToDictionary(x=>x.Key.Substring(prefix.Length),x=>x.Value,StringComparer.OrdinalIgnoreCase);
+            state.Strikes=state.Strikes.Where(x=>config.UtcNow-x.Value.LastUtc<TimeSpan.FromDays(30)).OrderByDescending(x=>x.Value.LastUtc).Take(256).ToDictionary(x=>x.Key,x=>x.Value,StringComparer.OrdinalIgnoreCase);
+            string path=StatePath(server,character);Directory.CreateDirectory(Path.GetDirectoryName(path));
+            File.WriteAllText(path+".tmp",new KeyferJson().Serialize(state));File.Move(path+".tmp",path,true);
+        }
+        private void ObserveName(string name)
+        { if(publicNames.Count<128)publicNames.Add(name); }
+        private void TryAmbient(ChatObservation chat,string server,string character)
+        {
+            if(!config.keyferAmbientReactions||!config.keyferPublicReplies||!state.EmotesEnabled||quiet||pending>0||
+                config.UtcNow<nextAmbientUtc||config.UtcNow<nextEmoteUtc||config.UtcNow<arenaQuietUntil||
+                state.Excluded.Any(x=>x.Equals(chat.Speaker,StringComparison.OrdinalIgnoreCase))||
+                ConversationSafety.BaitName(chat.Speaker)||GameChat.IsAddressed(chat.Message)||ArenaCommands.Parse(chat.Message)!=null)return;
+            var reaction=AmbientConversation.Choose(chat.Message,++ambientSample);
+            if(reaction==null)return;
+            nextAmbientUtc=config.UtcNow.AddMinutes(5);
+            // Area chat remains local, allegiance remains allegiance. Never cross-post a tell.
+            if(reaction.Text.Length>0)deliveries.Enqueue(new Delivery{Server=server,Character=character,Channel=chat.Channel,Speaker=chat.Speaker,Text=reaction.Text,Emote=reaction.Emote,Ambient=true,EmoteExpires=config.UtcNow.AddSeconds(10)});
+            else speech.Enqueue(new Delivery{Server=server,Character=character,Channel=chat.Channel,Speaker=chat.Speaker,Text=ConversationEmotes.Command(reaction.Emote),EmoteOnly=true,Ambient=true,EmoteExpires=config.UtcNow.AddSeconds(10)});
+        }
 
         public KeyferConversation(KeyferSettings config) { this.config = config; http=config.CreateHttp(); treasure = new TreasureClient(config); leaderboards = new LeaderboardClient(config); }
 
@@ -79,6 +111,9 @@ namespace ACAI2.Rynth.Core.Keyfer
             state.Character = character;
             if (state.Excluded == null) state.Excluded = new System.Collections.Generic.List<string> { "Wooty" };
             if (state.Owners == null) state.Owners = new System.Collections.Generic.List<string> { "Samm" };
+            state.Timeouts ??= new(); state.Strikes ??= new();
+            foreach(var entry in state.Timeouts.Where(x=>x.Value>config.UtcNow).Take(256))playerTimeouts[TimeoutKey(server,character,entry.Key)]=entry.Value;
+            publicNames.Clear();nextAmbientUtc=config.UtcNow.AddMinutes(1);
             quiet = state.Quiet;
             threadUntil = DateTime.MinValue;
         }
@@ -166,8 +201,38 @@ namespace ACAI2.Rynth.Core.Keyfer
             chat.InstanceId = instance;
             chat.Server = server;
             chat.Character = character;
-            if (chat.Channel != "Tell" && chat.Channel != "Allegiance" && chat.Channel != "General") return;
+            if (chat.Channel != "Tell" && chat.Channel != "Allegiance" && chat.Channel != "General" && chat.Channel != "Local") return;
+            ObserveName(chat.Speaker);
+            string arenaText=ArenaCommands.Parse(chat.Message);
+            if(arenaText!=null&&ArenaCommands.Names(arenaText.StartsWith("preview ",StringComparison.OrdinalIgnoreCase)?arenaText.Substring(8):arenaText,out var first,out var second)){ObserveName(first);ObserveName(second);}
 
+            DateTime existingTimeout;
+            if (TimedOut(server, character, chat.Speaker, out existingTimeout))
+            {
+                string key = TimeoutKey(server, character, chat.Speaker); DateTime next;
+                if (chat.Channel == "Tell" && (!nextTimeoutNotice.TryGetValue(key, out next) || config.UtcNow >= next))
+                {
+                    nextTimeoutNotice[key] = config.UtcNow.AddMinutes(1);
+                    deliveries.Enqueue(new Delivery { Server = server, Character = character, Channel = "Tell", Speaker = chat.Speaker,
+                        Text = PlayerTimeoutNotice.Format(existingTimeout, config.UtcNow), TimeoutExplanation = true });
+                }
+                return;
+            }
+            bool addressed=chat.Channel=="Tell"||GameChat.IsAddressed(chat.Message);
+            string violation=addressed?ConversationSafety.Violation(chat.Message):"";
+            if(violation.Length>0)
+            {
+                string key=chat.Speaker.ToLowerInvariant();
+                state.Strikes.TryGetValue(key,out var strike);
+                int count=strike!=null&&config.UtcNow-strike.LastUtc<TimeSpan.FromDays(30)?Math.Min(3,strike.Count+1):1;
+                state.Strikes[key]=new SafetyStrike{Count=count,LastUtc=config.UtcNow};
+                var until=config.UtcNow.AddMinutes(count==1?5:count==2?30:1440);
+                playerTimeouts[TimeoutKey(server,character,chat.Speaker)]=until;
+                try{SaveState(server,character);}catch{timeoutStateDirty=true;deliveries.Enqueue(new Delivery{Server=server,Character=character,LocalOnly=true,Text="[ACAI2] Timeout active for this session; state could not be saved."});}
+                nextTimeoutNotice[TimeoutKey(server,character,chat.Speaker)]=config.UtcNow.AddMinutes(1);
+                deliveries.Enqueue(new Delivery{Server=server,Character=character,Channel="Tell",Speaker=chat.Speaker,Text="I'm sitting this conversation out. "+PlayerTimeoutNotice.Format(until,config.UtcNow),TimeoutExplanation=true});
+                return;
+            }
             bool requestedQuiet;
             if (GameChat.TryGeneralQuietControl(chat, out requestedQuiet))
             {
@@ -189,26 +254,18 @@ namespace ACAI2.Rynth.Core.Keyfer
                     Speaker = chat.Speaker, Text = answer, Control = true });
                 return;
             }
-            DateTime existingTimeout;
-            if (TimedOut(server, character, chat.Speaker, out existingTimeout))
-            {
-                string key = TimeoutKey(server, character, chat.Speaker); DateTime next;
-                if (chat.Channel == "Tell" && (!nextTimeoutNotice.TryGetValue(key, out next) || config.UtcNow >= next))
-                {
-                    nextTimeoutNotice[key] = config.UtcNow.AddMinutes(1);
-                    deliveries.Enqueue(new Delivery { Server = server, Character = character, Channel = "Tell", Speaker = chat.Speaker,
-                        Text = PlayerTimeoutNotice.Format(existingTimeout, config.UtcNow), TimeoutExplanation = true });
-                }
-                return;
-            }
-            bool arenaCommand = ArenaCommands.Parse(chat.Message) != null;
-            bool direct = GameChat.ShouldReply(chat, character, config.keyferPublicReplies) ||
+            if(!addressed&&ConversationSafety.Violation(chat.Message).Length>0)return;
+            if(chat.Channel=="Local"||chat.Channel=="Allegiance")TryAmbient(chat,server,character);
+            if(chat.Channel=="Local"&&!ConversationSafety.Familiar(chat.Speaker))return;
+            bool arenaCommand = arenaText != null;
+            bool direct = (chat.Channel=="Local"&&ConversationSafety.Familiar(chat.Speaker)&&GameChat.IsAddressed(chat.Message)&&config.keyferPublicReplies) || GameChat.ShouldReply(chat, character, config.keyferPublicReplies) ||
                 (arenaCommand && (chat.Channel == "Tell" || config.keyferPublicReplies));
             bool continuation = !quiet && config.keyferPublicReplies && chat.Channel == threadChannel &&
                 chat.Speaker == threadSpeaker && config.UtcNow < threadUntil && GameChat.IsFollowUp(chat.Message);
-            bool ask = (direct || continuation) && !(state.GeneralQuiet && chat.Channel == "General");
+            bool ask = (direct || continuation) && !(state.GeneralQuiet && chat.Channel == "General" && !ConversationSafety.Familiar(chat.Speaker));
             bool observe = chat.Channel == "Allegiance" || chat.Channel == "General";
             if (!ask && !observe) return;
+            if(ask&&arenaCommand)arenaQuietUntil=config.UtcNow.AddSeconds(45);
             if (Interlocked.Increment(ref pending) > 16)
             {
                 Interlocked.Decrement(ref pending);
@@ -239,7 +296,8 @@ namespace ACAI2.Rynth.Core.Keyfer
                     if (reply != null && !string.IsNullOrWhiteSpace(reply.TimedOutPlayer) && DateTime.TryParse(reply.TimeoutUntilUtc, null, System.Globalization.DateTimeStyles.RoundtripKind, out timeoutUntil))
                     {
                         string key = TimeoutKey(server, character, reply.TimedOutPlayer);
-                        playerTimeouts[key] = timeoutUntil;
+                        playerTimeouts[key] = playerTimeouts.TryGetValue(key,out var currentUntil)&&currentUntil>timeoutUntil?currentUntil:timeoutUntil;
+                        timeoutStateDirty=true;
                         if (chat.Channel == "Tell" && !string.IsNullOrWhiteSpace(reply.Answer)) nextTimeoutNotice[key] = config.UtcNow.AddMinutes(1);
                     }
                     if (reply != null && reply.Ok && !string.IsNullOrWhiteSpace(reply.ArenaCancelId))
@@ -263,10 +321,11 @@ namespace ACAI2.Rynth.Core.Keyfer
                     if (reply != null && reply.Ok && !string.IsNullOrWhiteSpace(reply.AllegianceNotice))
                         deliveries.Enqueue(new Delivery { Server = server, Character = character, Channel = "Allegiance",
                             Text = reply.AllegianceNotice });
-                    if (reply != null && reply.Ok && !string.IsNullOrWhiteSpace(reply.GeneralNotice))
+                    bool stayHere=ConversationSafety.Familiar(chat.Speaker)&&chat.Channel!="Tell";
+                    if (reply != null && reply.Ok && !string.IsNullOrWhiteSpace(reply.GeneralNotice) && !(stayHere&&reply.ReplyChannel=="Tell"))
                         deliveries.Enqueue(new Delivery { Server = server, Character = character, Channel = reply.NoticeChannel == "Allegiance" ? "Allegiance" : "General", Speaker = chat.Speaker,
                             Text = reply.GeneralNotice, Direct = true });
-                    deliveries.Enqueue(new Delivery { Server = server, Character = character, Channel = reply != null && reply.Ok && reply.ReplyChannel == "Tell" ? "Tell" : chat.Channel,
+                    deliveries.Enqueue(new Delivery { Server = server, Character = character, Channel = reply != null && reply.Ok && reply.ReplyChannel == "Tell" && !stayHere ? "Tell" : chat.Channel,
                         Speaker = chat.Speaker, Text = reply != null && reply.Ok ? reply.Answer : "[ACAI2] Keyfer: " + (reply == null ? "Empty Bridge response." : reply.Error),
                         LocalOnly = reply == null || !reply.Ok, Direct = direct,
                         Emote = reply != null && reply.Ok ? reply.ConversationEmote : null,
@@ -307,6 +366,7 @@ namespace ACAI2.Rynth.Core.Keyfer
             if (Enabled(server, character))
             {
                 LoadState(server, character);
+                if(timeoutStateDirty){try{SaveState(server,character);}catch{timeoutStateDirty=false;local("[ACAI2] Timeout state could not be saved; current-session timeouts remain active.");}}
                 leaderboards.Tick(instance, server, character, send, local);
                 try { treasure.Tick(instance, server, character, quiet, send, local, text => deliveries.Enqueue(new Delivery {
                     Server = server, Character = character, Channel = "Allegiance", Text = text, WorldEvent = true })); }
@@ -322,24 +382,26 @@ namespace ACAI2.Rynth.Core.Keyfer
             {
                 if (config.SessionToken.IsCancellationRequested || item.Server != server || item.Character != character) continue;
                 if (item.LocalOnly) { local(item.Text); continue; }
-                foreach (string command in GameChat.ReplyCommands(item.Channel, item.Speaker, item.Text))
+                foreach (string command in GameChat.ReplyCommands(item.Channel, item.Speaker, ConversationSafety.Speech(item.Text,publicNames)))
                     (!string.IsNullOrEmpty(item.ArenaId) ? arenaSpeech : item.WorldEvent ? eventSpeech : speech).Enqueue(new Delivery { Server = server, Character = character, Channel = item.Channel,
-                        Speaker = item.Speaker, Text = command, Control = item.Control, Direct = item.Direct, WorldEvent = item.WorldEvent, TimeoutExplanation = item.TimeoutExplanation, ArenaId = item.ArenaId, ArenaExpires = item.ArenaExpires, ArenaFinal = item.ArenaFinal, GeneralNextUtc = item.GeneralNextUtc, Emote = item.Emote });
+                        Speaker = item.Speaker, Text = command, Control = item.Control, Direct = item.Direct, WorldEvent = item.WorldEvent, TimeoutExplanation = item.TimeoutExplanation, ArenaId = item.ArenaId, ArenaExpires = item.ArenaExpires, ArenaFinal = item.ArenaFinal, GeneralNextUtc = item.GeneralNextUtc, Emote = item.Emote, Ambient=item.Ambient, EmoteExpires=item.EmoteExpires });
             }
             if (config.UtcNow < nextSpeechUtc) return;
             while ((config.UtcNow >= nextArenaUtc && arenaSpeech.TryDequeue(out item)) || eventSpeech.TryDequeue(out item) || speech.TryDequeue(out item))
             {
                 DateTime until;
                 bool playerBlocked = !string.IsNullOrEmpty(item.Speaker) && playerTimeouts.TryGetValue(server + "::" + character + "::" + item.Speaker.ToLowerInvariant(), out until) && until > config.UtcNow;
-                if ((item.EmoteOnly && (!state.EmotesEnabled || config.UtcNow > item.EmoteExpires)) ||
+                if ((item.Ambient && (!config.keyferAmbientReactions||!state.EmotesEnabled||quiet||config.UtcNow>item.EmoteExpires||config.UtcNow<arenaQuietUntil||pending>0)) ||
+                    (item.EmoteOnly && (!state.EmotesEnabled || config.UtcNow > item.EmoteExpires)) ||
                     (!string.IsNullOrEmpty(item.ArenaId) && (config.UtcNow > item.ArenaExpires || cancelledArena.ContainsKey(item.ArenaId))) ||
                     (!item.Control && !item.TimeoutExplanation && playerBlocked) || item.Server != server || item.Character != character ||
-                    (state.GeneralQuiet && item.Channel == "General") ||
+                    (state.GeneralQuiet && item.Channel == "General" && !ConversationSafety.Familiar(item.Speaker??"")) ||
                     (quiet && item.Channel != "Tell" && !item.Control && !item.Direct)) continue;
                 string outgoing = item.Text;
                 if (item.ArenaFinal && item.Channel == "General" && item.GeneralNextUtc != DateTime.MinValue)
                     outgoing += " " + ArenaCooldown.Notice(item.GeneralNextUtc, config.UtcNow);
                 send(outgoing);
+                if(item.EmoteOnly)nextEmoteUtc=config.UtcNow.AddSeconds(90);
                 if (item.ArenaFinal && item.Channel == "Allegiance")
                 {
                     string completedId = item.ArenaId;
@@ -350,14 +412,14 @@ namespace ACAI2.Rynth.Core.Keyfer
                     });
                 }
                 if (!item.EmoteOnly && state.EmotesEnabled && ConversationEmotes.Command(item.Emote) != null &&
-                    (item.Channel == "General" || item.Channel == "Allegiance") && config.UtcNow >= nextEmoteUtc)
+                    (item.Channel == "General" || item.Channel == "Allegiance" || item.Channel == "Local") && config.UtcNow >= nextEmoteUtc)
                 {
                     nextEmoteUtc = config.UtcNow.AddSeconds(90);
                     speech.Enqueue(new Delivery { Server = server, Character = character, Channel = item.Channel, Speaker = item.Speaker,
-                        Text = ConversationEmotes.Command(item.Emote), EmoteOnly = true, EmoteExpires = config.UtcNow.AddSeconds(12), Direct = item.Direct });
+                        Text = ConversationEmotes.Command(item.Emote), EmoteOnly = true, EmoteExpires = config.UtcNow.AddSeconds(12), Direct = item.Direct, Ambient=item.Ambient });
                 }
                 if (!string.IsNullOrEmpty(item.ArenaId)) nextArenaUtc = config.UtcNow.AddSeconds(4);
-                if (!item.EmoteOnly && string.IsNullOrEmpty(item.ArenaId) && !item.WorldEvent && (item.Channel == "Allegiance" || item.Channel == "General"))
+                if (!item.Ambient && !item.EmoteOnly && string.IsNullOrEmpty(item.ArenaId) && !item.WorldEvent && (item.Channel == "Allegiance" || item.Channel == "General" || item.Channel == "Local"))
                 {
                     threadSpeaker = item.Speaker;
                     threadChannel = item.Channel;
@@ -376,9 +438,12 @@ namespace ACAI2.Rynth.Core.Keyfer
             public bool Quiet { get; set; }
             public bool EmotesEnabled { get; set; } = true;
             public bool GeneralQuiet { get; set; }
+            public System.Collections.Generic.Dictionary<string,DateTime> Timeouts {get;set;}=new();
+            public System.Collections.Generic.Dictionary<string,SafetyStrike> Strikes {get;set;}=new();
             public System.Collections.Generic.List<string> Excluded { get; set; } = new System.Collections.Generic.List<string> { "Wooty" };
             public System.Collections.Generic.List<string> Owners { get; set; } = new System.Collections.Generic.List<string> { "Samm" };
         }
+        public sealed class SafetyStrike {public int Count {get;set;} public DateTime LastUtc {get;set;} }
         private sealed class Delivery
         {
             public string Server;
@@ -397,6 +462,7 @@ namespace ACAI2.Rynth.Core.Keyfer
             public DateTime GeneralNextUtc;
             public string Emote;
             public bool EmoteOnly;
+            public bool Ambient;
             public DateTime EmoteExpires;
         }
     }

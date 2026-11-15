@@ -101,7 +101,7 @@ public sealed class KeyferSession : IDisposable
     public static bool AllowedCommand(string command,KeyferSettings settings)
     {
         if(string.IsNullOrEmpty(command)||command.Length>240||command.Any(char.IsControl))return false;
-        if(command.StartsWith("/a ",StringComparison.Ordinal)||command.StartsWith("/cg ",StringComparison.Ordinal))return true;
+        if(command.StartsWith("/say ",StringComparison.Ordinal)||command.StartsWith("/a ",StringComparison.Ordinal)||command.StartsWith("/cg ",StringComparison.Ordinal))return true;
         if(Regex.IsMatch(command,@"^/t [\p{L}\p{N} .'\-]+, .+$",RegexOptions.CultureInvariant,TimeSpan.FromMilliseconds(50)))return true;
         if(DreamWeaveLeaderboards.Ids.Any(id=>command==DreamWeaveLeaderboards.Command(id)))return true;
         if(new[]{"laugh","cheer","shrug","sad","nod","wave","clap","sigh","think"}.Any(e=>command==ConversationEmotes.Command(e)))return true;

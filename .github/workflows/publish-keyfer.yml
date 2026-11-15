@@ -8,7 +8,7 @@ on:
       version:
         description: Package version (e.g. 0.3.1)
         required: true
-        default: '0.3.1'
+        default: '0.3.2'
       commit_sha:
         description: Full tested source commit SHA
         required: true
@@ -64,7 +64,7 @@ jobs:
 
           Download **$zip_name** below. It includes the compiled plugin, dependencies, example configuration and setup guide; no source rebuild is required.
 
-          v0.3.1 fixes the Bridge MissingMethodException under Rynth's isolated JSON loading. This failure was reproduced with a Rynth-style collectible assembly context and now has a registration/tell-delivery regression check.
+          v0.3.2 adds pre-Bridge command/abuse timeouts, bait-name speech screening, sparse local/allegiance reactions using existing emotes, and same-channel answers for Toe and Samm. Private tells remain private.
 
           Requires RynthCore CoreCLR managed x86 support, API 92+. Keep the existing Bridge v0.17 and keyfer.json. Combat is excluded. Close the game before replacing all package DLLs together; do not overwrite your existing keyfer.json with the example. See KEYFER-SETUP.md in the ZIP.
           NOTES

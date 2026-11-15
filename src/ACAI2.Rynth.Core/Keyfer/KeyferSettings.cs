@@ -10,6 +10,7 @@ public sealed class KeyferSettings
     public string bridgeUrl { get; set; } = "http://127.0.0.1:5052";
     public string keyferServer { get; set; } = "DreamWeave";
     public string keyferCharacter { get; set; } = "Keyfer Sutherland";
+    public bool keyferAmbientReactions {get;set;} = true;
     public bool keyferPublicReplies { get; set; } = true;
     public bool keyferWorldEvents { get; set; } = true;
     public bool treasureEnabled { get; set; } = true;

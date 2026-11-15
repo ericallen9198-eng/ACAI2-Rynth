@@ -94,6 +94,7 @@ namespace ACAI2.Protocol
             }
             else if (channel == "Allegiance") prefix = "/a ";
             else if (channel == "General") prefix = "/cg ";
+            else if (channel == "Local") prefix = "/say ";
             else yield break;
             string text = Regex.Replace(answer ?? "", @"[\p{Cc}\p{Cf}]+", " ").Trim();
             // Model output is always appended to a fixed speech command, never executed.

@@ -1,4 +1,4 @@
-# Keyfer on Rynth — v0.3.1
+# Keyfer on Rynth — v0.3.2
 
 This release restores the existing Keyfer services through a Rynth client adapter.
 It does not ship combat rendering, combat parsing, DPS, floating text, attack power,
@@ -47,7 +47,7 @@ Windows installation. No native Windows/game run is claimed from those tests.
 1. Keep the current Bridge process/config/data. Stop the old Decal Keyfer responder
    before enabling the new one. The Rynth ownership lock prevents duplicate Rynth
    responders on this PC, but the old Decal adapter does not share that lock.
-2. Download [the compiled Windows ZIP](https://github.com/ericallen9198-eng/ACAI2-Rynth/releases/download/keyfer-v0.3.1/ACAI2-Rynth-Keyfer-v0.3.1-Windows.zip) from the normal GitHub release. No source rebuild is needed. The same verified package is also available as **ACAI2-Rynth-Keyfer-Windows** in its successful verification Actions run (requires GitHub sign-in). Alternatively build on Windows with the .NET 10 SDK:
+2. Download [the compiled Windows ZIP](https://github.com/ericallen9198-eng/ACAI2-Rynth/releases/download/keyfer-v0.3.2/ACAI2-Rynth-Keyfer-v0.3.2-Windows.zip) from the normal GitHub release. No source rebuild is needed. The same verified package is also available as **ACAI2-Rynth-Keyfer-Windows** in its successful verification Actions run (requires GitHub sign-in). Alternatively build on Windows with the .NET 10 SDK:
    `scripts\Bootstrap-RynthCore.ps1` (GitHub source ZIP only), then
    `scripts\Publish.ps1`. It runs controlled tests and writes `artifacts\keyfer-managed`.
 3. Extract the entire package into its own directory, keeping its dependencies
@@ -115,7 +115,7 @@ chat/leaderboard/prize commands.
 
 ## Updating from v0.3.0
 
-Close the game, replace the package files together from the v0.3.1 ZIP, and relaunch
+Close the game, replace the package files together from the v0.3.2 ZIP, and relaunch
 Keyfer. Preserve your existing `%LOCALAPPDATA%\ACAI2-Rynth\keyfer.json` and Bridge.
 The regression fix removes System.Net.Http.Json helper calls: Rynth loads
 System.Text.Json privately per plugin but shares the HTTP JSON extension assembly,
@@ -124,3 +124,41 @@ Serialization now stays inside the private context; ordinary HTTP sees JSON text
 A simulated engine assembly-loader test reproduces the original failure and checks
 registration plus private tell delivery after the fix. A missing-method failure now
 includes the method signature in local status rather than just its exception type.
+
+## v0.3.2: safer conversation and occasional player reactions
+
+Toe and Samm receive addressed answers and contextual follow-ups in the channel
+where they ask, including local chat. The adapter suppresses the Bridge's generic
+public-to-tells redirect for those two public requests. Their private tells remain
+private. General mute still applies to other players; public replies must remain
+enabled for public questions. Local chat from other players is eligible for rare
+ambient reactions, but is not forwarded to the Bridge or automatically answered.
+
+Command-execution bait, instruction/secret extraction, and explicit abusive/sexual
+bait addressed to Keyfer are checked before Bridge requests. Detected offenders
+receive a private notice and an interaction timeout: 5 minutes, then 30 minutes,
+then 24 hours for repeat strikes within 30 days. This blocks Keyfer interactions,
+not the player's game chat. Ordinary command-help questions and identity labels
+are not offenses. Existing Bridge moderation remains active. These deterministic
+checks supplement, rather than replace, the fixed native command catalog; no
+keyword filter can recognize every possible adversarial conversation.
+
+Bounded timeout deadlines and strike counts persist in the character's existing
+KeyferState file; raw offending messages are not saved. Public/tell speech replaces
+recognized bait names with a neutral challenger label without changing real tell
+recipients, sheet names or arena lookups. Final speech is screened again. A name
+alone does not earn a timeout, and identity labels such as Non-Binary are not bait.
+
+With `keyferAmbientReactions` true (the default), Keyfer occasionally laughs,
+applauds, sighs or shrugs at eligible nearby/allegiance chat. Sometimes he adds a
+short contextual remark in that same channel. He never cross-posts private tells,
+reacts to spell incantations, quotes player text into emotes, or claims unobserved
+combat. There is a one-minute login settling period, at least five minutes between
+spontaneous reactions, and the shared 90-second emote cooldown. Quiet mode,
+`emotes off`, disabled public replies, pending replies and active arena requests
+suppress ambient reactions. General has no spontaneous chatter. The nine fixed
+existing text emotes are reused; there are no arbitrary emote commands or animations.
+
+To disable spontaneous reactions alone, set `keyferAmbientReactions` to false in
+your existing keyfer.json and use `/acai2r keyfer reload`. Existing quiet/emote
+controls continue to work. No Bridge update or API-key change is required.
