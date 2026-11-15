@@ -61,6 +61,7 @@ namespace ACAI2.Rynth.Core.Keyfer
         private void TryAmbient(ChatObservation chat,string server,string character)
         {
             if(!config.keyferAmbientReactions||!config.keyferPublicReplies||!state.EmotesEnabled||quiet||pending>0||
+                !arenaSpeech.IsEmpty||!speech.IsEmpty||!deliveries.IsEmpty||!eventSpeech.IsEmpty||config.UtcNow<threadUntil||
                 config.UtcNow<nextAmbientUtc||config.UtcNow<nextEmoteUtc||config.UtcNow<arenaQuietUntil||
                 state.Excluded.Any(x=>x.Equals(chat.Speaker,StringComparison.OrdinalIgnoreCase))||
                 ConversationSafety.BaitName(chat.Speaker)||GameChat.IsAddressed(chat.Message)||ArenaCommands.Parse(chat.Message)!=null)return;
