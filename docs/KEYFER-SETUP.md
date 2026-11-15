@@ -130,7 +130,12 @@ includes the method signature in local status rather than just its exception typ
 Toe and Samm receive addressed answers and contextual follow-ups in the channel
 where they ask, including local chat. The adapter suppresses the Bridge's generic
 public-to-tells redirect for those two public requests. Their private tells remain
-private. General mute still applies to other players; public replies must remain
+private. Public owner dialogue uses an audience-scoped conversation key so a
+legacy Bridge handoff cannot load the player's real private-tell history and then
+broadcast it. Local dialogue uses the Bridge's supported public Allegiance context
+for generation while native delivery remains local; it is not cross-posted as an
+Allegiance observation. Local arena commands use the existing private-preview route.
+General mute still applies to other players; public replies must remain
 enabled for public questions. Local chat from other players is eligible for rare
 ambient reactions, but is not forwarded to the Bridge or automatically answered.
 

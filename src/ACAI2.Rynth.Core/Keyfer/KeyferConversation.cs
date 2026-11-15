@@ -286,10 +286,15 @@ namespace ACAI2.Rynth.Core.Keyfer
                     if (TimedOut(server, character, chat.Speaker, out queuedTimeout)) return;
                     if (observe) await PostAsync("/v1/keyfer/chat", chat).ConfigureAwait(false);
                     if (!ask) return;
+                    // Legacy Bridge handoff reads Tell history before answering. Give owner public
+                    // dialogue its own audience-scoped key so that reply can safely stay public.
+                    bool publicOwnerDialog=ConversationSafety.Familiar(chat.Speaker)&&chat.Channel!="Tell"&&!arenaCommand;
+                    string speakerId=publicOwnerDialog?"public-"+Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(chat.Channel+"\n"+chat.Speaker.ToLowerInvariant()))).ToLowerInvariant():chat.Speaker.ToLowerInvariant();
                     var result = await PostAsync("/v1/keyfer/ask", new KeyferAsk
                     {
-                        InstanceId = instance, Server = server, Character = character, Channel = chat.Channel,
-                        SpeakerId = chat.Speaker.ToLowerInvariant(), Speaker = chat.Speaker, Question = chat.Message
+                        InstanceId = instance, Server = server, Character = character,
+                        Channel = chat.Channel=="Local"?(arenaCommand?"Tell":"Allegiance"):chat.Channel,
+                        SpeakerId = speakerId, Speaker = chat.Speaker, Question = chat.Message
                     }).ConfigureAwait(false);
                     var reply = new KeyferJson().Deserialize<KeyferAnswer>(result);
                     DateTime timeoutUntil;
@@ -321,7 +326,7 @@ namespace ACAI2.Rynth.Core.Keyfer
                     if (reply != null && reply.Ok && !string.IsNullOrWhiteSpace(reply.AllegianceNotice))
                         deliveries.Enqueue(new Delivery { Server = server, Character = character, Channel = "Allegiance",
                             Text = reply.AllegianceNotice });
-                    bool stayHere=ConversationSafety.Familiar(chat.Speaker)&&chat.Channel!="Tell";
+                    bool stayHere=publicOwnerDialog;
                     if (reply != null && reply.Ok && !string.IsNullOrWhiteSpace(reply.GeneralNotice) && !(stayHere&&reply.ReplyChannel=="Tell"))
                         deliveries.Enqueue(new Delivery { Server = server, Character = character, Channel = reply.NoticeChannel == "Allegiance" ? "Allegiance" : "General", Speaker = chat.Speaker,
                             Text = reply.GeneralNotice, Direct = true });

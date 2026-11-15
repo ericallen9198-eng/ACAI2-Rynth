@@ -85,6 +85,8 @@ internal static class KeyferChecks
             client.Capture("Samm says, \"Keyfer how are things?\"",1,clock);client.Pump(sent.Add,local.Add);
             await Until(()=>{client.Pump(sent.Add,local.Add);return sent.Skip(before).Contains("/say Right here with you.");});
             check(sent.Skip(before).All(x=>!x.StartsWith("/t ")),"Samm's addressed local question is answered locally");
+            using(var localAsk=JsonDocument.Parse(fake.Calls.Last(x=>x.Path.EndsWith("/ask")).Json))
+                check(localAsk.RootElement.GetProperty("Channel").GetString()=="Allegiance"&&localAsk.RootElement.GetProperty("SpeakerId").GetString()!.StartsWith("public-")&&localAsk.RootElement.GetProperty("Speaker").GetString()=="Samm","legacy Bridge accepts local dialogue as public-context asks with an isolated public history key and real speaker name");
             clock=clock.AddMinutes(6);before=sent.Count;int beforeAsks=fake.Calls.Count(x=>x.Path.EndsWith("/ask"));
             for(int i=0;i<5;i++){client.Capture("Friendly says, \"lol that was funny\"",1,clock);client.Pump(sent.Add,local.Add);}
             check(sent.Skip(before).SequenceEqual(new[]{"/e laughs."})&&fake.Calls.Count(x=>x.Path.EndsWith("/ask"))==beforeAsks,"five eligible nearby lines yield one safe local emote without AI calls or chatter");
@@ -143,6 +145,12 @@ internal static class KeyferChecks
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,CancellationToken ct)
         {
             string path=request.RequestUri!.AbsolutePath;string body=await request.Content!.ReadAsStringAsync(ct);bridge.Calls.Enqueue((path,body));
+            if(path.EndsWith("/ask"))
+            {
+                using var ask=JsonDocument.Parse(body);
+                if(ask.RootElement.GetProperty("Channel").GetString() is not ("General" or "Allegiance" or "Tell"))
+                    return new(HttpStatusCode.BadRequest){Content=new StringContent("{\"Ok\":false,\"Error\":\"Unsupported conversation channel\"}",Encoding.UTF8,"application/json")};
+            }
             if(path.EndsWith("/ask")&&bridge.BlockAsk)
             {
                 bridge.BlockStarted.TrySetResult();
