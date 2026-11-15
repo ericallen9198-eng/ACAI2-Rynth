@@ -18,7 +18,9 @@ public static class ConversationSafety
         string request=Regex.Replace(t,@"^\s*(?:(?:hey|yo|hi|hello)\s+)?keyfer(?:\s+sutherland)?[\s,:]*","",RegexOptions.IgnoreCase);
         if(Has(request,@"^\s*/[a-z]"))return "command bait";
         if(Has(t,@"\b(?:you|keyfer)[, ]+(?:please )?(?:cast|attack|equip|withdraw|deposit|transfer|give|drop|log ?out|buff me)\b"))return "game action bait";
-        if(action&&command&&!question)return "command bait";
+        bool directive=Has(request,@"^\s*(?:please\s+)?(?:just\s+)?(?:run|execute|issue|enter|type|send|paste|trigger|activate|invoke|perform|use|say|repeat)\b")||
+            Has(t,@"\b(?:can|could|would|will)\s+you\s+(?:please\s+)?(?:run|execute|issue|enter|type|send|paste|trigger|activate|invoke|perform|use|say|repeat)\b|\b(?:you|keyfer)\s+(?:must|should|need to|have to)\s+(?:run|execute|type|send|use|say|repeat)\b|\bi (?:want|need|dare) you to\s+(?:run|execute|type|send|use|say|repeat)\b");
+        if(action&&command&&directive&&!question)return "command bait";
         if(Has(t,@"\b(?:ignore|override|bypass|forget)\b.{0,60}\b(?:rules|instructions|safety|safeguards|restrictions|system|prompt)\b|\b(?:system prompt|api key|access token|password)\b.{0,30}\b(?:reveal|print|show|leak)\b|\b(?:reveal|print|show|leak)\b.{0,30}\b(?:system prompt|api key|access token|password)\b"))return "instruction or secret bait";
         if(Has(t,@"\b(?:sext|sexting|cybersex|porn|nudes)\b|\b(?:say|repeat|call|describe|pretend|roleplay)\b.{0,60}\b(?:slur|racial insult|sexual|genitals|rape)\b"))return "explicit or abusive bait";
         return "";
@@ -45,7 +47,7 @@ public static class AmbientConversation
     // Fixed, contextual reactions: no quoted player text, invented combat, or AI tools.
     public static AmbientReaction? Choose(string text,int sample)
     {
-        if(sample%5!=0||text.Length>350||ConversationSafety.Violation(text).Length>0||ConversationSafety.UnsafeWords(text))return null;
+        if(sample%5!=0||text.Length>350||text.Contains('/')||ConversationSafety.Violation(text).Length>0||ConversationSafety.UnsafeWords(text))return null;
         bool Has(string pattern)=>Regex.IsMatch(text,pattern,RegexOptions.IgnoreCase|RegexOptions.CultureInvariant,TimeSpan.FromMilliseconds(50));
         if(Has(@"\b(?:lol|lmao|rofl|haha(?:ha)?)\b"))return new("laugh","");
         if(Has(@"\b(?:ding|leveled up|levelled up|got my first|finally beat)\b"))return new("clap",sample%10==0?"Now that's worth a cheer. Mine took considerably more swearing.":"");
