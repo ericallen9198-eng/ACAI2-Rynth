@@ -35,10 +35,10 @@ covers installation, preview, RynthVision toggles and the first build's adjustab
 fixed-screen anchor. Build with `scripts/Publish-Combat.ps1`; controlled checks use
 `scripts/test-combat.sh`. No ordinary combat log/CSV is recorded.
 
-v0.1.7 replaces solid floating notice panels with open accents and adds saved
-Buffs/Debuffs/Skills scale controls. Each group scales text and graphics together;
-ordinary damage, crits and healing keep their existing controls. Per-pack DPS,
-three HUD modes and the Kinetic/Reckless handling from v0.1.6 are preserved.
+v0.1.9 adds Hunter’s Echo afterimages and separate damage counts, open Protection
+shields and Destruction shards, and a Normal meter that fits its contents.
+Buffs/Debuffs/Skills scales, per-pack DPS, all three HUD modes and saved character
+preferences remain available.
 [Download Combat v0.1.9 for Windows](https://github.com/ericallen9198-eng/ACAI2-Rynth/releases/download/combat-v0.1.9/ACAI2-Combat-v0.1.9-Windows.zip).
 
 ## Package and runtime

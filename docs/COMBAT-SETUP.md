@@ -334,7 +334,7 @@ checks. It has not been exercised in a live AC ImGui frame here. First verify
 preview, one fight, run entry/clear and reload settings in-game. A display error
 hides the panel with a local message; observation and records remain independent.
 
-## v0.1.9 weapon cleanse bubbles
+## v0.1.8 weapon cleanse bubbles
 
 The exact native message `Your weapon cleanses <spell> from you.` triggers a
 central `CLEANSED` cue with a short removed-effect subtitle, such as `IMPERIL
