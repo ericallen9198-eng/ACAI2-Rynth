@@ -40,4 +40,8 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           sha256sum Keyfer-Mule-NoSalvage.utl > Keyfer-Mule-NoSalvage.utl.sha256
-          gh release upload keyfer-loot-nosalvage-v1 Keyfer-Mule-NoSalvage.utl Keyfer-Mule-NoSalvage.utl.sha256 --clobber
+          if gh release view keyfer-loot-nosalvage-v1 >/dev/null 2>&1; then
+            gh release upload keyfer-loot-nosalvage-v1 Keyfer-Mule-NoSalvage.utl Keyfer-Mule-NoSalvage.utl.sha256 --clobber
+          else
+            gh release create keyfer-loot-nosalvage-v1 Keyfer-Mule-NoSalvage.utl Keyfer-Mule-NoSalvage.utl.sha256 --target "$GITHUB_SHA" --title "Keyfer chest loot - no salvage" --notes "Loot profile only, based on the supplied DWv_4.utl. Removes all 72 Salvage rules, retains 293 Keep/KeepUpTo rules, adds salvage-bag exclusions and disables the loot file salvage-combine block. Verified with the genuine RynthSuite LootSdk. No character settings, installer, plugin, behavior or Bridge changes. Copy the UTL into RynthAi/LootProfiles and select it under LOOT." --latest=false
+          fi
