@@ -1,0 +1,43 @@
+name: Verify and publish no-salvage loot profile
+on:
+  workflow_dispatch:
+    inputs:
+      profile_gzip_base64:
+        description: Gzipped UTL profile (base64 data, not code)
+        required: true
+permissions:
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: tombohar/RynthSuite
+          ref: 708a4dafeaa2ac0a4392237cd008db05142cd02c
+          path: reviewed-rynth-suite
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Decode profile data
+        env:
+          PROFILE_DATA: ${{ inputs.profile_gzip_base64 }}
+        run: |
+          python - <<'PY'
+          import os,base64,gzip,io
+          data=base64.b64decode(os.environ['PROFILE_DATA'],validate=True)
+          with gzip.GzipFile(fileobj=io.BytesIO(data)) as f:
+              text=f.read(2*1024*1024+1)
+          assert len(text)<=2*1024*1024 and text.startswith(b'UTL\n1\n')
+          open('Keyfer-Mule-NoSalvage.utl','wb').write(text)
+          PY
+      - name: Verify with the genuine RynthSuite parser
+        run: dotnet run --project tools/ACAI2.MuleProfile -p:LootSdkRoot="$GITHUB_WORKSPACE/reviewed-rynth-suite/Shared/RynthCore.LootSdk" -- --verify Keyfer-Mule-NoSalvage.utl
+      - name: Publish loot file only
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          sha256sum Keyfer-Mule-NoSalvage.utl > Keyfer-Mule-NoSalvage.utl.sha256
+          gh release upload keyfer-loot-nosalvage-v1 Keyfer-Mule-NoSalvage.utl Keyfer-Mule-NoSalvage.utl.sha256 --clobber
