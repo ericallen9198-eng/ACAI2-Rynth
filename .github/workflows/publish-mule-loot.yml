@@ -34,7 +34,7 @@ jobs:
               data=base64.b64decode(os.environ[key],validate=True)
               with gzip.GzipFile(fileobj=io.BytesIO(data)) as f:
                   text=f.read(2*1024*1024+1)
-              assert len(text)<=2*1024*1024 and text.startswith(b'UTL\n1\n')
+              assert len(text)<=2*1024*1024 and text.replace(b'\r\n',b'\n').startswith(b'UTL\n1\n')
               open(path,'wb').write(text)
           PY
       - name: Verify with the genuine RynthSuite parser
