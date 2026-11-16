@@ -10,17 +10,21 @@ dotnet run --project tools/ACAI2.MuleProfile -p:LootSdkRoot=/path/to/RynthSuite/
 dotnet run --project tools/ACAI2.MuleProfile -p:LootSdkRoot=/path/to/RynthSuite/Shared/RynthCore.LootSdk -- --verify /tmp/output/LootProfiles/Keyfer-Mule-NoSalvage.utl
 ```
 
-All Salvage actions are removed, including disabled rules. Existing Keep/KeepUpTo
-rules, enabled state, conditions, counts and ordering are retained. Adds an AND
-name guard excluding Salvaged/Salvage bags and ItemType != TinkeringMaterial
-(ACE 0x40000000). The UTL SalvageCombine block is disabled. Original sources with
-other actions fail for review instead of silently changing them.
+All Salvage actions are removed, including disabled rules. EVERY non-salvage
+rule is compared in full against the working original: no additional name/type
+filters, no changed conditions, flags, priority, action, count or ordering. The
+UTL SalvageCombine Enabled flag is turned off; other combine metadata is preserved.
 
-The file is a loot policy, not a global Rynth salvage command blocker. It does not
-clear old in-memory salvage queues or change the engine's separate combine toggle.
-Load the new loot file before starting the chest puller. If an old salvage operation
-is already queued, stop the puller and restart the game before using the new file.
+```sh
+dotnet run --project tools/ACAI2.MuleProfile -p:LootSdkRoot=/path/to/RynthSuite/Shared/RynthCore.LootSdk -- --compare original.utl mule.utl
+```
 
-The manual workflow verifies the exact decoded UTL with the reviewed real SDK
-before publishing a normal `.utl` release asset and SHA-256. Its dispatch input is
-compressed profile data only; no uploaded scripts or settings are executed.
+The publication workflow requires BOTH the exact original and the mule output and
+runs this comparison with the genuine SDK before publishing. Never substitute an
+older similarly named source file when the user's reported working rule is absent.
+The v1 profile had extra Keep conditions and is superseded; do not use it as the
+input for a correction. Always start from the actual working original.
+
+This is a loot policy, not a global Rynth command blocker. It does not clear old
+in-memory salvage queues or change the engine's separate combine toggle. No
+character settings, Keyfer behavior, plugins, or Bridge files are changed.
