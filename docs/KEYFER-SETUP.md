@@ -1,4 +1,4 @@
-# Keyfer on Rynth — v0.3.2
+# Keyfer on Rynth — v0.3.3
 
 This release restores the existing Keyfer services through a Rynth client adapter.
 It does not ship combat rendering, combat parsing, DPS, floating text, attack power,
@@ -24,7 +24,8 @@ are excluded from the published plugin/dependency graph.
 - Verified nearby player names (native player bit 0x8) in sampled perception,
   without guessing object kinds from names or distances from coordinates.
 
-Bridge v0.17 is reused as-is. Existing AI keys, memory, behavior, wiki reference,
+This version includes Bridge v0.18 and requires it for loot awareness. Stop the old
+Bridge v0.17 before launching the included Bridge\ACAI2.Bridge.exe. Existing AI keys, memory, behavior, wiki reference,
 character sheets, arena settings and treasure ledger stay with that Bridge and its
 existing data directory. Do not create a new empty Bridge data folder for cutover.
 No API key goes in the Rynth plugin settings.
@@ -47,7 +48,7 @@ Windows installation. No native Windows/game run is claimed from those tests.
 1. Keep the current Bridge process/config/data. Stop the old Decal Keyfer responder
    before enabling the new one. The Rynth ownership lock prevents duplicate Rynth
    responders on this PC, but the old Decal adapter does not share that lock.
-2. Download [the compiled Windows ZIP](https://github.com/ericallen9198-eng/ACAI2-Rynth/releases/download/keyfer-v0.3.2/ACAI2-Rynth-Keyfer-v0.3.2-Windows.zip) from the normal GitHub release. No source rebuild is needed. The same verified package is also available as **ACAI2-Rynth-Keyfer-Windows** in its successful verification Actions run (requires GitHub sign-in). Alternatively build on Windows with the .NET 10 SDK:
+2. Download [the compiled Windows ZIP](https://github.com/ericallen9198-eng/ACAI2-Rynth/releases/download/keyfer-v0.3.3/ACAI2-Rynth-Keyfer-v0.3.3-Windows.zip) from the normal GitHub release. No source rebuild is needed. The same verified package is also available as **ACAI2-Rynth-Keyfer-Windows** in its successful verification Actions run (requires GitHub sign-in). Alternatively build on Windows with the .NET 10 SDK:
    `scripts\Bootstrap-RynthCore.ps1` (GitHub source ZIP only), then
    `scripts\Publish.ps1`. It runs controlled tests and writes `artifacts\keyfer-managed`.
 3. Extract the entire package into its own directory, keeping its dependencies
@@ -115,7 +116,7 @@ chat/leaderboard/prize commands.
 
 ## Updating from v0.3.0
 
-Close the game, replace the package files together from the v0.3.2 ZIP, and relaunch
+Close the game, replace the package files together from the current ZIP, and relaunch
 Keyfer. Preserve your existing `%LOCALAPPDATA%\ACAI2-Rynth\keyfer.json` and Bridge.
 The regression fix removes System.Net.Http.Json helper calls: Rynth loads
 System.Text.Json privately per plugin but shares the HTTP JSON extension assembly,
@@ -166,4 +167,54 @@ existing text emotes are reused; there are no arbitrary emote commands or animat
 
 To disable spontaneous reactions alone, set `keyferAmbientReactions` to false in
 your existing keyfer.json and use `/acai2r keyfer reload`. Existing quiet/emote
-controls continue to work. No Bridge update or API-key change is required.
+controls continue to work. Those v0.3.2 features alone needed no Bridge update;
+v0.3.3 loot awareness below requires the included Bridge v0.18. API keys stay unchanged.
+
+## v0.3.3: Keyfer knows his own chest pulls
+
+UPDATE BOTH PARTS. Close the game and old Bridge. Extract the entire new ZIP into
+your existing Keyfer plugin folder, replacing package files together. Keep your
+existing keyfer.json, C:\ACAI2\Data, behavior files, configuration and environment
+variables/API key. Run the included Bridge\ACAI2.Bridge.exe instead of the old
+Bridge, then launch the game. Bridge v0.18 is self-contained Windows x64, so no
+separate .NET install is needed for it. The plugin remains managed x86/API 92+.
+If your existing shortcut sets environment variables, keep those settings and point
+its executable at the new Bridge. Two Bridges cannot share port 5052.
+
+Chest awareness is passive. RynthAi still owns the chest/key use and loot profile;
+ACAI2 issues no chest, inventory, ID, salvage, bank or vendor actions. On Keyfer's
+client only, it reads RynthAi's Item Tool status via its real read-only export and
+recognizes the actual `[RynthAi] Looted [Keep] ...` confirmation. Rule previews and
+`Looted [Salvage]` / `A mule cannot salvage` messages do not count as Keep findings.
+A completed chest cycle is not an item count, and 'nothing matches' is not proof
+that the chest was empty. Starting observation mid-batch preserves RynthAi's
+reported count without claiming the plugin witnessed those earlier cycles.
+
+Native chest contents followed by the same item becoming owned by Keyfer can
+confirm an item's chest source. Missing/ambiguous correlations remain unconfirmed,
+not guessed. This never requests an identification. A missing RynthAi export or
+native sample must not stop normal conversation. New typed loot context reaches
+the actual user ask; it is not pasted into player chat or injected into the user's
+question. Private tells remain restricted to their original conversation route.
+
+Displayed attack/melee-defense percentages remain separate from estimates with
+known item cantrips included. Example: +16% attack plus Legendary Heart Thirst
+estimates 25%; +18% melee defense plus Epic Defender estimates 25%. The kept rule
+name is retained so Keyfer can describe what actually qualified it.
+
+Try: `Keyfer, what have you kept from those chests?` or `Keyfer, still pulling?`
+He can answer naturally from current evidence; this does not call AI for every
+cycle or announce every pickup. In-game wording remains model-generated.
+
+Only 12 recent Keep records and runtime counts are held in memory. The last 24
+notable MOD25 / estimated >=25% attack-or-defense findings are stored in one
+`notable-loot.json`, capped at 48 KiB, under:
+`%LOCALAPPDATA%\ACAI2-Rynth\KeyferLoot\<server>\<character>\`
+Only item name, rule, base/estimated modifiers, a short cantrip list, timestamp and
+source confirmation are saved. No chest transcript, raw loot lines, salvage junk,
+private chat or per-cycle files. Context uses at most 30 days of dated findings;
+new login resets current-session counts. History is not proof of present inventory.
+The Bridge receives findings only with a question, and creates no second loot log.
+
+The new package does not alter your loot profile. Select the corrected v2 mule
+UTL separately to stop RynthAi's old salvage rules. Combat and Threads are unchanged.

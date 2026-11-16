@@ -7,9 +7,9 @@ using RynthCore.PluginSdk;
 
 namespace ACAI2.Rynth.Plugin;
 
-public sealed class PilotPlugin : RynthPluginBase
+public sealed partial class PilotPlugin : RynthPluginBase
 {
-    public const string Version = "0.3.2";
+    public const string Version = "0.3.3";
     private readonly object sessionGate=new();
     private KeyferSession? keyfer;
     private KeyferSettings keyferSettings=new();
@@ -31,7 +31,7 @@ public sealed class PilotPlugin : RynthPluginBase
         settings = PilotSettings.Load(Path.Combine(DataRoot, "pilot.json"));
         keyferSettings=KeyferSettings.Load(KeyferPath);keyferSettings.DataRoot=DataRoot;
         observations = new(settings); bridge = new(settings);
-        Host.Log("[ACAI2.Rynth] v0.3.2 Keyfer adapter. Combat UI excluded. Keyfer "+(keyferSettings.keyferEnabled?"enabled for "+keyferSettings.keyferServer+" / "+keyferSettings.keyferCharacter:"disabled; configure keyfer.json"));
+        Host.Log("[ACAI2.Rynth] v0.3.3 Keyfer adapter. Combat UI excluded. Keyfer "+(keyferSettings.keyferEnabled?"enabled for "+keyferSettings.keyferServer+" / "+keyferSettings.keyferCharacter:"disabled; configure keyfer.json"));
         return 0;
     }
     // Lifecycle callbacks only signal state changes. Native reads and local UI writes happen on the pump.
@@ -89,7 +89,10 @@ public sealed class PilotPlugin : RynthPluginBase
             var active=observations.Current;
             if(AcceptCallbacks&&active!=null&&keyfer!=null)
             {
-                try { keyfer.Pump(command=>{
+                try
+                {
+                    try{SampleOwnChest(keyfer,active.Identity.PlayerId,now);}catch{ /* Missing optional RynthAi observation must not silence conversations. */ }
+                    keyfer.Pump(command=>{
                     if(!AcceptCallbacks||observations.Current!=active||active.Token.IsCancellationRequested||!Host.HasInvokeChatParser)throw new InvalidOperationException("Keyfer native send unavailable.");
                     if(!Host.InvokeChatParser(command))throw new InvalidOperationException("Rynth rejected the chat command.");
                 },Local); }
@@ -116,6 +119,7 @@ public sealed class PilotPlugin : RynthPluginBase
     }
     private void EndSession()
     {
+        ResetChestObservation();
         lock(sessionGate){keyfer?.Dispose();keyfer=null;observations?.End();keyferStatus="Waiting for Keyfer login";}
     }
     private void StartKeyfer()

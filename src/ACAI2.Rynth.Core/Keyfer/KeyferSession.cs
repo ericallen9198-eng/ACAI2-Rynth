@@ -83,6 +83,8 @@ public sealed class KeyferSession : IDisposable
             send(command);
         },local);
     }
+    public void ObserveChest(string? json){if(!stop.IsCancellationRequested&&json!=null)conversation.ChestSnapshot(json);}
+    public void ObserveChestReceipt(uint id,string name,string chest){if(!stop.IsCancellationRequested)conversation.ChestReceipt(id,name,chest);}
     public string Control(string option)
     {
         if(stop.IsCancellationRequested)return "Keyfer session ended.";

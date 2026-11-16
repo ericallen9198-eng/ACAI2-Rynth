@@ -179,19 +179,21 @@ if (pluginPath != null)
         var conventions=value.NamedArguments.FirstOrDefault(x=>x.Name=="CallConvs").Value;
         cdecl &= conventions is ImmutableArray<CustomAttributeTypedArgument<string>> values && values.Length==1 && values[0].Value?.ToString()?.Contains("CallConvCdecl")==true;
     }
-    var expected=new[]{"RynthPluginRender","RynthPluginRenderOverlay","RynthPluginInit","RynthPluginShutdown","RynthPluginName","RynthPluginVersion","RynthPluginOnLoginComplete","RynthPluginOnLogout","RynthPluginTick","RynthPluginOnChatWindowText","RynthPluginOnChatBarEnter","RynthPluginOnCreateObject","RynthPluginOnDeleteObject","RynthPluginOnUpdateObject","RynthPluginOnUpdateObjectInventory"};
+    var expected=new[]{"RynthPluginRender","RynthPluginRenderOverlay","RynthPluginInit","RynthPluginShutdown","RynthPluginName","RynthPluginVersion","RynthPluginOnLoginComplete","RynthPluginOnLogout","RynthPluginTick","RynthPluginOnChatWindowText","RynthPluginOnChatBarEnter","RynthPluginOnCreateObject","RynthPluginOnDeleteObject","RynthPluginOnUpdateObject","RynthPluginOnUpdateObjectInventory","RynthPluginOnViewObjectContents"};
     Check(exports.Order().SequenceEqual(expected.Order()),"compiled lifecycle/chat/object exports match the real RynthCore ABI");
     Check(cdecl,"every compiled native entry point declares the required Cdecl calling convention");
     Check(minimumApi==92,"compiled manifest attribute requires the reviewed API 92 rather than silently loading an older host");
 }
 string sourceRoot=Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(),"src","ACAI2.Rynth.Plugin"));
 if(Directory.Exists(sourceRoot)) {
-    var allowed=new HashSet<string>{"Log","WriteToChat","GetScreenMode","GetPlayerId","TryGetWorldName","TryGetObjectName","TryGetObjectPosition","HasAppraisalData","GetLiveObjectIds","SetPanelOpen","InvokeChatParser","TryGetObjectBitfield"};
+    var allowed=new HashSet<string>{"Log","WriteToChat","GetScreenMode","GetPlayerId","TryGetWorldName","TryGetObjectName","TryGetObjectPosition","HasAppraisalData","GetLiveObjectIds","SetPanelOpen","InvokeChatParser","TryGetObjectBitfield","GetPluginExportJson","GetGroundContainerId","GetContainerContents","TryGetObjectOwnershipInfo"};
     var used=Directory.GetFiles(sourceRoot,"*.cs").SelectMany(path=>System.Text.RegularExpressions.Regex.Matches(File.ReadAllText(path),@"[Hh]ost\.(\w+)\s*\(").Select(m=>m.Groups[1].Value)).ToArray();
     Check(used.Length>0 && used.All(allowed.Contains),"plugin native calls are read APIs, local diagnostics and the guarded Keyfer chat dispatcher only");
 }
 await IsolatedBridgeChecks.Run(Check);
 await KeyferChecks.Run(Check);
+OwnLootChecks.Run(Check);
+await BridgeLootChecks.Run(Check);
 Console.WriteLine($"All {count} checks passed. Only fake HTTP handlers were used; no AI, game chat or production Bridge calls.");
 
 record Call(string Path,string Json,string Method);

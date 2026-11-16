@@ -1,6 +1,6 @@
 # ACAI2-Rynth
 
-**Independent Rynth plugins: Keyfer v0.3.2, Threads v0.1.5 and Combat v0.1.8.**
+**Independent Rynth plugins: Keyfer v0.3.3, Threads v0.1.5 and Combat v0.1.8.**
 Each has its own Windows package and setup guide. The Keyfer package excludes
 combat; the standalone Combat app is described below.
 
@@ -43,9 +43,10 @@ three HUD modes and the Kinetic/Reckless handling from v0.1.6 are preserved.
 
 ## Package and runtime
 
-v0.3.1 fixes the registration `MissingMethodException` caused by the host's private JSON assembly context.
+v0.3.3 adds own chest-loot awareness and includes Bridge v0.18; update both parts
+while retaining existing keys/configuration/data. v0.3.1 fixed the registration `MissingMethodException` caused by the host's private JSON assembly context.
 
-Download [the compiled Keyfer Windows ZIP](https://github.com/ericallen9198-eng/ACAI2-Rynth/releases/download/keyfer-v0.3.2/ACAI2-Rynth-Keyfer-v0.3.2-Windows.zip). No source rebuild is needed. The package is also available in its successful verification Actions run as **ACAI2-Rynth-Keyfer-Windows** (GitHub sign-in required). Or build on Windows with .NET 10:
+Download [the compiled Keyfer Windows ZIP](https://github.com/ericallen9198-eng/ACAI2-Rynth/releases/download/keyfer-v0.3.3/ACAI2-Rynth-Keyfer-v0.3.3-Windows.zip). No source rebuild is needed. The package is also available in its successful verification Actions run as **ACAI2-Rynth-Keyfer-Windows** (GitHub sign-in required). Or build on Windows with .NET 10:
 
 ```powershell
 git clone --recurse-submodules https://github.com/ericallen9198-eng/ACAI2-Rynth.git

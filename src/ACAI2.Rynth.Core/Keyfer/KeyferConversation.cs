@@ -39,6 +39,9 @@ namespace ACAI2.Rynth.Core.Keyfer
         private bool TimedOut(string server, string character, string speaker, out DateTime until) =>
             playerTimeouts.TryGetValue(TimeoutKey(server, character, speaker), out until) && until > config.UtcNow;
         private DateTime lastTreasureErrorUtc;
+        private readonly OwnLootLedger ownLoot;
+        public void ChestSnapshot(string json)=>ownLoot.Poll(json,config.UtcNow);
+        public void ChestReceipt(uint id,string name,string chest)=>ownLoot.NativeReceipt(id,name,chest,config.UtcNow);
         private readonly System.Collections.Generic.HashSet<string> publicNames = new(StringComparer.OrdinalIgnoreCase);
         private DateTime nextAmbientUtc;
         private DateTime arenaQuietUntil;
@@ -73,7 +76,7 @@ namespace ACAI2.Rynth.Core.Keyfer
             else speech.Enqueue(new Delivery{Server=server,Character=character,Channel=chat.Channel,Speaker=chat.Speaker,Text=ConversationEmotes.Command(reaction.Emote),EmoteOnly=true,Ambient=true,EmoteExpires=config.UtcNow.AddSeconds(10)});
         }
 
-        public KeyferConversation(KeyferSettings config) { this.config = config; http=config.CreateHttp(); treasure = new TreasureClient(config); leaderboards = new LeaderboardClient(config); }
+        public KeyferConversation(KeyferSettings config) { this.config = config; ownLoot=new(config.keyferServer,config.keyferCharacter,config.InstanceId,config.DataRoot,config.UtcNow); http=config.CreateHttp(); treasure = new TreasureClient(config); leaderboards = new LeaderboardClient(config); }
 
         public bool Enabled(string server, string character)
         {
@@ -161,7 +164,7 @@ namespace ACAI2.Rynth.Core.Keyfer
             if (!Enabled(server, character)) return "Keyfer replies disabled for this client.";
             LoadState(server, character);
             return "Keyfer enabled | public quiet " + (quiet ? "ON" : "OFF") + " | General muted " + (state.GeneralQuiet ? "YES" : "NO") +
-                " | DW event alerts " + (config.keyferWorldEvents && server.Equals("DreamWeave", StringComparison.OrdinalIgnoreCase) ? "ON" : "OFF") + " | pending " + pending;
+                " | DW event alerts " + (config.keyferWorldEvents && server.Equals("DreamWeave", StringComparison.OrdinalIgnoreCase) ? "ON" : "OFF") + " | loot keeps " + ownLoot.Snapshot(config.UtcNow).ConfirmedKeepPickups + " | pending " + pending;
         }
 
         public void Capture(string raw, string instance, string server, string character)
@@ -196,6 +199,7 @@ namespace ACAI2.Rynth.Core.Keyfer
                     });
                 }
             if (config.treasureEnabled) treasure.Capture(raw, instance, server, character);
+            if(ownLoot.Observe(raw,config.UtcNow))return;
             ChatObservation chat = GameChat.Parse(raw);
             if (chat == null || chat.Speaker.Equals("You", StringComparison.OrdinalIgnoreCase) ||
                 chat.Speaker.Equals(character, StringComparison.OrdinalIgnoreCase)) return;
@@ -274,6 +278,7 @@ namespace ACAI2.Rynth.Core.Keyfer
                     Text = "[ACAI2] Keyfer is busy; incoming question skipped." });
                 return;
             }
+            var lootContext=ownLoot.Snapshot(config.UtcNow);
             Task.Run(async () =>
             {
                 bool acquired=false;
@@ -295,7 +300,7 @@ namespace ACAI2.Rynth.Core.Keyfer
                     {
                         InstanceId = instance, Server = server, Character = character,
                         Channel = chat.Channel=="Local"?(arenaCommand?"Tell":"Allegiance"):chat.Channel,
-                        SpeakerId = speakerId, Speaker = chat.Speaker, Question = chat.Message
+                        SpeakerId = speakerId, Speaker = chat.Speaker, Question = chat.Message, LootObservation=lootContext
                     }).ConfigureAwait(false);
                     var reply = new KeyferJson().Deserialize<KeyferAnswer>(result);
                     DateTime timeoutUntil;
@@ -373,6 +378,7 @@ namespace ACAI2.Rynth.Core.Keyfer
             {
                 LoadState(server, character);
                 if(timeoutStateDirty){try{SaveState(server,character);}catch{timeoutStateDirty=false;local("[ACAI2] Timeout state could not be saved; current-session timeouts remain active.");}}
+                if(!ownLoot.Save()&&config.UtcNow-lastTreasureErrorUtc>TimeSpan.FromMinutes(1)){lastTreasureErrorUtc=config.UtcNow;local("[ACAI2] Notable-loot history could not be saved; current-session context remains available.");}
                 leaderboards.Tick(instance, server, character, send, local);
                 try { treasure.Tick(instance, server, character, quiet, send, local, text => deliveries.Enqueue(new Delivery {
                     Server = server, Character = character, Channel = "Allegiance", Text = text, WorldEvent = true })); }

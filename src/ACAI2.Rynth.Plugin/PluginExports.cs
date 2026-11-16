@@ -39,6 +39,8 @@ public static unsafe class PluginExports
     public static void Delete(uint id) { try { Runtime.OnDeleteObject(id); } catch { } }
     [UnmanagedCallersOnly(EntryPoint="RynthPluginOnUpdateObject",CallConvs=[typeof(CallConvCdecl)])]
     public static void Update(uint id) { try { Runtime.OnUpdateObject(id); } catch { } }
+    [UnmanagedCallersOnly(EntryPoint="RynthPluginOnViewObjectContents",CallConvs=[typeof(CallConvCdecl)])]
+    public static void Contents(uint id) { try { Runtime.OnViewObjectContents(id); } catch { } }
     [UnmanagedCallersOnly(EntryPoint="RynthPluginOnUpdateObjectInventory",CallConvs=[typeof(CallConvCdecl)])]
     public static void Inventory(uint id) { try { Runtime.OnUpdateObjectInventory(id); } catch { } }
 }

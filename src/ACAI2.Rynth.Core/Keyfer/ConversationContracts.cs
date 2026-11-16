@@ -34,6 +34,7 @@ namespace ACAI2.Protocol
         public string Speaker { get; set; }
         public string Question { get; set; }
         public string RoomContext { get; set; }
+        public ACAI2.Rynth.Core.Keyfer.OwnLootSnapshot LootObservation { get; set; }
     }
 
     public sealed class ArenaCompletion

@@ -58,12 +58,16 @@ internal static class KeyferChecks
             using(var ask=JsonDocument.Parse(fake.Calls.Single(x=>x.Path=="/v1/keyfer/ask").Json))
                 check(ask.RootElement.GetProperty("InstanceId").GetString()==lease.InstanceId&&ask.RootElement.GetProperty("Character").GetString()==who.Character&&ask.RootElement.GetProperty("Channel").GetString()=="Tell","ask preserves session identity and private channel");
             int asks=fake.Calls.Count(x=>x.Path.EndsWith("/ask"));
+            client.Capture("[RynthAi] Looted [Keep] Dolabra (rule \"(MOD25) Melee / Attack >=25%\"): +16%a, +16%md, Legendary Heart Thirst",1,DateTime.UtcNow);client.Pump(sent.Add,local.Add);
+            check(fake.Calls.Count(x=>x.Path.EndsWith("/ask"))==asks,"own pickup capture does not ask AI or announce every item");
             client.Capture("[General] Other says, \"Nice weather.\"",1,DateTime.UtcNow);client.Pump(sent.Add,local.Add);
             await Until(()=>fake.Calls.Any(x=>x.Path.EndsWith("/chat")));
             check(fake.Calls.Count(x=>x.Path.EndsWith("/ask"))==asks,"unaddressed General speech is observation only, without an AI ask");
             fake.Answer=new(){Ok=true,Answer="Detailed answer.",ReplyChannel="Tell",GeneralNotice="Let's take this to tells.",NoticeChannel="General"};
             clock=clock.AddSeconds(3);client.Capture("[General] Other says, \"Keyfer explain that?\"",1,DateTime.UtcNow);client.Pump(sent.Add,local.Add);
             await Until(()=>fake.Calls.Count(x=>x.Path.EndsWith("/ask"))==asks+1);await Until(()=>{client.Pump(sent.Add,local.Add);return sent.LastOrDefault()=="/cg Let's take this to tells.";});
+            using(var context=JsonDocument.Parse(fake.Calls.Last(x=>x.Path.EndsWith("/ask")).Json))
+                check(context.RootElement.GetProperty("LootObservation").GetProperty("ConfirmedKeepPickups").GetInt32()==1&&context.RootElement.GetProperty("LootObservation").GetProperty("RecentKeeps")[0].GetProperty("Name").GetString()=="Dolabra","current own-loot evidence reaches the next real ask as typed context, not injected question/chat text");
             check(sent.Last()=="/cg Let's take this to tells.","public-to-private routing emits only the short notice on General first");
             clock=clock.AddSeconds(2);client.Pump(sent.Add,local.Add);
             check(sent.Last()=="/t Other, Detailed answer."&&sent.All(x=>x!="/cg Detailed answer."),"actual detailed answer is delivered privately, preserving the Bridge's route decision");

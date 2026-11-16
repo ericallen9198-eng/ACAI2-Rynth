@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><AssemblyName>ACAI2.Bridge</AssemblyName><RootNamespace>ACAI2.Bridge</RootNamespace><Version>0.18.0</Version></PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.15" />
+    <EmbeddedResource Include="dreamweave-wiki-index.json" />
+    <EmbeddedResource Include="dreamweave-commands-reference.json" />
+    <ProjectReference Include="../ACAI2.Rynth.Core/ACAI2.Rynth.Core.csproj" />
+  </ItemGroup>
+</Project>

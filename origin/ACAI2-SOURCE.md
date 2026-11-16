@@ -27,3 +27,14 @@ uses session cancellation, bounded queues, isolated LOCALAPPDATA state, injected
 HTTP/clock tests and the native Rynth pump. It preserves the existing Bridge wire
 contracts and does not import the old installed state/config or Bridge source.
 The original project is MIT licensed; its existing bundled notice is retained.
+
+## Bridge v0.18 for own-loot awareness
+
+`src/ACAI2.Rynth.Bridge` ports the existing Bridge v0.17 source and its two public
+game-reference resources from the reference-only Samm-AI checkout at
+`fec7a2827142576d512c6549f45e8c7925c7cdf5`. The old checkout was not modified.
+The new .NET 10 executable references this repository's portable protocol/Core
+types; it does not reference old binaries or ship a Decal component. It retains
+existing configuration/environment and data paths. Own loot is a bounded optional
+typed ask field consumed as observation data, not fabricated public chat or objects.
+No player data, histories, keys, runtime files or machine configuration were copied.
