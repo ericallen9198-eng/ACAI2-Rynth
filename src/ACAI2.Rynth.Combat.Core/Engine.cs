@@ -46,7 +46,7 @@ internal sealed class RateRing
 }
 public sealed class CombatEngine(string server,string character)
 {
-    public const string ParserVersion="0.1.9";
+    public const string ParserVersion="0.1.10";
     private readonly CombatMessageParser parser=new();
     public Totals Session {get;private set;}=new();
     public List<RunRecord> Runs {get;}=[];
@@ -79,7 +79,7 @@ public sealed class CombatEngine(string server,string character)
     private static readonly Regex SimpleIncoming=Rx(@"^(?:Critical hit! )?(?<mob>.+?) (?:hits|strikes|shoots) you for (?<damage>[\d,]+) points? of (?<element>[A-Za-z]+) damage!$");
     private static readonly Regex UnknownIncoming=Rx(@"^(?:Critical hit! )?(?<mob>.+?) \w+ you for (?<damage>[\d,]+) points? of (?<element>[A-Za-z]+) damage!$");
     private static int Number(string s)=>int.TryParse(s.Replace(",",""),out int n)&&n>=0?n:0;
-    public bool Observe(string raw,int type,DateTime utc,double now)
+    public bool Observe(string raw,int type,DateTime utc,double now,bool missileContext=false)
     {
         if(!Native(raw,type))return false;string text=Regex.Replace(raw.Trim(),@"^\d{2}:\d{2}:\d{2}\s+","");var open=Opener.Match(text);
         if(open.Success)
@@ -163,8 +163,8 @@ public sealed class CombatEngine(string server,string character)
         if(e.Result=="Death"){if(lastDeath==null||(utc-lastDeath.Utc).TotalSeconds>2)AddDeath(new(utc,"Unspecified killer",null,null,null,null,text),now);return true;}
         if(!Kinetic.Accept(e,now))return true;
         Pack.Observe(e,now);Reckless.Observe(e,now);
-        Add(Session,e);sessionRate.Add(e,now);
-        if(Inside&&Current is {Cleared:null} active){Add(active.Stats,e);runRate.Add(e,now);Revision++;}
+        AddMissile(Session,e,missileContext);Add(Session,e);sessionRate.Add(e,now);
+        if(Inside&&Current is {Cleared:null} active){AddMissile(active.Stats,e,missileContext);Add(active.Stats,e);runRate.Add(e,now);Revision++;}
         if(e.Result=="Damage"&&e.Direction=="Incoming")
         {
             string spell=e.AttackType=="Magic"?Regex.Match(text,@"\bwith (?<spell>[^.!]+)").Groups["spell"].Value:"";
@@ -195,6 +195,12 @@ public sealed class CombatEngine(string server,string character)
         if(!vuln.Success)return false;
         (kind,label)=vuln.Groups[1].Value.ToLowerInvariant() switch
         {"lightning" or "electrical"=>("VulnLightning","LIGHT VULN"),"cold" or "frost"=>("VulnFrost","FROST VULN"),"fire" or "flame"=>("VulnFire","FIRE VULN"),"acid"=>("VulnAcid","ACID VULN"),"nether"=>("VulnNether","NETHER VULN"),"bludgeoning"=>("VulnBludgeon","BLUDGE VULN"),"slashing"=>("VulnSlash","SLASH VULN"),_=>("VulnPierce","PIERCE VULN")};return true;
+    }
+    private static void AddMissile(Totals t,CombatEventRecord e,bool missileContext)
+    {
+        if(!missileContext||e.Direction!="Outgoing"||e.AttackType!="Melee/Missile")return;
+        if(e.Result=="Damage"&&CombatComponents.IsDirect(e))t.MissileHits++;
+        else if(e.Result=="Evade")t.MissileEvaded++;
     }
     private static void Add(Totals t,CombatEventRecord e)
     {

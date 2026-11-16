@@ -7,14 +7,15 @@ namespace ACAI2.Rynth.Combat.Plugin;
 
 public sealed class CombatPlugin : RynthPluginBase
 {
-    public const string Version="0.1.9";
+    public const string Version="0.1.10";
     public override uint MinimumApiVersion=>92;
-    private readonly ConcurrentQueue<(string Text,int Type,DateTime Utc,double Now,long Epoch,uint EffectId,bool Added,double Duration)> incoming=new();
+    private readonly ConcurrentQueue<(string Text,int Type,DateTime Utc,double Now,long Epoch,uint EffectId,bool Added,double Duration,bool Missile)> incoming=new();
     private readonly ConcurrentQueue<string> commands=new();
     private readonly object settingsGate=new();
     private Appearance appearance=new();
     private readonly CombatPanel panel=new();
     private readonly RequestedPowerReader powerReader=new();
+    private readonly WeaponModeContext weaponMode=new();
     private CombatEngine? engine;
     private CombatArchive? archive;
     private CombatView view=CombatView.Empty;
@@ -41,15 +42,16 @@ public sealed class CombatPlugin : RynthPluginBase
         if(waiting||player==0||Volatile.Read(ref lifecycle)!=0||text==null||text.Length>4096||type is 2 or 3 or 4 or 17 or 18)return;
         bool relevant=text.Contains("you",StringComparison.OrdinalIgnoreCase)||text.StartsWith("Your ",StringComparison.Ordinal)||text.StartsWith("[REALM]",StringComparison.Ordinal)||text.StartsWith("The Thread Gem ",StringComparison.Ordinal)||text.StartsWith("Monsters killed ",StringComparison.Ordinal)||text.Contains(" is cleared.",StringComparison.Ordinal)||text.EndsWith("!",StringComparison.Ordinal)||text.EndsWith(" has expired.",StringComparison.Ordinal);
         if(!relevant)return;
-        if(Interlocked.Increment(ref queued)<=512)incoming.Enqueue((text,type,DateTime.UtcNow,Now,Volatile.Read(ref epoch),0,false,0));
+        if(Interlocked.Increment(ref queued)<=512)incoming.Enqueue((text,type,DateTime.UtcNow,Now,Volatile.Read(ref epoch),0,false,0,weaponMode.MissileAt(Now)));
         else{Interlocked.Decrement(ref queued);Interlocked.Increment(ref dropped);Interlocked.CompareExchange(ref droppedSinceTicks,DateTime.UtcNow.Ticks,0);}
     }
+    public override void OnCombatModeChange(int currentCombatMode,int previousCombatMode)=>weaponMode.Sample(Now,currentCombatMode);
     public override void OnEnchantmentAdded(uint id,double duration)=>QueueEffect(id,true,duration);
     public override void OnEnchantmentRemoved(uint id)=>QueueEffect(id,false,0);
     private void QueueEffect(uint id,bool added,double duration)
     {
         if(waiting||player==0||id==0||Volatile.Read(ref lifecycle)!=0)return;
-        if(Interlocked.Increment(ref queued)<=512)incoming.Enqueue(("",0,DateTime.UtcNow,Now,Volatile.Read(ref epoch),id,added,duration));
+        if(Interlocked.Increment(ref queued)<=512)incoming.Enqueue(("",0,DateTime.UtcNow,Now,Volatile.Read(ref epoch),id,added,duration,false));
         else{Interlocked.Decrement(ref queued);Interlocked.Increment(ref dropped);Interlocked.CompareExchange(ref droppedSinceTicks,DateTime.UtcNow.Ticks,0);}
     }
     private void SampleEffects(DateTime utc)
@@ -97,11 +99,11 @@ public sealed class CombatPlugin : RynthPluginBase
         if(!profileApplied){if(!archive.Completion.IsCompleted)return;profileApplied=true;notice=archive.Notice;}
         engine.BigHitMinimum=appearance.BigHitMinimum;engine.Pack.IdleSeconds=appearance.PackIdleSeconds;
         long lostAt=Interlocked.Exchange(ref droppedSinceTicks,0);if(lostAt!=0)engine.Effects.Lost(new DateTime(lostAt,DateTimeKind.Utc));
-        if(now>=nextEffects){nextEffects=now+.1;SampleEffects(DateTime.UtcNow);float? power=powerReader.Sample(Host.GetCurrentCombatMode());engine.Reckless.Sample(Now,power);}
+        if(now>=nextEffects){nextEffects=now+.1;SampleEffects(DateTime.UtcNow);int mode=Host.GetCurrentCombatMode();weaponMode.Sample(Now,mode);float? power=powerReader.Sample(mode);engine.Reckless.Sample(Now,power);}
         for(int i=0;i<128&&incoming.TryDequeue(out var line);i++)
         {
             Interlocked.Decrement(ref queued);if(line.Epoch!=Volatile.Read(ref epoch))continue;
-            try{if(line.EffectId!=0)engine.Effects.Changed(line.Utc,line.EffectId,line.Added,line.Duration);else engine.Observe(line.Text,line.Type,line.Utc,line.Now);}catch(Exception ex){notice="Combat line skipped: "+ex.GetType().Name;engine.Gap();}
+            try{if(line.EffectId!=0)engine.Effects.Changed(line.Utc,line.EffectId,line.Added,line.Duration);else engine.Observe(line.Text,line.Type,line.Utc,line.Now,line.Missile);}catch(Exception ex){notice="Combat line skipped: "+ex.GetType().Name;engine.Gap();}
         }
         if(lostAt!=0)engine.Gap();
         if(incoming.IsEmpty)engine.Advance(now);
@@ -171,6 +173,7 @@ public sealed class CombatPlugin : RynthPluginBase
     }
     private void End()
     {
+        weaponMode.Reset();
         Interlocked.Increment(ref epoch);player=0;nextEffects=0;Interlocked.Exchange(ref droppedSinceTicks,0);
         while(incoming.TryDequeue(out _))Interlocked.Decrement(ref queued);while(commands.TryDequeue(out _)){}
         if(archive is {Ready:true,ProfileReadable:true}&&profileApplied&&panel.Dirty){try{lock(settingsGate){appearance.Validate();Profiles.Save(Path.Combine(archive.Folder,"ui.json"),appearance);}}catch(Exception ex){Host.Log("[ACAI2 Combat] Final UI save failed: "+ex.Message);}}

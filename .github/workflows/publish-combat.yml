@@ -6,9 +6,9 @@ on:
         description: Successful Windows verification run ID
         required: true
       version:
-        description: Package version (e.g. 0.1.9)
+        description: Package version (e.g. 0.1.10)
         required: true
-        default: '0.1.9'
+        default: '0.1.10'
       commit_sha:
         description: Full tested source commit SHA
         required: true
@@ -68,7 +68,7 @@ jobs:
           cd "$RUNNER_TEMP"
           sha256sum "$zip_name" > "$zip_name.sha256"
           cat > release-notes.md <<NOTES
-          v0.1.9 adds own Hunter’s Echo damage parsing/counts and open archer afterimages, a growing/fading Protection shield, and a three-shard Destruction rune. Echo contributes once to pack DPS without entering personal weapon hit/crit/sneak rates. Surges are recognized only on the current character. Buffs/Skills scales control the new effects. Normal mode now fits its visible contents instead of forcing a fixed width. Existing per-character preferences remain. Built from $SOURCE_SHA using the genuine Rynth SDK and Windows manifest tooling.
+          v0.1.10 adds automatic missile hit percentage and landed/attempt counts to the Normal meter and compact Thread records. Uses fresh, stable native missile stance captured at chat arrival because melee/missile messages share wording. Excludes stale/transition samples, melee/unknown stance, spells, Echo, pets, procs and incoming events. Existing accuracy/defense rates, appearance preferences and effects remain. Delayed shots across stance changes cannot be fully attributed; see COMBAT-SETUP.md. Built from $SOURCE_SHA using the genuine Rynth SDK and Windows manifest tooling.
 
           Requires managed CoreCLR RynthCore API 92+ and matching engine ImGui bindings. No Bridge, Keyfer, Threads or RynthAi dependency; no attacks, casts, bank/vendor commands or debuff renderer. Disable RynthVision floating numbers separately with /rv plates numbers off; keep its debuff icons.
 

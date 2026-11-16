@@ -106,6 +106,9 @@ public sealed class Totals
     public long Healing {get;set;}
     public TaggedHits RecklessOutgoing {get;set;}=new();
     public TaggedHits RecklessIncoming {get;set;}=new();
+    public int MissileHits {get;set;}
+    public int MissileEvaded {get;set;}
+    public double MissileHitPercent=>100d*MissileHits/Math.Max(1,(long)MissileHits+MissileEvaded);
     public int EchoHits {get;set;}
     public int EchoCrits {get;set;}
     public int KineticReady {get;set;}

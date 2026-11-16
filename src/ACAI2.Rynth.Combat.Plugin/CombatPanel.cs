@@ -44,6 +44,7 @@ internal sealed class CombatPanel
                 if(v.RunScope&&v.Current?.ParserVersion!=CombatEngine.ParserVersion)ImGui.TextDisabled("Includes earlier run data");
                 var t=v.Stats;ImGui.TextUnformatted($"{(v.RunScope?"Thread":"Session")} · Dmg {t.Damage:N0}  Heal {t.Healing:N0}  Kills {t.Kills}");
                 if(Show(a,t,"Sneak")){ImGui.TextColored(new(.94f,.66f,1,1),$"Sneak {t.SneakPercent:N1}%  ·  {t.Sneaks}/{t.DirectHits} landed physical hits");Tip("Denominator: your landed direct melee/missile hits, including zero damage. Excludes magic, poison, acid, pets and reflected damage. Discovery occurs on the first observed sneak hit.");}
+                if(Show(a,t,"Missile")){ImGui.TextUnformatted($"Missile hit {t.MissileHitPercent:N1}% · {t.MissileHits}/{(long)t.MissileHits+t.MissileEvaded} attempts");Tip("Observed outgoing physical hits / (hits + enemy evades) during fresh, stable missile stance. Includes zero-damage hits and crits. Excludes spells, Echo, pets and proc damage. First 0.5s after stance changes and stale samples are excluded; delayed projectiles across stance changes cannot be attributed reliably. Old runs are not backfilled.");}
                 if(t.PhysicalHits+t.Evades>0)ImGui.TextUnformatted($"Physical evade {t.EvadePercent:N1}%   Avg hit {t.PhysicalDamage/(double)Math.Max(1,t.PhysicalHits):N0}   High {t.PhysicalHigh:N0}");
                 Tip("Physical includes melee and missile: chat does not reliably separate them. Zero-damage landed hits count; shield blocks are listed separately.");
                 if(t.MagicHits+t.Resists>0)ImGui.TextUnformatted($"Spell resist {t.ResistPercent:N1}%   Avg spell {t.MagicDamage/(double)Math.Max(1,t.MagicHits):N0}   High {t.MagicHigh:N0}");
@@ -107,7 +108,7 @@ internal sealed class CombatPanel
         ImGui.TextUnformatted("Reckless "+(r.On?"ON":"OFF")+power);
         Tip("ON = an outgoing direct physical Recklessness-tagged hit in the last 4 seconds. OFF = no recent tag, not proof the skill is disabled. Power is the last validated pre-hit requested-power sample (at most 500ms old), not the momentary charging animation. 10–90% is the stated Recklessness range.");
     }
-    private static bool Show(Appearance a,Totals t,string kind)=>a.Modules.TryGetValue(kind,out bool enabled)?enabled:kind=="Sneak"?t.Sneaks>0:kind=="Reckless"?t.RecklessOutgoing.Count>0:t.Components.ContainsKey(kind)||t.Procs.ContainsKey(kind);
+    private static bool Show(Appearance a,Totals t,string kind)=>a.Modules.TryGetValue(kind,out bool enabled)?enabled:kind=="Missile"?t.MissileHits+t.MissileEvaded>0:kind=="Sneak"?t.Sneaks>0:kind=="Reckless"?t.RecklessOutgoing.Count>0:t.Components.ContainsKey(kind)||t.Procs.ContainsKey(kind);
     private static void Tip(string text){if(ImGui.IsItemHovered()){ImGui.BeginTooltip();ImGui.PushTextWrapPos(420);ImGui.TextUnformatted(text);ImGui.PopTextWrapPos();ImGui.EndTooltip();}}
     private static Vector4 Color(Appearance a,string kind)=>ImGui.ColorConvertU32ToFloat4(a.Colors.GetValueOrDefault(kind,a.Colors["Direct"]));
     private void Details(CombatView v,Appearance a,Action<string> command)
@@ -235,7 +236,7 @@ internal sealed class CombatPanel
             if(ImGui.CollapsingHeader("Meter modules · overrides"))
             {
                 ImGui.TextDisabled("Unchecked automatic discovery can be overridden per module.");
-                foreach(string kind in new[]{"Sneak","Acid","Poison","Echo","Summons","Thorns","Ward","Second Wind","Reckless"})
+                foreach(string kind in new[]{"Missile","Sneak","Acid","Poison","Echo","Summons","Thorns","Ward","Second Wind","Reckless"})
                 {bool enabled=Show(a,v.Stats,kind);if(ImGui.Checkbox(kind,ref enabled)){a.Modules[kind]=enabled;Dirty=true;}ImGui.SameLine();if(ImGui.SmallButton("Auto##"+kind)){a.Modules.Remove(kind);Dirty=true;}}
             }
             if(ImGui.CollapsingHeader("RynthVision compatibility"))

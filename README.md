@@ -1,6 +1,6 @@
 # ACAI2-Rynth
 
-**Independent Rynth plugins: Keyfer v0.3.3, Threads v0.1.5 and Combat v0.1.9.**
+**Independent Rynth plugins: Keyfer v0.3.3, Threads v0.1.5 and Combat v0.1.10.**
 Each has its own Windows package and setup guide. The Keyfer package excludes
 combat; the standalone Combat app is described below.
 
@@ -27,7 +27,7 @@ Build on Windows with `scripts/Publish-Threads.ps1`; pure checks use
 
 ## Standalone Combat app
 
-**ACAI2 Combat v0.1.9** is its own read-only plugin: an adaptive DPS/defense meter,
+**ACAI2 Combat v0.1.10** is its own read-only plugin: an adaptive DPS/defense meter,
 class/proc readouts, artistic outlined floating text, compact Thread run/mob
 summaries and exact server death/overkill notices. It requires neither Keyfer nor
 Threads/RynthAi and duplicates no debuff icons. [Combat setup](docs/COMBAT-SETUP.md)
@@ -35,11 +35,13 @@ covers installation, preview, RynthVision toggles and the first build's adjustab
 fixed-screen anchor. Build with `scripts/Publish-Combat.ps1`; controlled checks use
 `scripts/test-combat.sh`. No ordinary combat log/CSV is recorded.
 
-v0.1.9 adds Hunter’s Echo afterimages and separate damage counts, open Protection
+v0.1.10 adds an automatic missile hit percentage (landed / observed attempts),
+using fresh native missile stance to keep melee, spells and procs separate.
+The previous version added Hunter’s Echo afterimages and separate damage counts, open Protection
 shields and Destruction shards, and a Normal meter that fits its contents.
 Buffs/Debuffs/Skills scales, per-pack DPS, all three HUD modes and saved character
 preferences remain available.
-[Download Combat v0.1.9 for Windows](https://github.com/ericallen9198-eng/ACAI2-Rynth/releases/download/combat-v0.1.9/ACAI2-Combat-v0.1.9-Windows.zip).
+[Download Combat v0.1.10 for Windows](https://github.com/ericallen9198-eng/ACAI2-Rynth/releases/download/combat-v0.1.10/ACAI2-Combat-v0.1.10-Windows.zip).
 
 ## Package and runtime
 

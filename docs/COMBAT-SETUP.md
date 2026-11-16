@@ -1,4 +1,4 @@
-# ACAI2 Combat v0.1.9 — standalone Rynth plugin
+# ACAI2 Combat v0.1.10 — standalone Rynth plugin
 
 A separate read-only combat meter and floating text app. Requires managed CoreCLR
 RynthCore API 92+ and the engine's matching ImGui bindings. It does not need
@@ -375,3 +375,19 @@ trigger these effects. These are observed activations, not inferred durations.
 Normal mode now fits visible contents automatically, including expanded details.
 Compact and Ultra keep their existing position/lock settings. Existing character
 preferences and records are retained.
+
+## Missile hit percentage (v0.1.10)
+
+Normal mode automatically shows **Missile hit % · landed / attempts** after
+observing a qualifying shot or enemy evade. Attempts = outgoing direct physical
+hits (including zero damage and crits) + enemy evades, observed in fresh, stable
+missile stance. The module can be hidden/forced under Meter modules. The counters
+also persist in compact Thread run records. No full combat log is added.
+
+Melee and missile share the same chat wording, so classification uses read-only
+Rynth combat-mode samples captured when the message arrives. Samples over 0.5s
+old and the first 0.5s after a mode change/gap are excluded. Delayed projectile
+results crossing stance changes cannot be reliably attributed; this is observed
+accuracy, not a count of every fired arrow. Spells, procs, Echo, pets, incoming
+hits/evades and quoted player chat never enter this denominator. Old records are
+not backfilled. Existing physical evade, spell resist and sneak rates are unchanged.
