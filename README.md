@@ -1,6 +1,6 @@
 # ACAI2-Rynth
 
-**Independent Rynth plugins: Keyfer v0.3.3, Threads v0.1.5 and Combat v0.1.8.**
+**Independent Rynth plugins: Keyfer v0.3.3, Threads v0.1.5 and Combat v0.1.9.**
 Each has its own Windows package and setup guide. The Keyfer package excludes
 combat; the standalone Combat app is described below.
 
@@ -27,7 +27,7 @@ Build on Windows with `scripts/Publish-Threads.ps1`; pure checks use
 
 ## Standalone Combat app
 
-**ACAI2 Combat v0.1.8** is its own read-only plugin: an adaptive DPS/defense meter,
+**ACAI2 Combat v0.1.9** is its own read-only plugin: an adaptive DPS/defense meter,
 class/proc readouts, artistic outlined floating text, compact Thread run/mob
 summaries and exact server death/overkill notices. It requires neither Keyfer nor
 Threads/RynthAi and duplicates no debuff icons. [Combat setup](docs/COMBAT-SETUP.md)
@@ -39,7 +39,7 @@ v0.1.7 replaces solid floating notice panels with open accents and adds saved
 Buffs/Debuffs/Skills scale controls. Each group scales text and graphics together;
 ordinary damage, crits and healing keep their existing controls. Per-pack DPS,
 three HUD modes and the Kinetic/Reckless handling from v0.1.6 are preserved.
-[Download Combat v0.1.8 for Windows](https://github.com/ericallen9198-eng/ACAI2-Rynth/releases/download/combat-v0.1.8/ACAI2-Combat-v0.1.8-Windows.zip).
+[Download Combat v0.1.9 for Windows](https://github.com/ericallen9198-eng/ACAI2-Rynth/releases/download/combat-v0.1.9/ACAI2-Combat-v0.1.9-Windows.zip).
 
 ## Package and runtime
 

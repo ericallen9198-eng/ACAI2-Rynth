@@ -45,7 +45,7 @@ public sealed class Appearance
     public int BigHitMinimum {get;set;}=100;
     public Dictionary<string,bool> Modules {get;set;}=[]; // Missing = automatic discovery.
     public Dictionary<string,uint> Colors {get;set;}=Defaults();
-    public static Dictionary<string,uint> Defaults()=>new(){["KineticReady"]=0xffffd970,["KineticRelease"]=0xff51dafa,["VulnLightning"]=0xffff91d7,["VulnFrost"]=0xffffbf62,["VulnFire"]=0xff509dff,["VulnAcid"]=0xff6ae67a,["VulnNether"]=0xffe28bc4,["VulnBludgeon"]=0xff91b8d6,["VulnSlash"]=0xffd2d4dc,["VulnPierce"]=0xffb0c7e0,["Imperil"]=0xff68a3ff,["Direct"]=0xffece8e3,["Critical"]=0xff51dafa,["Sneak"]=0xffffa0df,["Acid"]=0xff86f9be,["Poison"]=0xff5fd779,["Cleanse"]=0xffe5f2c7,["Healing"]=0xffb4f59a,["Taken"]=0xff7774ff,["Evade"]=0xffdfd0bd,["Resist"]=0xffffbb95,["Ward"]=0xffffc774,["Utility"]=0xffeec3dd,["Summons"]=0xffffb77b,["Thorns"]=0xff85cb87,["Drain"]=0xffb797ff,["Kill"]=0xff7ceac1,["Death"]=0xff6565ff,["Fire"]=0xff63a8ff,["Cold"]=0xffffe08a,["Electrical"]=0xff9cf3ff,["Nether"]=0xffe694cb};
+    public static Dictionary<string,uint> Defaults()=>new(){["KineticReady"]=0xffffd970,["KineticRelease"]=0xff51dafa,["VulnLightning"]=0xffff91d7,["VulnFrost"]=0xffffbf62,["VulnFire"]=0xff509dff,["VulnAcid"]=0xff6ae67a,["VulnNether"]=0xffe28bc4,["VulnBludgeon"]=0xff91b8d6,["VulnSlash"]=0xffd2d4dc,["VulnPierce"]=0xffb0c7e0,["Imperil"]=0xff68a3ff,["Direct"]=0xffece8e3,["Critical"]=0xff51dafa,["Sneak"]=0xffffa0df,["Acid"]=0xff86f9be,["Poison"]=0xff5fd779,["SurgeProtection"]=0xffffd9a6,["SurgeDestruction"]=0xff539bff,["Echo"]=0xffffcf9c,["EchoRenew"]=0xffffe5b4,["Cleanse"]=0xffe5f2c7,["Healing"]=0xffb4f59a,["Taken"]=0xff7774ff,["Evade"]=0xffdfd0bd,["Resist"]=0xffffbb95,["Ward"]=0xffffc774,["Utility"]=0xffeec3dd,["Summons"]=0xffffb77b,["Thorns"]=0xff85cb87,["Drain"]=0xffb797ff,["Kill"]=0xff7ceac1,["Death"]=0xff6565ff,["Fire"]=0xff63a8ff,["Cold"]=0xffffe08a,["Electrical"]=0xff9cf3ff,["Nether"]=0xffe694cb};
     public void Validate()
     {
         if(Schema!=1)throw new InvalidDataException("Unsupported Combat settings schema");
@@ -106,6 +106,8 @@ public sealed class Totals
     public long Healing {get;set;}
     public TaggedHits RecklessOutgoing {get;set;}=new();
     public TaggedHits RecklessIncoming {get;set;}=new();
+    public int EchoHits {get;set;}
+    public int EchoCrits {get;set;}
     public int KineticReady {get;set;}
     public int KineticReleases {get;set;}
     public int KineticExpired {get;set;}

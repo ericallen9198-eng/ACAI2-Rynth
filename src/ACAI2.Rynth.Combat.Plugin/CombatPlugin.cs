@@ -7,7 +7,7 @@ namespace ACAI2.Rynth.Combat.Plugin;
 
 public sealed class CombatPlugin : RynthPluginBase
 {
-    public const string Version="0.1.8";
+    public const string Version="0.1.9";
     public override uint MinimumApiVersion=>92;
     private readonly ConcurrentQueue<(string Text,int Type,DateTime Utc,double Now,long Epoch,uint EffectId,bool Added,double Duration)> incoming=new();
     private readonly ConcurrentQueue<string> commands=new();
@@ -142,9 +142,9 @@ public sealed class CombatPlugin : RynthPluginBase
         if(now<previewUntil&&now>=nextPreview)
         {
             nextPreview=now+.4;
-            string[] kinds=["Cleanse","Acid","Poison","Healing","Critical","Sneak","Ward","Taken","VulnLightning","VulnFrost","VulnAcid","Imperil","KineticReady","KineticRelease"];
+            string[] kinds=["SurgeProtection","SurgeDestruction","EchoRenew","Echo","Cleanse","Acid","Poison","Healing","Critical","Sneak","Ward","Taken","VulnLightning","VulnFrost","VulnAcid","Imperil","KineticReady","KineticRelease"];
             int n=(int)(now*2.5)%kinds.Length;
-            string kind=kinds[n];string label=kind switch{"Cleanse"=>"IMPERIL REMOVED", "Critical"=>"", "Taken"=>"HIT", "KineticReady"=>"KINETIC READY", "KineticRelease"=>"KINETIC RELEASE", "VulnLightning"=>"LIGHT VULN","VulnFrost"=>"FROST VULN","VulnAcid"=>"ACID VULN",_=>kind.ToUpperInvariant()};preview.Add(now,kind,label,amount:kind.StartsWith("Vuln")||kind is "Imperil" or "KineticReady" or "Cleanse"?0:kind=="Critical"?2313:kind=="Healing"?118:249,incoming:kind is "Healing" or "Ward" or "Taken" or "Imperil"||kind.StartsWith("Vuln"),critical:kind is "Critical" or "Taken");
+            string kind=kinds[n];string label=kind switch{"SurgeProtection"=>"PROTECTION", "SurgeDestruction"=>"DESTRUCTION", "EchoRenew"=>"ECHO RENEWED", "Echo"=>"ECHO", "Cleanse"=>"IMPERIL REMOVED", "Critical"=>"", "Taken"=>"HIT", "KineticReady"=>"KINETIC READY", "KineticRelease"=>"KINETIC RELEASE", "VulnLightning"=>"LIGHT VULN","VulnFrost"=>"FROST VULN","VulnAcid"=>"ACID VULN",_=>kind.ToUpperInvariant()};preview.Add(now,kind,label,amount:kind.StartsWith("Vuln")||kind.StartsWith("Surge")||kind is "Imperil" or "KineticReady" or "EchoRenew" or "Cleanse"?0:kind=="Critical"?2313:kind=="Healing"?118:249,incoming:kind is "SurgeProtection" or "Healing" or "Ward" or "Taken" or "Imperil"||kind.StartsWith("Vuln"),critical:kind is "Critical" or "Taken");
         }
         if(now>=nextView)
         {

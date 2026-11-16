@@ -1,4 +1,4 @@
-# ACAI2 Combat v0.1.8 — standalone Rynth plugin
+# ACAI2 Combat v0.1.9 — standalone Rynth plugin
 
 A separate read-only combat meter and floating text app. Requires managed CoreCLR
 RynthCore API 92+ and the engine's matching ImGui bindings. It does not need
@@ -334,7 +334,7 @@ checks. It has not been exercised in a live AC ImGui frame here. First verify
 preview, one fight, run entry/clear and reload settings in-game. A display error
 hides the panel with a local message; observation and records remain independent.
 
-## v0.1.8 weapon cleanse bubbles
+## v0.1.9 weapon cleanse bubbles
 
 The exact native message `Your weapon cleanses <spell> from you.` triggers a
 central `CLEANSED` cue with a short removed-effect subtitle, such as `IMPERIL
@@ -359,3 +359,19 @@ it never changes real totals. `COMBAT-PREVIEW.html` and `cleanse-preview.svg` in
 ZIP use the actual shared bubble geometry, rather than an artistic mockup.
 Close the game and replace all Combat package files together when updating.
 Keyfer and Threads are separate plugins and do not need another update.
+
+## Echo and personal Aetheria surges (v0.1.9)
+
+Your own named Echo hits count once toward damage and pack DPS, with separate Echo
+hit/crit counts. They do not enter personal weapon crit/sneak or defense rates.
+Echo renewal shows open archer afterimages; hits leave a pale lettering echo.
+Skills scale controls these cues. Other players’ Echo damage is ignored.
+
+Your own Protection surge shows a small shield growing and quickly fading;
+Destruction splits an ember rune into three shards. Both use Buffs scale, with
+no solid backing. Surges on monsters/other players and expiration lines do not
+trigger these effects. These are observed activations, not inferred durations.
+
+Normal mode now fits visible contents automatically, including expanded details.
+Compact and Ultra keep their existing position/lock settings. Existing character
+preferences and records are retained.

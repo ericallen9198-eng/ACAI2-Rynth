@@ -19,7 +19,7 @@ internal sealed class CombatPanel
         if(a.Visible&&a.MeterMode==MeterMode.Normal)
         {
             if(place){ImGui.SetNextWindowPos(new(Math.Clamp(a.X,0,Math.Max(0,screen.X-340)),Math.Clamp(a.Y,0,Math.Max(0,screen.Y-200))),ImGuiCond.Always);place=false;}
-            ImGui.SetNextWindowSize(new(310*a.Scale,0),ImGuiCond.Always);ImGui.SetNextWindowBgAlpha(a.Opacity);
+            ImGui.SetNextWindowSize(Vector2.Zero,ImGuiCond.Always);ImGui.SetNextWindowSizeConstraints(new Vector2(Math.Min(190*a.Scale,screen.X-16),0),new Vector2(Math.Max(1,screen.X-16),Math.Max(1,screen.Y-16)));ImGui.SetNextWindowBgAlpha(a.Opacity);
             ImGui.PushStyleVar(ImGuiStyleVar.WindowRounding,7);ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing,new Vector2(4,2)*a.Scale);ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding,new Vector2(7,5)*a.Scale);ImGui.PushStyleColor(ImGuiCol.WindowBg,new Vector4(.025f,.045f,.055f,1));
             var flags=ImGuiWindowFlags.NoTitleBar|ImGuiWindowFlags.AlwaysAutoResize|ImGuiWindowFlags.NoResize|ImGuiWindowFlags.NoCollapse;if(a.Locked)flags|=ImGuiWindowFlags.NoMove;
             ImGui.Begin("ACAI2 COMBAT###acai2-combat-meter",flags);
@@ -47,7 +47,7 @@ internal sealed class CombatPanel
                 if(t.PhysicalHits+t.Evades>0)ImGui.TextUnformatted($"Physical evade {t.EvadePercent:N1}%   Avg hit {t.PhysicalDamage/(double)Math.Max(1,t.PhysicalHits):N0}   High {t.PhysicalHigh:N0}");
                 Tip("Physical includes melee and missile: chat does not reliably separate them. Zero-damage landed hits count; shield blocks are listed separately.");
                 if(t.MagicHits+t.Resists>0)ImGui.TextUnformatted($"Spell resist {t.ResistPercent:N1}%   Avg spell {t.MagicDamage/(double)Math.Max(1,t.MagicHits):N0}   High {t.MagicHigh:N0}");
-                foreach(string kind in new[]{"Acid","Poison","Summons","Thorns"})if(Show(a,t,kind))ImGui.TextColored(Color(a,kind),$"{kind} {t.Components.GetValueOrDefault(kind):N0}  ({100d*t.Components.GetValueOrDefault(kind)/Math.Max(1,t.Damage):N1}%)");
+                foreach(string kind in new[]{"Acid","Poison","Echo","Summons","Thorns"})if(Show(a,t,kind))ImGui.TextColored(Color(a,kind),$"{kind} {t.Components.GetValueOrDefault(kind):N0}  ({100d*t.Components.GetValueOrDefault(kind)/Math.Max(1,t.Damage):N1}%)");
                 if(Show(a,t,"Ward"))ImGui.TextUnformatted($"Runic Ward  absorbed {t.WardAbsorbed:N0}  ·  last ready capacity {t.WardCapacity}");
                 if(t.Blocks>0)ImGui.TextUnformatted($"Shield blocks {t.Blocks}");
                 if(t.KineticReady+t.KineticReleases+t.KineticExpired>0)ImGui.TextUnformatted($"Kinetic · {t.KineticReleases} releases");
@@ -114,7 +114,7 @@ internal sealed class CombatPanel
     {
         var t=v.Stats;ImGui.Separator();
         if(ImGui.TreeNode("Damage sources"))
-        {if(t.RecklessOutgoing.Count>0)RecklessLine("OUT",t.RecklessOutgoing,t.DirectHits,t.RecklessOutgoingPercent);ImGui.TextUnformatted($"Kinetic: {t.KineticReleases} releases · {t.KineticReady} ready · {t.KineticExpired} expired");ImGui.TextUnformatted($"Kinetic repeated state notices suppressed this login: {v.KineticDuplicates}");if(t.Procs.TryGetValue("Kinetic",out int legacyKinetic))ImGui.TextDisabled($"Legacy Kinetic notices {legacyKinetic} (not a release count)");if(t.PeriodicTicks>0)ImGui.TextUnformatted($"Periodic incoming: {t.PeriodicTicks} ticks / {t.PeriodicTaken:N0} damage (excluded from direct spell resist rate)");foreach(var p in t.Components.OrderByDescending(p=>p.Value))ImGui.TextUnformatted($"{p.Key}: {p.Value:N0}");if(t.UnclassifiedHits>0)ImGui.TextUnformatted($"Unclassified incoming: {t.UnclassifiedHits} hits / {t.UnclassifiedDamage:N0} damage (excluded from defense rates)");foreach(var p in t.IncomingEffects)ImGui.TextUnformatted($"Incoming {p.Key}: {p.Value} applied/refreshed");foreach(var p in t.HealingSources)ImGui.TextUnformatted($"{p.Key}: +{p.Value:N0}");foreach(var p in t.Procs)ImGui.TextUnformatted($"{p.Key}: {p.Value} notices");ImGui.TextUnformatted($"Blocks {t.Blocks} · Physical crits {t.Crits}/{t.DirectHits}");ImGui.TreePop();}
+        {if(t.EchoHits>0)ImGui.TextUnformatted($"Echo: {t.EchoHits} hits · {t.EchoCrits} crits · {t.Components.GetValueOrDefault("Echo"):N0} damage");if(t.RecklessOutgoing.Count>0)RecklessLine("OUT",t.RecklessOutgoing,t.DirectHits,t.RecklessOutgoingPercent);ImGui.TextUnformatted($"Kinetic: {t.KineticReleases} releases · {t.KineticReady} ready · {t.KineticExpired} expired");ImGui.TextUnformatted($"Kinetic repeated state notices suppressed this login: {v.KineticDuplicates}");if(t.Procs.TryGetValue("Kinetic",out int legacyKinetic))ImGui.TextDisabled($"Legacy Kinetic notices {legacyKinetic} (not a release count)");if(t.PeriodicTicks>0)ImGui.TextUnformatted($"Periodic incoming: {t.PeriodicTicks} ticks / {t.PeriodicTaken:N0} damage (excluded from direct spell resist rate)");foreach(var p in t.Components.OrderByDescending(p=>p.Value))ImGui.TextUnformatted($"{p.Key}: {p.Value:N0}");if(t.UnclassifiedHits>0)ImGui.TextUnformatted($"Unclassified incoming: {t.UnclassifiedHits} hits / {t.UnclassifiedDamage:N0} damage (excluded from defense rates)");foreach(var p in t.IncomingEffects)ImGui.TextUnformatted($"Incoming {p.Key}: {p.Value} applied/refreshed");foreach(var p in t.HealingSources)ImGui.TextUnformatted($"{p.Key}: +{p.Value:N0}");foreach(var p in t.Procs)ImGui.TextUnformatted($"{p.Key}: {p.Value} notices");ImGui.TextUnformatted($"Blocks {t.Blocks} · Physical crits {t.Crits}/{t.DirectHits}");ImGui.TreePop();}
         if(ImGui.TreeNode("Big hits · "+t.HighestObserved+" highest observed")){BigHits(t);ImGui.TreePop();}
         if(ImGui.TreeNode("Mob breakdown")){MobTable(t);ImGui.TreePop();}
         if(ImGui.TreeNode("Deaths ("+t.DeathCount+")")){Deaths(t);ImGui.TreePop();}
@@ -212,9 +212,9 @@ internal sealed class CombatPanel
             Toggle("Subdued effects",a.Subdued,x=>a.Subdued=x);Toggle("Bold effects and crits",a.Bold,x=>a.Bold=x);
             Slider("Meter transparency",a.Opacity,0,1,x=>a.Opacity=x);Slider("Meter scale",a.Scale,.7f,2,x=>a.Scale=x);
             ImGui.Separator();
-            Slider("Buffs scale",a.BuffsScale,.5f,2,x=>a.BuffsScale=x);Tip("Beneficial status cues, including Ward readiness/absorption. Text and accents scale together.");
+            Slider("Buffs scale",a.BuffsScale,.5f,2,x=>a.BuffsScale=x);Tip("Beneficial status cues, including Ward readiness/absorption and your Protection/Destruction surges. Text and accents scale together.");
             Slider("Debuffs scale",a.DebuffsScale,.5f,2,x=>a.DebuffsScale=x);Tip("Vuln and Imperil notifications. Keeps each element color; no solid backings.");
-            Slider("Skills scale",a.SkillsScale,.5f,2,x=>a.SkillsScale=x);Tip("Kinetic ready/release, Second Wind and class/weapon-skill cues. Regular damage, crits and healing keep their own controls.");
+            Slider("Skills scale",a.SkillsScale,.5f,2,x=>a.SkillsScale=x);Tip("Kinetic ready/release, Echo damage/renewal, Second Wind and class/weapon-skill cues. Regular damage, crits and healing keep their own controls.");
             if(ImGui.Button("Apply impact layout")){a.CustomLettering=true;a.FontSize=23;a.Gap=185;a.Curve=45;a.Overlap=0;a.Lifetime=2.2f;a.CritScale=1.5f;a.RegularScale=.8f;a.RegularAlpha=.8f;Dirty=true;}
             ImGui.TextDisabled("Layout preset changes floating size/spacing; keeps your colors and meter position.");
             if(ImGui.Button(v.Preview?"Stop preview":"Preview effects (30 seconds)"))command("preview");
@@ -235,7 +235,7 @@ internal sealed class CombatPanel
             if(ImGui.CollapsingHeader("Meter modules · overrides"))
             {
                 ImGui.TextDisabled("Unchecked automatic discovery can be overridden per module.");
-                foreach(string kind in new[]{"Sneak","Acid","Poison","Summons","Thorns","Ward","Second Wind","Reckless"})
+                foreach(string kind in new[]{"Sneak","Acid","Poison","Echo","Summons","Thorns","Ward","Second Wind","Reckless"})
                 {bool enabled=Show(a,v.Stats,kind);if(ImGui.Checkbox(kind,ref enabled)){a.Modules[kind]=enabled;Dirty=true;}ImGui.SameLine();if(ImGui.SmallButton("Auto##"+kind)){a.Modules.Remove(kind);Dirty=true;}}
             }
             if(ImGui.CollapsingHeader("RynthVision compatibility"))
@@ -269,12 +269,12 @@ internal sealed class CombatPanel
         var layout=new FloatLayout(viewport,anchor);
         // New important notices claim space first. Quiet events yield visually when the screen is full;
         // the underlying combat counters and event compression are never changed by layout.
-        foreach(var e in events.OrderByDescending(e=>e.Kind=="KineticReady"?3:e.Critical||e.Kind is "Critical" or "KineticRelease"?2:e.Kind is "Healing" or "Cleanse"||e.Kind=="KineticReady"||e.Kind=="Imperil"||e.Kind.StartsWith("Vuln")?1:0).ThenByDescending(e=>e.Id))
+        foreach(var e in events.OrderByDescending(e=>e.Kind=="KineticReady"?3:e.Critical||e.Kind is "Critical" or "KineticRelease"?2:e.Kind is "Healing" or "Cleanse" or "SurgeProtection" or "SurgeDestruction"||e.Kind is "KineticReady" or "EchoRenew"||e.Kind=="Imperil"||e.Kind.StartsWith("Vuln")?1:0).ThenByDescending(e=>e.Id))
         {
             double age=now-e.Start;if(age<0||age>=a.Lifetime)continue;
             var arc=FloatStream.Arc(e,now,a);float alpha=arc.Alpha;
             string label=NoticeStyle.Label(e,age);if(label.Length==0)continue;
-            bool regular=FloatStream.Regular(e),impact=e.Critical||e.Kind is "Critical" or "KineticRelease",effect=e.Kind=="KineticReady"||e.Kind=="Imperil"||e.Kind.StartsWith("Vuln",StringComparison.Ordinal);
+            bool regular=FloatStream.Regular(e),impact=e.Critical||e.Kind is "Critical" or "KineticRelease",effect=e.Kind is "KineticReady" or "EchoRenew"||e.Kind=="Imperil"||e.Kind.StartsWith("Vuln",StringComparison.Ordinal);
             bool numeric=FloatStream.HasNumber(e)&&a.CustomLettering;
             float baseSize=MathF.Round(a.FontSize*(impact?a.CritScale*(a.CustomLettering?1.3f:1):regular?a.RegularScale:1)*(impact?ImpactLettering.Punch(age):1));
             if(e.Kind=="Cleanse")baseSize=MathF.Round(a.FontSize*.78f);
@@ -302,7 +302,7 @@ internal sealed class CombatPanel
                 float captionWidth=vectorCaption?ImpactLettering.Width(caption,captionSize):Width(caption,captionSize);
                 float width=Math.Max(headlineWidth,captionWidth);
                 float height=size+(caption.Length>0?captionSize+3*noticeScale:0);
-                Vector2 padding=(e.Kind=="Cleanse"?new Vector2(36,28):effect?new Vector2(6,4):impact?new Vector2(32,8):Vector2.Zero)*noticeScale;
+                Vector2 padding=(e.Kind.StartsWith("Surge",StringComparison.Ordinal)?new Vector2(60,36):e.Kind=="EchoRenew"?new Vector2(54,8):e.Kind=="Echo"?new Vector2(30,8):e.Kind=="Cleanse"?new Vector2(36,28):effect?new Vector2(6,4):impact?new Vector2(32,8):Vector2.Zero)*noticeScale;
                 Vector2 bounds=new(width+padding.X*2,height+padding.Y*2);
                 // Large group sizes are capped to their screen lane rather than disappearing.
                 if(NoticeStyle.Group(e)!=NoticeGroup.None)
@@ -321,7 +321,15 @@ internal sealed class CombatPanel
                 float l=(c.X+c.Y+c.Z)/3,saturation=(impact||effect?1:a.Intensity)*(a.Subdued?.65f:1);
                 c.X=l+(c.X-l)*saturation;c.Y=l+(c.Y-l)*saturation;c.Z=l+(c.Z-l)*saturation;c.W*=alpha;
                 Vector2 textP=p+padding;
-                if(!a.Subdued&&a.Intensity>.05f&&(!regular||e.Kind is "Acid" or "Poison" or "Sneak"))Art(draw,e,textP,new(width,height),c,age,a.Intensity*(regular?.85f:1),noticeScale);
+                if(!a.Subdued&&a.Intensity>.05f&&(!regular||e.Kind is "Acid" or "Poison" or "Sneak" or "Echo"))Art(draw,e,textP,new(width,height),c,age,a.Intensity*(regular?.85f:1),noticeScale);
+                if(e.Kind is "Echo" or "EchoRenew"&&!a.Subdued&&a.Intensity>.05f)
+                    for(int ghost=1;ghost>=0;ghost--)
+                    {
+                        var tint=c;tint.W*=EchoArt.GhostAlpha(ghost,age)*a.Intensity;
+                        var origin=textP+new Vector2((width-headlineWidth)/2,0)+EchoArt.GhostOffset(ghost,age,noticeScale);
+                        if(vectorHeadline)ImpactLettering.Draw(headline,origin,size,tint,false,(points,color)=>Polygon(draw,points,color));
+                        else draw.AddText(ImGui.GetFont(),size,origin,ImGui.ColorConvertFloat4ToU32(tint),headline);
+                    }
                 if(e.Kind=="Cleanse")c.W*=.78f;
                 if(vectorHeadline)ImpactLettering.Draw(headline,textP+new Vector2((width-headlineWidth)/2,0),size,c,e.Kind!="Cleanse"&&a.Bold,(points,tint)=>Polygon(draw,points,tint));
                 else Lettering(draw,headline,textP+new Vector2((width-headlineWidth)/2,0),size,c,a.Outline*noticeScale);
@@ -341,7 +349,11 @@ internal sealed class CombatPanel
         float t=(float)age;Vector2 center=p+text*.5f;
         uint Tint(float alpha){var c=color;c.W*=Math.Clamp(alpha*intensity,0,1);return ImGui.ColorConvertFloat4ToU32(c);}
         // Decoration stays outside the lettering's bounding box.
-        if(e.Kind=="Cleanse")
+        if(e.Kind is "SurgeProtection" or "SurgeDestruction")
+        {SurgeArt.Draw(p+new Vector2(-24*scale,text.Y*.5f),age,intensity,scale,e.Kind=="SurgeProtection",(from,to,tint,width)=>d.AddLine(Pixel(from),Pixel(to),ImGui.ColorConvertFloat4ToU32(tint),width));}
+        else if(e.Kind is "Echo" or "EchoRenew")
+        {EchoArt.Draw(p,text,age,intensity,scale,e.Kind=="EchoRenew",(from,to,tint,width)=>d.AddLine(Pixel(from),Pixel(to),ImGui.ColorConvertFloat4ToU32(tint),width));}
+        else if(e.Kind=="Cleanse")
         {CleanseArt.Draw(p,text,age,intensity,scale,(from,to,tint,width)=>d.AddLine(Pixel(from),Pixel(to),ImGui.ColorConvertFloat4ToU32(tint),width));}
         else if(e.Kind=="Healing")
         {

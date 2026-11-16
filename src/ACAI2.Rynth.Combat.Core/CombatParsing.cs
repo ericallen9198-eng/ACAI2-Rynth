@@ -44,6 +44,7 @@ namespace ACAI2.Rynth.Combat.Core
         private static readonly Regex Poison = Rx("^"+Prefix+@"Your poison deals (?<damage>[\d,]+) additional points of damage to (?<mob>.+)!$");
         private static readonly Regex Acid = Rx("^"+Prefix+@"Your acid deals (?<damage>[\d,]+) points of periodic damage to (?<mob>.+)!$");
         private static readonly Regex Thorns = Rx("^"+Prefix+@"Your thorns reflect (?<damage>[\d,]+) points of damage back at (?<mob>.+)!$");
+        private static readonly Regex EchoHit = Rx("^"+Prefix+@"(?<owner>.+?)'s (?<pet>Echo) deals (?<damage>[\d,]+) points of (?<element>[A-Za-z]+) damage to (?<mob>.+)!$");
         private static readonly Regex PetHit = Rx("^"+Prefix+@"(?<owner>.+?)'s (?<pet>.+?) hits (?<mob>.+?) for (?<damage>[\d,]+) damage!$");
         private static readonly Regex DrainSelf = Rx("^"+Prefix+@"You gain (?<amount>[\d,]+) points of health due to casting Drain Health Other I on (?<mob>.+?)[.!]?$");
         private static readonly Regex DrainPet = Rx("^"+Prefix+@"Your (?<owner>.+?)'s (?<pet>.+?) gains (?<amount>[\d,]+) points of health due to your Drain Health Other I on (?<mob>.+?)[.!]?$");
@@ -127,6 +128,11 @@ namespace ACAI2.Rynth.Combat.Core
             if ((match = Poison.Match(text)).Success) return Special(text, match, "Poison", "Outgoing", "Damage", "Unknown", out record);
             if ((match = Acid.Match(text)).Success) return Special(text, match, "Acid", "Outgoing", "Damage", "Acid", out record);
             if ((match = Thorns.Match(text)).Success) return Special(text, match, "Thorns", "Outgoing", "Damage", "Unknown", out record);
+            if ((match = EchoHit.Match(text)).Success)
+            {
+                if(!match.Groups["owner"].Value.Equals(character,StringComparison.OrdinalIgnoreCase))return false;
+                return Special(text,match,"Echo","Outgoing","Damage",NormalizeElement(match.Groups["element"].Value),out record);
+            }
             if ((match = PetHit.Match(text)).Success)
             {
                 if (!match.Groups["owner"].Value.Equals(character, StringComparison.OrdinalIgnoreCase)) return false;

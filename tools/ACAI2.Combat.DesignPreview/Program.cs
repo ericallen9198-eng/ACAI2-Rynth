@@ -75,6 +75,22 @@ static string Frame(double age)
     Quiet("380","SNEAK ×3",new(785,455),new(.92f,.64f,1,.8f));
     Quiet("281","POISON ×3",new(785,510),acid);
     b.Append("<g data-group=\"Buff\" data-pivot=\"343,535\">");ImpactLettering.Draw("119",new(320,535),23,new(.45f,.78f,1,1),true,Poly);ImpactLettering.Draw("WARD READY",new(302,561),12,new(.45f,.78f,1,1),false,Poly);b.Append("</g>");
+    void Surge(string label,Vector2 p,Vector4 color,bool protection)
+    {
+        b.Append($"<g data-group=\"Buff\" data-pivot=\"{N(p.X)},{N(p.Y)}\">");
+        SurgeArt.Draw(p+new Vector2(-24,12),age,.85f,1,protection,Line);
+        ImpactLettering.Draw(label,p,23,color,true,Poly);b.Append("</g>");
+    }
+    Surge("PROTECTION",new(245,600),new(.65f,.85f,1,1),true);
+    Surge("DESTRUCTION",new(760,275),new(1,.61f,.33f,1),false);
+    Vector2 ep=new(785,575);Vector4 ec=new(.62f,.82f,1,1);string el="ECHO RENEWED";
+    b.Append("<g data-group=\"Skill\" data-pivot=\"850,575\">");
+    EchoArt.Draw(ep,new(ImpactLettering.Width(el,23),23),age,.85f,1,true,Line);
+    for(int copy=1;copy>=0;copy--){var gc=ec;gc.W=EchoArt.GhostAlpha(copy,age);ImpactLettering.Draw(el,ep+EchoArt.GhostOffset(copy,age,1),23,gc,true,Poly);}
+    ImpactLettering.Draw(el,ep,23,ec,true,Poly);
+    ep=new(820,625);EchoArt.Draw(ep,new(100,23),age,.85f,1,false,Line);
+    for(int copy=1;copy>=0;copy--){var gc=ec;gc.W=EchoArt.GhostAlpha(copy,age);ImpactLettering.Draw("94 ECHO",ep+EchoArt.GhostOffset(copy,age,1),23,gc,true,Poly);}
+    ImpactLettering.Draw("94 ECHO",ep,23,ec,true,Poly);b.Append("</g>");
     Text("SPACE RESERVED FOR CHARACTER",459,650,11,muted);
     Text("COMPACT · DIGITS ONLY",24,681,11,muted);ImpactArt.Plate(new(24,700),new(145,46),new(.38f,.9f,.77f,1),age,Poly);ImpactLettering.Draw("1,473",new(32,705),36,new(.38f,.9f,.77f,1),true,Poly);
     Text("ULTRA · FLOAT LAYER · LOCK TO CLICK THROUGH",240,681,11,muted);ImpactLettering.Draw("1,473",new(240,705),36,new(.38f,.9f,.77f,1),true,Poly);

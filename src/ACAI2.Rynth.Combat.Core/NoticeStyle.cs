@@ -7,8 +7,8 @@ public static class NoticeStyle
     public static NoticeGroup Group(FloatEvent e)=>e.Group!=NoticeGroup.None?e.Group:e.Kind switch
     {
         "Imperil"=>NoticeGroup.Debuff,
-        "KineticReady" or "KineticRelease"=>NoticeGroup.Skill,
-        "Ward" or "Buff" or "Cleanse"=>NoticeGroup.Buff,
+        "Echo" or "EchoRenew" or "KineticReady" or "KineticRelease"=>NoticeGroup.Skill,
+        "SurgeProtection" or "SurgeDestruction" or "Ward" or "Buff" or "Cleanse"=>NoticeGroup.Buff,
         _=>e.Kind.StartsWith("Vuln",StringComparison.Ordinal)?NoticeGroup.Debuff:NoticeGroup.None
     };
     public static float Scale(FloatEvent e,Appearance a)=>Group(e) switch

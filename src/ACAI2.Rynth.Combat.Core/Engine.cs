@@ -46,7 +46,7 @@ internal sealed class RateRing
 }
 public sealed class CombatEngine(string server,string character)
 {
-    public const string ParserVersion="0.1.8";
+    public const string ParserVersion="0.1.9";
     private readonly CombatMessageParser parser=new();
     public Totals Session {get;private set;}=new();
     public List<RunRecord> Runs {get;}=[];
@@ -71,6 +71,8 @@ public sealed class CombatEngine(string server,string character)
     private static readonly Regex Realm=Rx(@"^\[REALM\] id=(\d+) inst=(\d+) eph=([01]) name=.+$");
     private static readonly Regex Progress=Rx(@"^Monsters killed (\d+)/(\d+)\.");
     private static readonly Regex Death=Rx(@"^.+! \(Killing blow: (?<damage>[\d,]+) damage\. You had (?<hp>[\d,]+)/(?<max>[\d,]+) health\.\)$");
+    private static readonly Regex AetheriaSurge=Rx(@"^Aetheria surges on (?<owner>.+?) with the power of Surge of (?<kind>Protection|Destruction)!$");
+    private static readonly Regex EchoRenew=Rx(@"^Your Echo is renewed, drawing (?<n>\d{1,4}) monsters? onto itself!$");
     private static readonly Regex Cleanse=Rx(@"^Your weapon cleanses (?<spell>[^\r\n.!]{1,160}) from you\.$");
     private static readonly Regex WardReady=Rx(@"^Your runic ward is fully inscribed, absorbing your next (?<n>[\d,]+) points of damage\.$");
     private static readonly Regex WardSpent=Rx(@"^Your runic ward (?:shatters|fades) after absorbing (?<n>[\d,]+) points of damage\.$");
@@ -119,6 +121,22 @@ public sealed class CombatEngine(string server,string character)
             Session.IncomingEffects[effectLabel]=Session.IncomingEffects.GetValueOrDefault(effectLabel)+1;
             if(Inside&&Current is {Cleared:null} affected){affected.Stats.IncomingEffects[effectLabel]=affected.Stats.IncomingEffects.GetValueOrDefault(effectLabel)+1;Revision++;}
             Floats.Add(now,effectKind,effectLabel,incoming:true);return true;
+        }
+        var surge=AetheriaSurge.Match(text);
+        if(surge.Success)
+        {
+            if(!surge.Groups["owner"].Value.Equals(character,StringComparison.OrdinalIgnoreCase))return false;
+            string surgeKind=surge.Groups["kind"].Value,key="Surge of "+surgeKind;
+            Session.Procs[key]=Session.Procs.GetValueOrDefault(key)+1;
+            if(Inside&&Current is {Cleared:null} surged)surged.Stats.Procs[key]=surged.Stats.Procs.GetValueOrDefault(key)+1;
+            Revision++;Floats.Add(now,"Surge"+surgeKind,surgeKind.ToUpperInvariant(),incoming:surgeKind=="Protection",group:NoticeGroup.Buff);return true;
+        }
+        var echoRenew=EchoRenew.Match(text);
+        if(echoRenew.Success)
+        {
+            Session.Procs["Echo renewals"]=Session.Procs.GetValueOrDefault("Echo renewals")+1;
+            if(Inside&&Current is {Cleared:null} echoed)echoed.Stats.Procs["Echo renewals"]=echoed.Stats.Procs.GetValueOrDefault("Echo renewals")+1;
+            Revision++;Floats.Add(now,"EchoRenew","ECHO RENEWED",group:NoticeGroup.Skill);return true;
         }
         var cleanse=Cleanse.Match(text);
         if(cleanse.Success)
@@ -183,6 +201,7 @@ public sealed class CombatEngine(string server,string character)
         MobStats? m=e.Mob.Length>0?t.Mob(e.Mob):null;
         if(e.Result=="Damage"&&e.Direction=="Outgoing")
         {
+            if(e.Component=="Echo"){t.EchoHits++;if(e.Critical)t.EchoCrits++;}
             t.Damage+=e.Damage;if(m!=null)m.Dealt+=e.Damage;t.Components[e.Component]=t.Components.GetValueOrDefault(e.Component)+e.Damage;
             if(CombatComponents.IsDirect(e)&&e.AttackType=="Melee/Missile"){t.DirectHits++;if(e.RecklessTagged)t.RecklessOutgoing.Add(e.Damage);if(e.Critical)t.Crits++;if(e.SneakAttack){t.Sneaks++;t.SneakDamage+=e.Damage;}}
         }
