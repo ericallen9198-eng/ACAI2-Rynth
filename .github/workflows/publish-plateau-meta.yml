@@ -45,19 +45,19 @@ jobs:
           set -euo pipefail
           cd metas/plateau-treasure-verified-v3
           sha256sum -c SHA256SUMS.txt
-          zip -qr "$RUNNER_TEMP/Plateau-Treasure-Verified-v3.zip" . -x .gitignore
+          zip -qr "$RUNNER_TEMP/Plateau-Treasure-Verified-v3.1.zip" . -x .gitignore
           cd "$RUNNER_TEMP"
-          sha256sum Plateau-Treasure-Verified-v3.zip > Plateau-Treasure-Verified-v3.zip.sha256
+          sha256sum Plateau-Treasure-Verified-v3.1.zip > Plateau-Treasure-Verified-v3.1.zip.sha256
           cat > notes.md <<NOTES
-          Plateau Treasure Verified v3 automatically continues after death: keeps the macro running, waits for natural respawn/health/portal readiness, clears interrupted pickup/map state without crediting a reward, and resumes the previous hunting region. It uses the existing camp lifestone or recorded town-to-camp approach without issuing another /ls after death. Startup also checks the /ls landing before choosing a route. An interrupted initial NPC sequence is reverified. Disables competing native death recall/corpse travel/outdoor-hunt recovery at startup; see README for exact UI locations. Non-death errors still stop with a clear message.
+          Plateau Treasure Verified v3.1 fixes camp startup readiness by replacing portal-expression/optional max-health checks with native cell conditions, current HP and settle timing. Timeout diagnostics print actual cell/HP. It automatically continues after death: keeps the macro running, waits for natural respawn/health/portal readiness, clears interrupted pickup/map state without crediting a reward, and resumes the previous hunting region. It uses the existing camp lifestone or recorded town-to-camp approach without issuing another /ls after death. Startup also checks the /ls landing before choosing a route. An interrupted initial NPC sequence is reverified. Disables competing native death recall/corpse travel/outdoor-hunt recovery at startup; see README for exact UI locations. Non-death errors still stop with a clear message.
 
-          Retains v2 explicit optional currency pickup and the unchanged 52-rule Currency loot profile. No plugin or Bridge update. Includes AF/MET, 19 navs and the loot profile. Genuine pinned parsers, AF/MET equivalence, 172 meta/nav checks and 65 cache/death simulations passed; no live game actions were executed during verification. Source: $GITHUB_SHA.
+          Retains v2 explicit optional currency pickup and the unchanged 52-rule Currency loot profile. No plugin or Bridge update. Includes AF/MET, 19 navs and the loot profile. Genuine pinned parsers, AF/MET equivalence, 177 meta/nav checks and 71 cache/death simulations passed; no live game actions were executed during verification. Source: $GITHUB_SHA.
 
           NOTES
-          tag=plateau-treasure-verified-v3.0.0
+          tag=plateau-treasure-verified-v3.1.0
           if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag" Plateau-Treasure-Verified-v3.zip Plateau-Treasure-Verified-v3.zip.sha256 --clobber
+            gh release upload "$tag" Plateau-Treasure-Verified-v3.1.zip Plateau-Treasure-Verified-v3.1.zip.sha256 --clobber
             gh release edit "$tag" --notes-file notes.md
           else
-            gh release create "$tag" Plateau-Treasure-Verified-v3.zip Plateau-Treasure-Verified-v3.zip.sha256 --target "$GITHUB_SHA" --title "Plateau Treasure v3 - automatic death return" --notes-file notes.md --latest=false
+            gh release create "$tag" Plateau-Treasure-Verified-v3.1.zip Plateau-Treasure-Verified-v3.1.zip.sha256 --target "$GITHUB_SHA" --title "Plateau Treasure v3.1 - camp startup compatibility fix" --notes-file notes.md --latest=false
           fi

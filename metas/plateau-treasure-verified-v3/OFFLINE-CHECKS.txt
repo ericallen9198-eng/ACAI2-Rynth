@@ -1,7 +1,9 @@
-Plateau Treasure Verified v3
+Plateau Treasure Verified v3.1
 RynthSuite parser/LootSdk source: 5e70799b1c83d3cc1f2b06e06a274dd3f7449c82
-373 AF/MET rules parsed without warnings and have identical executable trees.
-172 meta/nav checks: sequential NPC verification, alternate assignments, graph destinations, death-recovery edges, no stop/recall in death cleanup, competing engine recovery disabled, known-location approaches, no Lifestone Sending, and task-independent treasure hunting.
-65 emitted-rule cache/death simulations: v2 optional currency pickup cases plus natural camp respawn returning to each previous region, health/portal waits, town approach with no /ls, missed portal events, interrupted NPC verification, second death during recovery, unknown landing handling, and startup /ls landing directly at camp.
+377 AF/MET rules parsed without warnings and have identical executable trees.
+177 meta/nav checks: sequential NPC verification, alternate assignments, graph destinations, death-recovery edges, no stop/recall in death cleanup, competing engine recovery disabled, known-location approaches, no Lifestone Sending, and task-independent treasure hunting.
+71 emitted-rule cache/death simulations: v2 optional currency pickup cases plus natural camp respawn returning to each previous region, health/portal waits, town approach with no /ls, missed portal events, interrupted NPC verification, second death during recovery, unknown landing handling, and startup /ls landing directly at camp.
 52-rule Currency profile is unchanged from v2 and verified against the supplied original using the genuine LootSdk: only its two currency free-slot conditions differ.
 Death continuation is distinct from non-death error holds. Native Rynth death/respawn holding was reviewed in source; offline models do not simulate the live client or prove native compatibility. Verify a live death return and one cache. No game/native/Bridge/AI calls executed during checks.
+
+V3.1 regressions: camp cell 565641256 / HP 429 proceeds with unavailable portal-expression support; optional max-HP reads cannot block startup; native portal exit resets settling; all startup/return paths use native cell conditions.

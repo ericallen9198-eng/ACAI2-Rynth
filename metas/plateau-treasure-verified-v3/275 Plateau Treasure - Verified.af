@@ -82,11 +82,13 @@ STATE: {START_LOCATION} ~~ {
 	IF: Death
 		DO: SetState {DEATH_RECOVER}
 	IF: All
-			Expr {getplayerlandcell[]==565641256}
-			Expr {!isportaling[]}
-		DO: SetState {NPC_TALK}
+			CellE 21B70028
+			Expr {getcharvital_current[1]>0}
+		DO: DoAll
+				SetState {NPC_TALK}
 	IF: Always
-		DO: SetState {GET_TO}
+		DO: DoAll
+				SetState {GET_TO}
 ~~ }
 
 STATE: {GET_TO} ~~ {
@@ -106,7 +108,9 @@ STATE: {GET_TO} ~~ {
 STATE: {GET_TO_WAIT} ~~ {
 	IF: Death
 		DO: SetState {DEATH_RECOVER}
-	IF: Expr {getcharvital_current[1]>0 && getcharvital_buffedmax[1]>0 && !isportaling[] && getplayerlandcell[]==565641256}
+	IF: All
+			CellE 21B70028
+			Expr {getcharvital_current[1]>0}
 		DO: DoAll
 				SetState {CAMP_SETTLE}
 	IF: ChatMatch {(?i)^Using the Plateau Hunters' Camp}
@@ -118,7 +122,9 @@ STATE: {GET_TO_WAIT} ~~ {
 STATE: {CAMP_PORTAL_WAIT} ~~ {
 	IF: Death
 		DO: SetState {DEATH_RECOVER}
-	IF: Expr {getcharvital_current[1]>0 && getcharvital_buffedmax[1]>0 && !isportaling[] && getplayerlandcell[]==565641256}
+	IF: All
+			CellE 21B70028
+			Expr {getcharvital_current[1]>0}
 		DO: DoAll
 				SetState {CAMP_SETTLE}
 	IF: ExitPortal
@@ -1890,19 +1896,27 @@ STATE: {DEATH_RECOVER} ~~ {
 STATE: {RESPAWN_WAIT} ~~ {
 	IF: Death
 		DO: SetState {DEATH_RECOVER}
+	IF: IntoPortal
+		DO: DoAll
+				SetState {RESPAWN_WAIT}
+	IF: ExitPortal
+		DO: DoAll
+				SetState {RESPAWN_WAIT}
 	IF: All
 			SecsInStateGE 6
-			Expr {getcharvital_current[1]>0 && getcharvital_buffedmax[1]>0 && !isportaling[] && getplayerlandcell[]==565641256}
+			CellE 21B70028
+			Expr {getcharvital_current[1]>0}
 		DO: DoAll
 				SetState {RECOVER_DISPATCH}
 	IF: All
 			SecsInStateGE 6
-			Expr {getcharvital_current[1]>0 && getcharvital_buffedmax[1]>0 && !isportaling[] && getplayerlandblock[]==347406336}
+			BlockE 14B50000
+			Expr {getcharvital_current[1]>0}
 		DO: DoAll
 				SetState {GET_TO_APPROACH}
 	IF: SecsInStateGE 90
 		DO: DoAll
-				DoExpr {echo[`Plateau Treasure: respawn is not at the camp or the recorded town landing. Check the lifestone location.`]}
+				DoExpr {echo[`Plateau Treasure: respawn return not ready; cell=`+getplayerlandcell[]+`, HP=`+getcharvital_current[1]+`. Expected camp cell 565641256 or recorded town block 347406336. Check these values.`]}
 				SetState {ERROR_HOLD}
 ~~ }
 
@@ -1940,19 +1954,27 @@ STATE: {RECOVER_ROUTE} ~~ {
 STATE: {LIFESTONE_WAIT} ~~ {
 	IF: Death
 		DO: SetState {DEATH_RECOVER}
+	IF: IntoPortal
+		DO: DoAll
+				SetState {LIFESTONE_WAIT}
+	IF: ExitPortal
+		DO: DoAll
+				SetState {LIFESTONE_WAIT}
 	IF: All
 			SecsInStateGE 10
-			Expr {getcharvital_current[1]>0 && getcharvital_buffedmax[1]>0 && !isportaling[] && getplayerlandcell[]==565641256}
+			CellE 21B70028
+			Expr {getcharvital_current[1]>0}
 		DO: DoAll
 				SetState {CAMP_SETTLE}
 	IF: All
 			SecsInStateGE 10
-			Expr {getcharvital_current[1]>0 && getcharvital_buffedmax[1]>0 && !isportaling[] && getplayerlandblock[]==347406336}
+			BlockE 14B50000
+			Expr {getcharvital_current[1]>0}
 		DO: DoAll
 				SetState {GET_TO_APPROACH}
 	IF: SecsInStateGE 90
 		DO: DoAll
-				DoExpr {echo[`Plateau Treasure: /ls did not land at the camp or the recorded town landing. Check the lifestone setup.`]}
+				DoExpr {echo[`Plateau Treasure: startup return not ready; cell=`+getplayerlandcell[]+`, HP=`+getcharvital_current[1]+`. Expected camp cell 565641256 or recorded town block 347406336. Check these values.`]}
 				SetState {ERROR_HOLD}
 ~~ }
 

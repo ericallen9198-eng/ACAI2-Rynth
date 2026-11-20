@@ -1,4 +1,4 @@
-# Plateau Treasure - Verified v3: continue after death
+# Plateau Treasure - Verified v3.1: startup compatibility fix
 
 Adapted from Soot's Plateau Treasure Beta and the supplied working MLTREASURE275-Rynth meta.
 
@@ -35,3 +35,7 @@ Doubloons (template 1004101) and any TradeNote objects (class 15) present in the
 The 52-rule Currency loot profile differs from the supplied original only by removing the six-free-main-pack-slot condition on its two enabled currency Keep rules. All other rules/actions/conditions/order are preserved.
 
 No source spell 1636/Lifestone Sending travel remains. The original treasure-encounter magic-mode request remains unchanged. Offline checks do not prove live game behavior; verify one death return and one cache.
+
+V3.1 STARTUP FIX
+Removes the portal-expression and optional maximum-health dependencies from startup/return readiness. Your reported camp cell 0x21B70028 and positive current HP now pass the same native cell condition used by the supplied working meta. Native portal entry/exit conditions restart the settle timer when observed; there is no latched portal flag that can block progress after a missed event. A timeout prints the actual cell and current HP rather than claiming your lifestone is wrong.
+Replace BOTH .af and .met in MetaFiles and reload in Default. It should report 377 rules. Navs and the currency profile are unchanged from v3.

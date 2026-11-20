@@ -57,6 +57,10 @@ static class Checks
   var approach=NavRouteParser.Load(Path.Combine(folder,"275 - From Lifestone.nav"));
   Check(approach.RouteType==NavRouteType.Once&&approach.Points.Count==4&&approach.Points.All(p=>p.Type!=NavPointType.Recall&&p.ChatCommand!="/ls"),"natural-respawn approach route contains no recall step");
   Check(meta.Rules.Any(r=>r.State=="RECOVER_ROUTE"&&r.ConditionData.Contains("pt_death_region")==true),"death return chooses the previous hunting region");
+  Check(!Flatten(meta.Rules).Any(r=>r.ConditionData.Contains("isportaling[")||r.ActionData.Contains("isportaling[")),"no readiness path depends on the unavailable portal expression");
+  Check(!Flatten(meta.Rules).Any(r=>r.ConditionData.Contains("getcharvital_buffedmax[")),"optional maximum-health API cannot block a live character");
+  foreach(string st in new[]{"START_LOCATION","LIFESTONE_WAIT","RESPAWN_WAIT"})
+   Check(Flatten(meta.Rules.Where(r=>r.State==st)).Any(r=>r.Condition==MetaConditionType.Landcell_EQ&&r.ConditionData=="21B70028"),"proven native camp-cell condition used in "+st);
   var encounterXp=meta.Rules.Where(r=>r.State=="ENCOUNTER"&&Flatten([r]).Any(c=>c.ConditionData.Contains("You've earned"))).ToArray();
   Check(encounterXp.Length==1&&encounterXp[0].Condition==MetaConditionType.All&&encounterXp[0].Children.Any(c=>c.ConditionData.Contains("Unearthed Cache")),"ordinary XP cannot trigger cache pickup without a visible cache");
   Console.WriteLine($"{n} offline checks passed. Native/game commands were recorded only, never executed. Simulator is not a live Rynth frame.");

@@ -40,7 +40,7 @@ def yes(x):return x not in ('',0,None,'false','False')
 
 class World:
  def __init__(self,items,opened=1):
-  self.now=0;self.v={'tm_cache_deadline':300,'tm_doubloon_before':0};self.p={'tm_dig_active':1};self.options={'LootChestsMacroOff':1};self.open=opened;self.items={i['id']:dict(i) for i in items};self.inv={};self.moves=[];self.used=[];self.messages=[];self.dispatch=1;self.autoopen=True;self.dead=False;self.health=100;self.maxhealth=100;self.portaling=False;self.cell=565641256;self.portal_exit=False
+  self.now=0;self.v={'tm_cache_deadline':300,'tm_doubloon_before':0};self.p={'tm_dig_active':1};self.options={'LootChestsMacroOff':1};self.open=opened;self.items={i['id']:dict(i) for i in items};self.inv={};self.moves=[];self.used=[];self.messages=[];self.dispatch=1;self.autoopen=True;self.dead=False;self.health=100;self.maxhealth=100;self.portaling=False;self.cell=565641256;self.portal_exit=False;self.portal_enter=False;self.optional_api_unsupported=False
  def item(self,i):return self.items.get(int(i),{})
  def container(self,i):return [k for k,v in self.items.items() if v.get('container',1)==i]
  def ack(self,item,amount=None):
@@ -70,8 +70,8 @@ class World:
   if f in ('setvar','setpvar'):(self.v if f=='setvar' else self.p)[a[0]]=a[1];return a[1]
   if f=='getunixtime':return self.now
   if f=='getcharvital_current':return 0 if self.dead else self.health
-  if f=='getcharvital_buffedmax':return self.maxhealth
-  if f=='isportaling':return int(self.portaling)
+  if f=='getcharvital_buffedmax':return 0 if self.optional_api_unsupported else self.maxhealth
+  if f=='isportaling':return 'isportaling[]' if self.optional_api_unsupported else int(self.portaling)
   if f=='getplayerlandcell':return self.cell
   if f=='getplayerlandblock':return self.cell & 0xffff0000
   if f=='wobjectgetopencontainer':return self.open
@@ -111,6 +111,9 @@ class Sim:
   if c==0:return False
   if c==1:return True
   if c==7:return self.w.dead
+  if c==16:return (self.w.cell & 0xffff0000)==int(r['ConditionData'],16)
+  if c==17:return self.w.cell==int(r['ConditionData'],16)
+  if c==18:return self.w.portal_enter
   if c==19:return self.w.portal_exit
   if c==2:return all(self.cond(x) for x in r['Children'])
   if c==6:return self.w.now-self.entered>=float(r['ConditionData'])
@@ -195,10 +198,10 @@ for region,dest in [(1,'CAMP_EAST'),(2,'CAMP_NORTHEAST'),(3,'CAMP_WEST')]:
  check('/ls' not in w.messages and '/ra stop' not in w.messages,'natural camp respawn returns to the prior region '+str(region))
  s.tick();check(s.state=='TRAVEL_WAIT',"recovery starts that region's existing nav")
  w.v['pt_travel_end']=1;s.until('HUNT');check(all(w.options.get(x)==1 for x in ['EnableNav','EnableCombat','EnableLooting','EnableBuffing']),'normal hunting/buffing/looting resumes after returning to region '+str(region))
-w=World([]);w.v.update(pt_region=2,pt_npc_end=1);s=Sim(w,'DEATH_RECOVER');s.tick();w.portaling=True
+w=World([]);w.v.update(pt_region=2,pt_npc_end=1);s=Sim(w,'DEATH_RECOVER');s.tick();w.portaling=True;w.cell=0
 for _ in range(12):s.tick()
 check(s.state=='RESPAWN_WAIT' and not w.used,'no movement or route selection while still in portal space')
-w.portaling=False;w.health=0
+w.portaling=False;w.cell=565641256;w.health=0
 for _ in range(8):s.tick()
 check(s.state=='RESPAWN_WAIT','a stale/dead zero-health sample cannot resume the route')
 w.health=100;s.until('CAMP_NORTHEAST');check('/ls' not in w.messages,'resuming after portal/health readiness does not cast another recall')
@@ -219,4 +222,12 @@ check(w.options['LootChestsMacroOff']==1 and w.p['pt_cache_pickup_held']==0,'Def
 w=World([]);w.cell=0x12340001;s=Sim(w,'GET_TO');s.tick();w.cell=565641256;s.until('NPC_TALK')
 check(w.messages.count('/ls')==1,'startup recall is issued once when needed')
 check('/ra nav load 275 - From Lifestone' not in w.messages and '/ra nav load 275 - Get to' not in w.messages,'startup recall landing at camp does not walk the recorded town approach')
+for phase,dest in [('START_LOCATION','NPC_TALK'),('LIFESTONE_WAIT','CAMP_SETTLE'),('RESPAWN_WAIT','RECOVER_DISPATCH')]:
+ w=World([]);w.health=429;w.maxhealth=429;w.optional_api_unsupported=True;s=Sim(w,phase);s.until(dest)
+ check(s.state==dest,'reported camp/429 HP case progresses without a portal-expression boolean in '+phase)
+w=World([]);w.maxhealth=0;w.optional_api_unsupported=True;s=Sim(w,'LIFESTONE_WAIT');s.until('CAMP_SETTLE')
+check(s.state=='CAMP_SETTLE','unavailable maximum-health read does not block startup')
+w=World([]);s=Sim(w,'LIFESTONE_WAIT');s.tick(8);w.portal_exit=True;s.tick();w.portal_exit=False;s.tick(8)
+check(s.state=='LIFESTONE_WAIT','a native portal exit restarts the settle timer')
+s.tick(2);check(s.state=='CAMP_SETTLE','settled camp arrival proceeds after the native portal event')
 print(f'{checks} cache/death-state simulations passed. No game or network actions executed.')
