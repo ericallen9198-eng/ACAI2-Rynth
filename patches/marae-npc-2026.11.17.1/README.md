@@ -1,6 +1,6 @@
 # Marae Lassel NPC reply patch — matching RynthAi 2026.11.17.1
 
-This optional RynthAi patch supports Soot's `#rynth-talk:<zero-based waypoint index>` extension. It is based on the public RynthSuite **5e70799b1c83d3cc1f2b06e06a274dd3f7449c82** and RynthCore **3f0c07647c958439fdec97afc4a0f43cf2b06030** November 17 snapshots. It is a managed **win-x64** build, matching the uploaded DLL, not the x86 NativeAOT build described by the older public BUILD.md.
+This optional RynthAi patch supports Soot's `#rynth-talk:<zero-based waypoint index>` extension. It is based on the public RynthSuite **5e70799b1c83d3cc1f2b06e06a274dd3f7449c82** and RynthCore **3f0c07647c958439fdec97afc4a0f43cf2b06030** November 17 snapshots. It is a managed **win-x64** build for **RynthCore API 97+**, matching the uploaded DLL and its embedded manifest, not the x86 NativeAOT build described by the older public BUILD.md.
 
 Reviewed original: version 2026.11.17.1, informational version `2026.11.17.1+d924ac04b877be0ecf0a464ed904312919970560`, SHA256 `84eb07ef0d31e026351af092d227cf136cdf6557fb23a8df8dfb1ac60b318102`. Its decompiled NavigationEngine exactly matches an unmodified rebuild of the pinned public source. The installed binary parses type-7 points but lacks their runtime dispatch and ignores these trailing markers.
 
@@ -13,8 +13,12 @@ The beta files in `metas/marae-lassel-beta` are Soot's uploaded beta, unchanged.
 1. Extract the download into a normal folder. Close all AC clients.
 2. In RynthCore's Plugins tab, note the exact active RynthAi DLL path.
 3. Right-click `Install-NpcPatch.ps1` and choose **Run with PowerShell**. Paste that full DLL path, or press Enter if the displayed default is correct. The installer requires the exact reviewed original SHA, checks the new DLL, and verifies a timestamped backup before replacing the original. The backup and restore path are printed and recorded under `%LOCALAPPDATA%\ACAI2\Backups\RynthAi-NPC\`.
-4. If the beta is not installed, copy the CONTENTS of `Beta\MetaFiles`, `Beta\NavProfiles` and `Beta\Scripts` into the corresponding existing RynthAi folders. Keep the folder `Scripts\MaraeLassel\index.lua` together. The DLL installer does not change these files or saved settings. Back up existing files if installing the beta over an older copy.
-5. Start AC and confirm RynthAi and RynthLua load without plugin errors. Open the Lua scripts manager and enable **MaraeLassel**. Its HUD should show area/mode controls.
+4. If the beta is not installed, copy its files to the correct folders (default installation shown; use your configured suite folder if different):
+   - `Beta\MetaFiles\*` → `C:\Games\RynthSuite\RynthAi\MetaFiles\`
+   - `Beta\NavProfiles\*` → `C:\Games\RynthSuite\RynthAi\NavProfiles\`
+   - `Beta\Scripts\MaraeLassel` → `C:\Games\RynthSuite\RynthLua\Scripts\MaraeLassel`
+   The Lua panel belongs under **RynthLua**, not RynthAi. Keep its `index.lua` inside `MaraeLassel`. The DLL installer does not change these files or saved settings. Back up existing files if installing the beta over an older copy.
+5. Start AC and confirm RynthAi and RynthLua load without plugin errors. Run `/lua start MaraeLassel` (or start it in the Lua scripts manager). Its HUD should show area/mode controls. `/lua list` shows the scripts that RynthLua can find.
 6. For an initial test, select just one area and KT mode, start at its supported town/camp, and watch one marked hunter step. The nav status should say `waiting for '<hunter>' reply`; the index must remain there if no reply arrives, and a matching reply should advance it. A silent NPC should retry after eight seconds. Another NPC or a player quoting the reply must not advance it.
 7. Test an ordinary existing portal route separately before leaving the beta unattended. Review Soot's README: the beta intentionally holds after a second death in an area and on travel/turn-in failures.
 
