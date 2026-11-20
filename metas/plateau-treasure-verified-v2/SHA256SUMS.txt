@@ -8,7 +8,7 @@ d224196d4224280efba6c811c0fff6bec03bda019b911cde0ad2ea351887fb3b  275 - Hunt Eas
 dcc6fa2748574b14f115f75dec5a7794b8d82d1f8c3c62a96d99a7dce2e458d7  275 - Travel Camp West.nav
 fc33f4b23b5672cfbf2552d9b30b9b40f7d06018a9c371d8af1a36d73ead96fc  275 - Travel East Northeast.nav
 0a2bce96c9fb67be67670115ef140f1e908700b55e0d99e28473d37411070d3d  275 - Travel Landing West.nav
-029bbbd5f096cbc6057de0a8362f86574401d990264be160a8d9362e03e6b205  275 Plateau Treasure - Verified.af
+b7b02fc8086643cb02d06877808c8cc3ec34cc7142851dcbe044df5aafbba67c  275 Plateau Treasure - Verified.af
 df2f2bcbf7db33bf238e807c515b523a333b4d844c9dbcb581664bfb5d727a9e  275 Plateau Treasure - Verified.met
 77cc9f4ee825c94c45e156b912e7f29dc452d08a647de573192fc67352f76d3f  DW_Farm_Peas_Rares_Custom-Currency.utl
 cd650127dae3179c57972af8dc6bae449787b0da09cedaf4483ca1f797c17c2a  OFFLINE-CHECKS.txt

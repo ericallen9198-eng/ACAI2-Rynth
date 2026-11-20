@@ -1111,7 +1111,7 @@ STATE: {CACHE_SEARCH} ~~ {
 				SetState {CACHE_SETTLE}
 	IF: All
 			SecsInStateGE 5
-			Expr {getunixtime[]>=getvar[tm_cache_retry_at] && !(wobjectgetname[wobjectgetopencontainer[]]==`Unearthed Cache`)} 
+			Expr {getunixtime[]>=getvar[tm_cache_retry_at] && !(wobjectgetname[wobjectgetopencontainer[]]==`Unearthed Cache`)}
 		DO: DoAll
 				DoExpr {setvar[tm_cache_retry_at,getunixtime[]+8]}
 				DoExpr {if[getvar[tm_cache_id]==0,chatbox[`/ub use Unearthed Cache`]]}
