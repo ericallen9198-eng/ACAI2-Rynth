@@ -1,0 +1,2513 @@
+STATE: {Default} ~~ {
+	IF: Always
+		DO: DoAll
+				SetOpt {EnableNav} {False}
+				SetOpt {AutoCram} {False}
+				DoExpr {setvar[ml_run_mode,getpvar[ml_run_mode]]}
+				DoExpr {setvar[ml_area_180,getpvar[ml_area_180]]}
+				DoExpr {setvar[ml_maps_180,getpvar[ml_maps_180]]}
+				DoExpr {setvar[ml_area_225,getpvar[ml_area_225]]}
+				DoExpr {setvar[ml_maps_225,getpvar[ml_maps_225]]}
+				DoExpr {setvar[ml_area_275,getpvar[ml_area_275]]}
+				DoExpr {setvar[ml_maps_275,getpvar[ml_maps_275]]}
+				DoExpr {setvar[ml_zone,0]}
+				DoExpr {setvar[ml_use_maps,0]}
+				DoExpr {setvar[ml_done,0]}
+				DoExpr {setvar[ml_cooldown,0]}
+				DoExpr {setvar[ml_outcome,`Running`]}
+				DoExpr {setvar[ml_status,`Choosing the next selected area`]}
+				SetState {DISPATCH}
+~~ }
+
+STATE: {DISPATCH} ~~ {
+	IF: Expr {getvar[ml_run_mode]!=1 && getvar[ml_run_mode]!=2}
+		DO: DoAll
+				DoExpr {setvar[ml_outcome,`Setup required`]}
+				DoExpr {setvar[ml_status,`Open the Marae Lassel panel and choose a mode and area.`]}
+				SetState {STOP_CLEANUP}
+	IF: Expr {getvar[ml_run_mode]==2 && (getvar[ml_area_180]+getvar[ml_area_225]+getvar[ml_area_275])!=1}
+		DO: DoAll
+				DoExpr {setvar[ml_outcome,`Setup required`]}
+				DoExpr {setvar[ml_status,`Select one treasure farming area.`]}
+				SetState {STOP_CLEANUP}
+	IF: Expr {getvar[ml_area_180]!=1 && getvar[ml_area_225]!=1 && getvar[ml_area_275]!=1}
+		DO: DoAll
+				DoExpr {setvar[ml_outcome,`Setup required`]}
+				DoExpr {setvar[ml_status,`Select at least one area.`]}
+				SetState {STOP_CLEANUP}
+	IF: Expr {getvar[ml_zone]<180 && getvar[ml_area_180]==1}
+		DO: DoAll
+				DoExpr {setvar[ml_zone,180]}
+				DoExpr {setvar[ml_fship_attempted,0]}
+				DoExpr {setvar[ml_use_maps,getvar[ml_run_mode]==2 || getvar[ml_maps_180]==1]}
+				DoExpr {setvar[ml_status,`Traveling to camp`]}
+				SetState {T180_Default}
+	IF: Expr {getvar[ml_zone]<225 && getvar[ml_area_225]==1}
+		DO: DoAll
+				DoExpr {setvar[ml_zone,225]}
+				DoExpr {setvar[ml_fship_attempted,0]}
+				DoExpr {setvar[ml_use_maps,getvar[ml_run_mode]==2 || getvar[ml_maps_225]==1]}
+				DoExpr {setvar[ml_status,`Traveling to camp`]}
+				SetState {T225_Default}
+	IF: Expr {getvar[ml_zone]<275 && getvar[ml_area_275]==1}
+		DO: DoAll
+				DoExpr {setvar[ml_zone,275]}
+				DoExpr {setvar[ml_fship_attempted,0]}
+				DoExpr {setvar[ml_use_maps,getvar[ml_run_mode]==2 || getvar[ml_maps_275]==1]}
+				DoExpr {setvar[ml_status,`Traveling to camp`]}
+				SetState {T275_Default}
+	IF: Always
+		DO: DoAll
+				DoExpr {setvar[ml_outcome,`Finished`]}
+				DoExpr {setvar[ml_status,`Finished all selected areas.`]}
+				SetState {STOP_CLEANUP}
+~~ }
+
+STATE: {AREA_DONE} ~~ {
+	IF: Always
+		DO: DoAll
+				DoExpr {setvar[ml_done,getvar[ml_done]+1]}
+				SetState {DISPATCH}
+~~ }
+
+STATE: {AREA_COOLDOWN} ~~ {
+	IF: Always
+		DO: DoAll
+				DoExpr {setvar[ml_cooldown,getvar[ml_cooldown]+1]}
+				SetState {DISPATCH}
+~~ }
+
+STATE: {STOP_CLEANUP} ~~ {
+	IF: Always
+		DO: DoAll
+				Chat {/ub clearmotion}
+				SetOpt {EnableNav} {False}
+				SetOpt {EnableCombat} {False}
+				SetOpt {EnableLooting} {False}
+				SetOpt {EnableBuffing} {False}
+				SetOpt {AutoCram} {False}
+				SetOpt {StopMacroOnDeath} {True}
+				SetOpt {OpenDoors} {False}
+				DoExpr {setpvar[tm_dig_active,0]}
+				DoExpr {uboptset[`InventoryManager.AutoCram`,false]}
+				SetState {HOLD}
+~~ }
+
+STATE: {HOLD} ~~ {
+	IF: Never
+		DO: None
+~~ }
+
+STATE: {MAP_DEATH} ~~ {
+	IF: Expr {getvar[ml_zone]==180}
+		DO: SetState {T180_DEATH_RECOVERY}
+	IF: Expr {getvar[ml_zone]==225}
+		DO: SetState {T225_DEATH_RECOVERY}
+	IF: Expr {getvar[ml_zone]==275}
+		DO: SetState {T275_DEATH_RECOVERY}
+~~ }
+
+STATE: {MAP_RETURN} ~~ {
+	IF: Expr {getvar[ml_zone]==180}
+		DO: SetState {T180_HUNT_RESUME}
+	IF: Expr {getvar[ml_zone]==225}
+		DO: SetState {T225_HUNT_RESUME}
+	IF: Expr {getvar[ml_zone]==275}
+		DO: SetState {T275_HUNT_RESUME}
+~~ }
+
+STATE: {T180_Default} ~~ {
+	IF:	Always
+		DO:	DoAll
+				SetOpt {StopMacroOnDeath} {False}
+				SetOpt {AutoCram} {False}
+				SetOpt {AttackDistance} {0.0208333333333333}
+				DoExpr {uboptset[`InventoryManager.AutoCram`,false]}
+				DoExpr {setvar[tm_cache_deadline,0]}
+				DoExpr {setvar[tm_cache_retry_at,0]}
+				DoExpr {setvar[tm_aun_loot_active,0]}
+				DoExpr {setvar[tm_doubloon_before,0]}
+				DoExpr {setvar[tm_map_gate_until,0]}
+				DoExpr {setvar[tm_map_id,0]}
+				DoExpr {setvar[tm_resume_needed,0]}
+				DoExpr {setvar[tm_resume_pos,0]}
+				DoExpr {setvar[tm_run_length,0]}
+				DoExpr {setvar[tm_run_start,0]}
+				DoExpr {setvar[tm_watch_pos,0]}
+				DoExpr {setpvar[tm_dig_active,0]}
+				DoExpr {setvar[pt_skipped,listcreate[]]}
+				DoExpr {setvar[pt_refresh_at,0]}
+				DoExpr {setvar[pt_region,0]}
+				DoExpr {setvar[pt_turnin,0]}
+				DoExpr {setvar[pt_recallwest,0]}
+				DoExpr {setvar[pt_death_recovered,0]}
+				DoExpr {setvar[pt_recover_hunt,0]}
+				DoExpr {setvar[pt_done_0,0]}
+				DoExpr {setvar[pt_unavailable_0,0]}
+				DoExpr {setvar[pt_done_1,0]}
+				DoExpr {setvar[pt_unavailable_1,0]}
+				DoExpr {setvar[pt_done_2,0]}
+				DoExpr {setvar[pt_unavailable_2,0]}
+				DoExpr {setvar[pt_done_3,0]}
+				DoExpr {setvar[pt_unavailable_3,0]}
+				DoExpr {setvar[pt_done_4,0]}
+				DoExpr {setvar[pt_unavailable_4,0]}
+				DoExpr {setvar[pt_done_5,0]}
+				DoExpr {setvar[pt_unavailable_5,0]}
+				DoExpr {setvar[pt_done_6,0]}
+				DoExpr {setvar[pt_unavailable_6,0]}
+				DoExpr {setvar[pt_done_7,0]}
+				DoExpr {setvar[pt_unavailable_7,0]}
+				DoExpr {setvar[pt_done_8,0]}
+				DoExpr {setvar[pt_unavailable_8,0]}
+				SetState {T180_START_LOCATION}
+~~ }
+
+STATE: {T180_START_LOCATION} ~~ {
+	IF: Death
+		DO: SetState {T180_DEATH_RECOVERY}
+	IF: Expr {getplayerlandcell[]==347406383 && isportaling[]==0}
+		DO: SetState {T180_NPC_TALK}
+	IF: Always
+		DO: SetState {T180_GET_TO}
+~~ }
+
+STATE: {T180_GET_TO} ~~ {
+	IF: Death
+		DO: SetState {T180_DEATH_RECOVERY}
+	IF: Always
+		DO: DoAll
+				Chat {/ub clearmotion}
+				SetOpt {EnableNav} {False}
+				SetOpt {EnableBuffing} {True}
+				SetOpt {EnableCombat} {True}
+				SetOpt {EnableLooting} {False}
+				SetOpt {AttackDistance} {0.0208333333333333}
+				DoExpr {setvar[pt_get_end,0]}
+				Chat {/ra nav load 180 KT - Get to}
+				SetOpt {EnableNav} {True}
+				SetState {T180_GET_TO_WAIT}
+~~ }
+
+STATE: {T180_GET_TO_WAIT} ~~ {
+	IF: Death
+		DO: SetState {T180_DEATH_RECOVERY}
+	IF: All
+			ExitPortal
+			Expr {getplayerlandcell[]==347406383}
+		DO: DoAll
+				SetOpt {EnableNav} {False}
+				SetState {T180_CAMP_SETTLE}
+	IF: SecsInStateGE 240
+		DO: SetState {T180_ROUTE_HOLD}
+~~ }
+
+STATE: {T180_CAMP_SETTLE} ~~ {
+	IF: Death
+		DO: SetState {T180_DEATH_RECOVERY}
+	IF: All
+			SecsInStateGE 5
+			Expr {getvar[ml_run_mode]==2}
+		DO: SetState {T180_FARM_LOAD}
+	IF: All
+			SecsInStateGE 5
+			Expr {getvar[pt_turnin]==1}
+		DO: SetState {T180_TURNIN_TALK}
+	IF: All
+			SecsInStateGE 5
+			Expr {getvar[pt_recover_hunt]==1}
+		DO: DoAll
+				DoExpr {setvar[pt_recover_hunt,0]}
+				SetState {T180_HUNT_LOAD}
+	IF: SecsInStateGE 5
+		DO: SetState {T180_NPC_TALK}
+~~ }
+
+STATE: {T180_NPC_TALK} ~~ {
+	IF: Death
+		DO: SetState {T180_DEATH_RECOVERY}
+	IF: Expr {getvar[ml_run_mode]==2}
+		DO: SetState {T180_FARM_LOAD}
+	IF: Always
+		DO: DoAll
+				Chat {/ub clearmotion}
+				SetOpt {EnableNav} {False}
+				SetOpt {EnableBuffing} {True}
+				SetOpt {EnableCombat} {True}
+				SetOpt {EnableLooting} {False}
+				SetOpt {AttackDistance} {0.0208333333333333}
+				DoExpr {setvar[pt_pickup_0,0]}
+				DoExpr {setvar[pt_pickup_1,0]}
+				DoExpr {setvar[pt_pickup_2,0]}
+				DoExpr {setvar[pt_pickup_3,0]}
+				DoExpr {setvar[pt_pickup_4,0]}
+				DoExpr {setvar[pt_pickup_5,0]}
+				DoExpr {setvar[pt_pickup_6,0]}
+				DoExpr {setvar[pt_pickup_7,0]}
+				DoExpr {setvar[pt_pickup_8,0]}
+				DoExpr {setvar[pt_npc_end,0]}
+				Chat {/ra nav load 180 KT - Talk NPCs}
+				SetOpt {EnableNav} {True}
+				SetState {T180_NPC_TALK_WAIT}
+~~ }
+
+STATE: {T180_NPC_TALK_WAIT} ~~ {
+	IF: Death
+		DO: SetState {T180_DEATH_RECOVERY}
+	IF: ChatMatch {^Hea Tarekeh the Carenzi Hunter tells you, "(?:Slay 50 Drumtaken Carenzi Stalker\. Return when the work is done\.|You have defeated \d+ of 50 Drumtaken Carenzi Stalker\.[^"]*)"}
+		DO: DoExpr {setvar[pt_pickup_0,1]}
+	IF: ChatMatch {^Hea Tarekeh the Carenzi Hunter tells you, "(?:Your hunt for today is done\. You may take another hunt in [^"]+|Return in [^"]+ for another hunt\.|You have served the Hea well\. Accept this reward for your efforts\.)"}
+		DO: DoAll
+				DoExpr {setvar[pt_pickup_0,1]}
+				DoExpr {setvar[pt_done_0,1]}
+				DoExpr {setvar[pt_unavailable_0,1]}
+	IF: ChatMatch {^Hea Raukawe the Siraluun Hunter tells you, "(?:Slay 50 Drumtaken Lesser Littoral Siraluun\. Return when the work is done\.|You have defeated \d+ of 50 Drumtaken Lesser Littoral Siraluun\.[^"]*)"}
+		DO: DoExpr {setvar[pt_pickup_1,1]}
+	IF: ChatMatch {^Hea Raukawe the Siraluun Hunter tells you, "(?:Your hunt for today is done\. You may take another hunt in [^"]+|Return in [^"]+ for another hunt\.|You have served the Hea well\. Accept this reward for your efforts\.)"}
+		DO: DoAll
+				DoExpr {setvar[pt_pickup_1,1]}
+				DoExpr {setvar[pt_done_1,1]}
+				DoExpr {setvar[pt_unavailable_1,1]}
+	IF: ChatMatch {^Hea Teruana the Gromnie Hunter tells you, "(?:Slay 50 Drumtaken Sable Gromnie\. Return when the work is done\.|You have defeated \d+ of 50 Drumtaken Sable Gromnie\.[^"]*)"}
+		DO: DoExpr {setvar[pt_pickup_2,1]}
+	IF: ChatMatch {^Hea Teruana the Gromnie Hunter tells you, "(?:Your hunt for today is done\. You may take another hunt in [^"]+|Return in [^"]+ for another hunt\.|You have served the Hea well\. Accept this reward for your efforts\.)"}
+		DO: DoAll
+				DoExpr {setvar[pt_pickup_2,1]}
+				DoExpr {setvar[pt_done_2,1]}
+				DoExpr {setvar[pt_unavailable_2,1]}
+	IF: ChatMatch {^Hea Talurea the Ursuin Hunter tells you, "(?:Slay 50 Drumtaken Marae Ursuin\. Return when the work is done\.|You have defeated \d+ of 50 Drumtaken Marae Ursuin\.[^"]*)"}
+		DO: DoExpr {setvar[pt_pickup_3,1]}
+	IF: ChatMatch {^Hea Talurea the Ursuin Hunter tells you, "(?:Your hunt for today is done\. You may take another hunt in [^"]+|Return in [^"]+ for another hunt\.|You have served the Hea well\. Accept this reward for your efforts\.)"}
+		DO: DoAll
+				DoExpr {setvar[pt_pickup_3,1]}
+				DoExpr {setvar[pt_done_3,1]}
+				DoExpr {setvar[pt_unavailable_3,1]}
+	IF: ChatMatch {^Hea Korenuad the Golem Hunter tells you, "(?:Slay 50 Drumtaken Sand Golem\. Return when the work is done\.|You have defeated \d+ of 50 Drumtaken Sand Golem\.[^"]*)"}
+		DO: DoExpr {setvar[pt_pickup_4,1]}
+	IF: ChatMatch {^Hea Korenuad the Golem Hunter tells you, "(?:Your hunt for today is done\. You may take another hunt in [^"]+|Return in [^"]+ for another hunt\.|You have served the Hea well\. Accept this reward for your efforts\.)"}
+		DO: DoAll
+				DoExpr {setvar[pt_pickup_4,1]}
+				DoExpr {setvar[pt_done_4,1]}
+				DoExpr {setvar[pt_unavailable_4,1]}
+	IF: ChatMatch {^Hea Mereana the Olthoi Hunter tells you, "(?:Slay 50 Olthoi Drone\. Return when the work is done\.|You have defeated \d+ of 50 Olthoi Drone\.[^"]*)"}
+		DO: DoExpr {setvar[pt_pickup_5,1]}
+	IF: ChatMatch {^Hea Mereana the Olthoi Hunter tells you, "(?:Your hunt for today is done\. You may take another hunt in [^"]+|Return in [^"]+ for another hunt\.|You have served the Hea well\. Accept this reward for your efforts\.)"}
+		DO: DoAll
+				DoExpr {setvar[pt_pickup_5,1]}
+				DoExpr {setvar[pt_done_5,1]}
+				DoExpr {setvar[pt_unavailable_5,1]}
+	IF: ChatMatch {^Hea Tuhiraki the Siberite Hunter tells you, "(?:Slay 50 Siberite Fragment\. Return when the work is done\.|You have defeated \d+ of 50 Siberite Fragment\.[^"]*)"}
+		DO: DoExpr {setvar[pt_pickup_6,1]}
+	IF: ChatMatch {^Hea Tuhiraki the Siberite Hunter tells you, "(?:Your hunt for today is done\. You may take another hunt in [^"]+|Return in [^"]+ for another hunt\.|You have served the Hea well\. Accept this reward for your efforts\.)"}
+		DO: DoAll
+				DoExpr {setvar[pt_pickup_6,1]}
+				DoExpr {setvar[pt_done_6,1]}
+				DoExpr {setvar[pt_unavailable_6,1]}
+	IF: ChatMatch {^Hea Aroheka the Zefir Hunter tells you, "(?:Slay 50 Drumtaken Kirit Zefir\. Return when the work is done\.|You have defeated \d+ of 50 Drumtaken Kirit Zefir\.[^"]*)"}
+		DO: DoExpr {setvar[pt_pickup_7,1]}
+	IF: ChatMatch {^Hea Aroheka the Zefir Hunter tells you, "(?:Your hunt for today is done\. You may take another hunt in [^"]+|Return in [^"]+ for another hunt\.|You have served the Hea well\. Accept this reward for your efforts\.)"}
+		DO: DoAll
+				DoExpr {setvar[pt_pickup_7,1]}
+				DoExpr {setvar[pt_done_7,1]}
+				DoExpr {setvar[pt_unavailable_7,1]}
+	IF: ChatMatch {^Hea Wairena the Aun Hunter tells you, "(?:Slay 50 Aun Runner\. Return when the work is done\.|You have defeated \d+ of 50 Aun Runner\.[^"]*)"}
+		DO: DoExpr {setvar[pt_pickup_8,1]}
+	IF: ChatMatch {^Hea Wairena the Aun Hunter tells you, "(?:Your hunt for today is done\. You may take another hunt in [^"]+|Return in [^"]+ for another hunt\.|You have served the Hea well\. Accept this reward for your efforts\.)"}
+		DO: DoAll
+				DoExpr {setvar[pt_pickup_8,1]}
+				DoExpr {setvar[pt_done_8,1]}
+				DoExpr {setvar[pt_unavailable_8,1]}
+	IF: Expr {getvar[pt_npc_end]==1 && getvar[pt_unavailable_0]==1 && getvar[pt_unavailable_1]==1 && getvar[pt_unavailable_2]==1 && getvar[pt_unavailable_3]==1 && getvar[pt_unavailable_4]==1 && getvar[pt_unavailable_5]==1 && getvar[pt_unavailable_6]==1 && getvar[pt_unavailable_7]==1 && getvar[pt_unavailable_8]==1}
+		DO: DoAll
+				DoExpr {echo[`All hunters are on cooldown or already rewarded.`]}
+				SetState {AREA_COOLDOWN}
+	IF: Expr {getvar[pt_npc_end]==1 && getvar[pt_pickup_0]==1 && getvar[pt_pickup_1]==1 && getvar[pt_pickup_2]==1 && getvar[pt_pickup_3]==1 && getvar[pt_pickup_4]==1 && getvar[pt_pickup_5]==1 && getvar[pt_pickup_6]==1 && getvar[pt_pickup_7]==1 && getvar[pt_pickup_8]==1}
+		DO: SetState {T180_HUNT_LOAD}
+	IF: SecsInStateGE 300
+		DO: SetState {T180_ROUTE_HOLD}
+~~ }
+
+STATE: {T180_HUNT_LOAD} ~~ {
+	IF: Death
+		DO: SetState {T180_DEATH_RECOVERY}
+	IF: Always
+		DO: DoAll
+				SetOpt {EnableNav} {False}
+				DoExpr {setvar[pt_region,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+				Chat {/ra nav load 180 - Hunt Loop}
+				SetState {T180_HUNT_RESUME}
+~~ }
+
+STATE: {T180_HUNT_RESUME} ~~ {
+	IF: Death
+		DO: SetState {T180_DEATH_RECOVERY}
+	IF: Always
+		DO: DoAll
+				Chat {/ub clearmotion}
+				SetOpt {EnableCombat} {True}
+				SetOpt {EnableBuffing} {True}
+				SetOpt {EnableLooting} {True}
+				SetOpt {EnableNav} {True}
+				SetOpt {AttackDistance} {0.1291666666666667}
+				SetState {T180_HUNT}
+~~ }
+
+STATE: {T180_HUNT} ~~ {
+	IF: Death
+		DO: SetState {T180_DEATH_RECOVERY}
+	IF: Expr {getvar[ml_run_mode]==2}
+		DO: SetState {T180_FARM_RUN}
+	IF: Expr {getvar[ml_fship_attempted]==0 && !isportaling[] && getfellowshipcount[]>0}
+		DO: DoAll
+				DoExpr {setvar[ml_fship_attempted,1]}
+				DoExpr {setvar[ml_fship_leave_at,getunixtime[]]}
+				Chat {/fship quit}
+	IF: Expr {getvar[ml_fship_attempted]<2 && !isportaling[] && getfellowshipcount[]==0}
+		DO: DoAll
+				DoExpr {setvar[ml_fship_attempted,2]}
+				Chat {/fship joinlandblock}
+	IF: Expr {getvar[ml_fship_attempted]==1 && getunixtime[]-getvar[ml_fship_leave_at]>=8}
+		DO: DoExpr {setvar[ml_fship_attempted,2]}
+	IF: ChatMatch {^You have killed 50 Drumtaken Carenzi Stalker(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setvar[pt_done_0,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: ChatMatch {^You have killed \d+ Drumtaken Carenzi Stalker(?:s|es)?! You must kill 50 to complete your task\.}
+		DO: DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: ChatMatch {^You have killed 50 Drumtaken Lesser Littoral Siraluun(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setvar[pt_done_1,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: ChatMatch {^You have killed \d+ Drumtaken Lesser Littoral Siraluun(?:s|es)?! You must kill 50 to complete your task\.}
+		DO: DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: ChatMatch {^You have killed 50 Drumtaken Sable Gromnies! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setvar[pt_done_2,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: ChatMatch {^You have killed \d+ Drumtaken Sable Gromnies! You must kill 50 to complete your task\.}
+		DO: DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: ChatMatch {^You have killed 50 Drumtaken Marae Ursuin(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setvar[pt_done_3,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: ChatMatch {^You have killed \d+ Drumtaken Marae Ursuin(?:s|es)?! You must kill 50 to complete your task\.}
+		DO: DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: ChatMatch {^You have killed 50 Drumtaken Sand Golem(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setvar[pt_done_4,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: ChatMatch {^You have killed \d+ Drumtaken Sand Golem(?:s|es)?! You must kill 50 to complete your task\.}
+		DO: DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: ChatMatch {^You have killed 50 Olthoi Drone(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setvar[pt_done_5,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: ChatMatch {^You have killed \d+ Olthoi Drone(?:s|es)?! You must kill 50 to complete your task\.}
+		DO: DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: ChatMatch {^You have killed 50 Siberite Fragment(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setvar[pt_done_6,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: ChatMatch {^You have killed \d+ Siberite Fragment(?:s|es)?! You must kill 50 to complete your task\.}
+		DO: DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: ChatMatch {^You have killed 50 Drumtaken Kirit Zefir(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setvar[pt_done_7,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: ChatMatch {^You have killed \d+ Drumtaken Kirit Zefir(?:s|es)?! You must kill 50 to complete your task\.}
+		DO: DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: ChatMatch {^You have killed 50 Aun Runner(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setvar[pt_done_8,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: ChatMatch {^You have killed \d+ Aun Runner(?:s|es)?! You must kill 50 to complete your task\.}
+		DO: DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Expr {getvar[pt_done_0]==1 && getvar[pt_done_1]==1 && getvar[pt_done_2]==1 && getvar[pt_done_3]==1 && getvar[pt_done_4]==1 && getvar[pt_done_5]==1 && getvar[pt_done_6]==1 && getvar[pt_done_7]==1 && getvar[pt_done_8]==1}
+		DO: DoAll
+				DoExpr {setvar[pt_turnin,1]}
+				SetState {T180_GET_TO}
+	IF: Expr {getunixtime[]-getvar[pt_last_progress]>=2700}
+		DO: DoAll
+				DoExpr {echo[`180 Lowlands KT: no KT progress for 45 minutes. Check the current hunt route.`]}
+				SetState {T180_DEATH_HOLD}
+	IF: Expr {getunixtime[]>=getvar[pt_refresh_at]}
+		DO: DoAll
+				DoExpr {setvar[pt_refresh_at,getunixtime[]+120]}
+				Chat {/ra quests refresh}
+	IF: Expr {getvar[tm_resume_needed]==1 && coordinatedistanceflat[getplayercoordinates[],getvar[tm_resume_pos]]>=30}
+		DO: DoExpr {setvar[tm_resume_needed,0]}
+	IF: Expr {getvar[ml_use_maps]==1 && getcharvital_current[1]*100>=getcharvital_buffedmax[1]*85 && getvar[tm_resume_needed]==0 && getunixtime[]>=getvar[tm_map_gate_until] && getvar[tm_map_id]!=0 && (listcount[listfilter[wobjectfindallbycontainer[wobjectgetplayer[]],wobjectgetid[$1]==getvar[tm_map_id]]]+listcount[listfilter[wobjectfindallinventorybyobjectclass[10],listcount[listfilter[wobjectfindallbycontainer[$1],wobjectgetid[$1]==getvar[tm_map_id]]]>0]])>0}
+		DO: DoAll
+				SetOpt {AttackDistance} {0.0416666666666667}
+				SetState {MAP_RESUME}
+	IF: Expr {getvar[tm_map_id]!=0 && (listcount[listfilter[wobjectfindallbycontainer[wobjectgetplayer[]],wobjectgetid[$1]==getvar[tm_map_id]]]+listcount[listfilter[wobjectfindallinventorybyobjectclass[10],listcount[listfilter[wobjectfindallbycontainer[$1],wobjectgetid[$1]==getvar[tm_map_id]]]>0]])==0}
+		DO: DoAll
+				SetOpt {AttackDistance} {0.0416666666666667}
+				SetState {MAP_MISSING}
+	IF: Expr {getvar[ml_use_maps]==1 && getcharvital_current[1]*100>=getcharvital_buffedmax[1]*85 && getvar[tm_map_id]==0 && getunixtime[]>=getvar[tm_map_gate_until] && getitemcountininventorybyname[Treasure Map]>0}
+		DO: DoAll
+				SetOpt {AttackDistance} {0.0416666666666667}
+				SetState {MAP_LOCK}
+~~ }
+
+STATE: {T180_TURNIN_TALK} ~~ {
+	IF: Death
+		DO: SetState {T180_DEATH_RECOVERY}
+	IF: Always
+		DO: DoAll
+				Chat {/ub clearmotion}
+				SetOpt {EnableNav} {False}
+				SetOpt {EnableBuffing} {True}
+				SetOpt {EnableCombat} {True}
+				SetOpt {EnableLooting} {False}
+				SetOpt {AttackDistance} {0.0208333333333333}
+				DoExpr {setvar[pt_npc_end,0]}
+				Chat {/ra nav load 180 KT - Talk NPCs}
+				SetOpt {EnableNav} {True}
+				SetState {T180_TURNIN_WAIT}
+~~ }
+
+STATE: {T180_TURNIN_WAIT} ~~ {
+	IF: Death
+		DO: SetState {T180_DEATH_RECOVERY}
+	IF: ChatMatch {^Hea Tarekeh the Carenzi Hunter tells you, "(?:Your hunt for today is done\. You may take another hunt in [^"]+|Return in [^"]+ for another hunt\.|You have served the Hea well\. Accept this reward for your efforts\.)"}
+		DO: DoExpr {setvar[pt_unavailable_0,1]}
+	IF: ChatMatch {^Hea Raukawe the Siraluun Hunter tells you, "(?:Your hunt for today is done\. You may take another hunt in [^"]+|Return in [^"]+ for another hunt\.|You have served the Hea well\. Accept this reward for your efforts\.)"}
+		DO: DoExpr {setvar[pt_unavailable_1,1]}
+	IF: ChatMatch {^Hea Teruana the Gromnie Hunter tells you, "(?:Your hunt for today is done\. You may take another hunt in [^"]+|Return in [^"]+ for another hunt\.|You have served the Hea well\. Accept this reward for your efforts\.)"}
+		DO: DoExpr {setvar[pt_unavailable_2,1]}
+	IF: ChatMatch {^Hea Talurea the Ursuin Hunter tells you, "(?:Your hunt for today is done\. You may take another hunt in [^"]+|Return in [^"]+ for another hunt\.|You have served the Hea well\. Accept this reward for your efforts\.)"}
+		DO: DoExpr {setvar[pt_unavailable_3,1]}
+	IF: ChatMatch {^Hea Korenuad the Golem Hunter tells you, "(?:Your hunt for today is done\. You may take another hunt in [^"]+|Return in [^"]+ for another hunt\.|You have served the Hea well\. Accept this reward for your efforts\.)"}
+		DO: DoExpr {setvar[pt_unavailable_4,1]}
+	IF: ChatMatch {^Hea Mereana the Olthoi Hunter tells you, "(?:Your hunt for today is done\. You may take another hunt in [^"]+|Return in [^"]+ for another hunt\.|You have served the Hea well\. Accept this reward for your efforts\.)"}
+		DO: DoExpr {setvar[pt_unavailable_5,1]}
+	IF: ChatMatch {^Hea Tuhiraki the Siberite Hunter tells you, "(?:Your hunt for today is done\. You may take another hunt in [^"]+|Return in [^"]+ for another hunt\.|You have served the Hea well\. Accept this reward for your efforts\.)"}
+		DO: DoExpr {setvar[pt_unavailable_6,1]}
+	IF: ChatMatch {^Hea Aroheka the Zefir Hunter tells you, "(?:Your hunt for today is done\. You may take another hunt in [^"]+|Return in [^"]+ for another hunt\.|You have served the Hea well\. Accept this reward for your efforts\.)"}
+		DO: DoExpr {setvar[pt_unavailable_7,1]}
+	IF: ChatMatch {^Hea Wairena the Aun Hunter tells you, "(?:Your hunt for today is done\. You may take another hunt in [^"]+|Return in [^"]+ for another hunt\.|You have served the Hea well\. Accept this reward for your efforts\.)"}
+		DO: DoExpr {setvar[pt_unavailable_8,1]}
+	IF: Expr {getvar[pt_npc_end]==1 && getvar[pt_unavailable_0]==1 && getvar[pt_unavailable_1]==1 && getvar[pt_unavailable_2]==1 && getvar[pt_unavailable_3]==1 && getvar[pt_unavailable_4]==1 && getvar[pt_unavailable_5]==1 && getvar[pt_unavailable_6]==1 && getvar[pt_unavailable_7]==1 && getvar[pt_unavailable_8]==1}
+		DO: DoAll
+				DoExpr {echo[`All active hunt rewards confirmed.`]}
+				SetState {AREA_DONE}
+	IF: Expr {getvar[pt_npc_end]==1}
+		DO: DoAll
+				DoExpr {echo[`Turn-in finished with unconfirmed rewards. Check NPC replies.`]}
+				DoExpr {setvar[ml_status,`Turn-in finished with unconfirmed rewards.`]}
+				DoExpr {setvar[ml_outcome,`Needs attention`]}
+				SetState {STOP_CLEANUP}
+	IF: SecsInStateGE 300
+		DO: SetState {T180_ROUTE_HOLD}
+~~ }
+
+STATE: {T180_DEATH_RECOVERY} ~~ {
+	IF: Expr {getvar[pt_death_recovered]==1}
+		DO: DoAll
+				DoExpr {echo[`180 Lowlands KT: second death this run. Holding at the lifestone.`]}
+				DoExpr {setvar[ml_outcome,`Needs attention`]}
+				DoExpr {setvar[ml_status,`Second death in this area. The run is holding at the lifestone.`]}
+				SetState {STOP_CLEANUP}
+	IF: Always
+		DO: DoAll
+				Chat {/ub clearmotion}
+				SetOpt {EnableNav} {False}
+				SetOpt {EnableCombat} {False}
+				SetOpt {EnableLooting} {False}
+				SetOpt {EnableBuffing} {False}
+				SetOpt {AttackDistance} {0.0208333333333333}
+				DoExpr {setvar[pt_death_recovered,1]}
+				DoExpr {setvar[pt_recover_hunt,getvar[pt_region]>0]}
+				DoExpr {setvar[pt_region,0]}
+				DoExpr {setvar[pt_recallwest,0]}
+				DoExpr {listadd[getvar[pt_skipped],getvar[tm_map_id]]}
+				DoExpr {setvar[tm_map_id,0]}
+				DoExpr {setvar[tm_resume_needed,0]}
+				DoExpr {setvar[tm_resume_pos,0]}
+				DoExpr {setvar[tm_map_gate_until,0]}
+				DoExpr {setvar[tm_cache_deadline,0]}
+				DoExpr {setvar[tm_cache_retry_at,0]}
+				DoExpr {setvar[tm_aun_loot_active,0]}
+				DoExpr {setvar[tm_doubloon_before,0]}
+				DoExpr {setvar[tm_run_length,0]}
+				DoExpr {setvar[tm_run_start,0]}
+				DoExpr {setvar[tm_watch_pos,0]}
+				DoExpr {setpvar[tm_dig_active,0]}
+				DoExpr {echo[`180 Lowlands KT: clearing the current dig and returning via 180 KT - Get to.`]}
+				SetState {T180_DEATH_RETURN_WAIT}
+~~ }
+
+STATE: {T180_DEATH_RETURN_WAIT} ~~ {
+	IF: Death
+		DO: SetState {T180_DEATH_RECOVERY}
+	IF: All
+			SecsInStateGE 5
+			Expr {!isportaling[]}
+			Expr {getcharvital_current[1]>0}
+		DO: SetState {T180_GET_TO}
+	IF: SecsInStateGE 60
+		DO: SetState {T180_ROUTE_HOLD}
+~~ }
+
+STATE: {T180_ROUTE_HOLD} ~~ {
+	IF: Always
+		DO: DoAll
+				DoExpr {setvar[ml_outcome,`Needs attention`]}
+				DoExpr {setvar[ml_status,`Travel or NPC checks timed out.`]}
+				SetState {STOP_CLEANUP}
+~~ }
+
+STATE: {T180_DEATH_HOLD} ~~ {
+	IF: Always
+		DO: DoAll
+				DoExpr {setvar[ml_outcome,`Needs attention`]}
+				DoExpr {setvar[ml_status,`No KT progress for 45 minutes, or recovery limit reached.`]}
+				SetState {STOP_CLEANUP}
+~~ }
+
+STATE: {T180_FARM_LOAD} ~~ {
+	IF: Death
+		DO: SetState {T180_DEATH_RECOVERY}
+	IF: Always
+		DO: DoAll
+				Chat {/ub clearmotion}
+				SetOpt {EnableNav} {False}
+				DoExpr {setvar[pt_travel_end,0]}
+				DoExpr {setvar[pt_region,1]}
+				Chat {/ra nav load 180 - Treasure Circuit}
+				SetState {T180_HUNT_RESUME}
+~~ }
+
+STATE: {T180_FARM_RUN} ~~ {
+	IF: Death
+		DO: SetState {T180_DEATH_RECOVERY}
+	IF: Expr {getvar[pt_travel_end]==1}
+		DO: SetState {T180_FARM_LOAD}
+	IF: Expr {getvar[tm_resume_needed]==1 && coordinatedistanceflat[getplayercoordinates[],getvar[tm_resume_pos]]>=30}
+		DO: DoExpr {setvar[tm_resume_needed,0]}
+	IF: Expr {getvar[ml_use_maps]==1 && getcharvital_current[1]*100>=getcharvital_buffedmax[1]*85 && getvar[tm_resume_needed]==0 && getunixtime[]>=getvar[tm_map_gate_until] && getvar[tm_map_id]!=0 && (listcount[listfilter[wobjectfindallbycontainer[wobjectgetplayer[]],wobjectgetid[$1]==getvar[tm_map_id]]]+listcount[listfilter[wobjectfindallinventorybyobjectclass[10],listcount[listfilter[wobjectfindallbycontainer[$1],wobjectgetid[$1]==getvar[tm_map_id]]]>0]])>0}
+		DO: DoAll
+				SetOpt {AttackDistance} {0.0416666666666667}
+				SetState {MAP_RESUME}
+	IF: Expr {getvar[tm_map_id]!=0 && (listcount[listfilter[wobjectfindallbycontainer[wobjectgetplayer[]],wobjectgetid[$1]==getvar[tm_map_id]]]+listcount[listfilter[wobjectfindallinventorybyobjectclass[10],listcount[listfilter[wobjectfindallbycontainer[$1],wobjectgetid[$1]==getvar[tm_map_id]]]>0]])==0}
+		DO: DoAll
+				SetOpt {AttackDistance} {0.0416666666666667}
+				SetState {MAP_MISSING}
+	IF: Expr {getvar[ml_use_maps]==1 && getcharvital_current[1]*100>=getcharvital_buffedmax[1]*85 && getvar[tm_map_id]==0 && getunixtime[]>=getvar[tm_map_gate_until] && getitemcountininventorybyname[Treasure Map]>0}
+		DO: DoAll
+				SetOpt {AttackDistance} {0.0416666666666667}
+				SetState {MAP_LOCK}
+~~ }
+
+STATE: {T225_Default} ~~ {
+	IF:	Always
+		DO:	DoAll
+				SetOpt {StopMacroOnDeath} {False}
+				SetOpt {AutoCram} {False}
+				SetOpt {AttackDistance} {0.0208333333333333}
+				DoExpr {uboptset[`InventoryManager.AutoCram`,false]}
+				DoExpr {setvar[tm_cache_deadline,0]}
+				DoExpr {setvar[tm_cache_retry_at,0]}
+				DoExpr {setvar[tm_aun_loot_active,0]}
+				DoExpr {setvar[tm_doubloon_before,0]}
+				DoExpr {setvar[tm_map_gate_until,0]}
+				DoExpr {setvar[tm_map_id,0]}
+				DoExpr {setvar[tm_resume_needed,0]}
+				DoExpr {setvar[tm_resume_pos,0]}
+				DoExpr {setvar[tm_run_length,0]}
+				DoExpr {setvar[tm_run_start,0]}
+				DoExpr {setvar[tm_watch_pos,0]}
+				DoExpr {setpvar[tm_dig_active,0]}
+				DoExpr {setvar[pt_skipped,listcreate[]]}
+				DoExpr {setvar[pt_refresh_at,0]}
+				DoExpr {setvar[pt_region,0]}
+				DoExpr {setvar[pt_turnin,0]}
+				DoExpr {setvar[pt_recallwest,0]}
+				DoExpr {setvar[pt_death_recovered,0]}
+				DoExpr {setvar[pt_recover_hunt,0]}
+				DoExpr {setvar[pt_done_0,0]}
+				DoExpr {setvar[pt_unavailable_0,0]}
+				DoExpr {setvar[pt_done_1,0]}
+				DoExpr {setvar[pt_unavailable_1,0]}
+				DoExpr {setvar[pt_done_2,0]}
+				DoExpr {setvar[pt_unavailable_2,0]}
+				DoExpr {setvar[pt_done_3,0]}
+				DoExpr {setvar[pt_unavailable_3,0]}
+				DoExpr {setvar[pt_done_4,0]}
+				DoExpr {setvar[pt_unavailable_4,0]}
+				DoExpr {setvar[pt_done_5,0]}
+				DoExpr {setvar[pt_unavailable_5,0]}
+				DoExpr {setvar[pt_done_6,0]}
+				DoExpr {setvar[pt_unavailable_6,0]}
+				DoExpr {setvar[pt_done_7,0]}
+				DoExpr {setvar[pt_unavailable_7,0]}
+				DoExpr {setvar[pt_done_8,0]}
+				DoExpr {setvar[pt_unavailable_8,0]}
+				DoExpr {setvar[pt_done_9,0]}
+				DoExpr {setvar[pt_unavailable_9,0]}
+				SetState {T225_START_LOCATION}
+~~ }
+
+STATE: {T225_START_LOCATION} ~~ {
+	IF: Death
+		DO: SetState {T225_DEATH_RECOVERY}
+	IF: Expr {getplayerlandcell[]==465698859 && isportaling[]==0}
+		DO: SetState {T225_NPC_TALK}
+	IF: Always
+		DO: SetState {T225_GET_TO}
+~~ }
+
+STATE: {T225_GET_TO} ~~ {
+	IF: Death
+		DO: SetState {T225_DEATH_RECOVERY}
+	IF: Always
+		DO: DoAll
+				Chat {/ub clearmotion}
+				SetOpt {EnableNav} {False}
+				SetOpt {EnableBuffing} {True}
+				SetOpt {EnableCombat} {True}
+				SetOpt {EnableLooting} {False}
+				SetOpt {AttackDistance} {0.0208333333333333}
+				DoExpr {setvar[pt_get_end,0]}
+				Chat {/ra nav load 225 KT - Get to}
+				SetOpt {EnableNav} {True}
+				SetState {T225_GET_TO_WAIT}
+~~ }
+
+STATE: {T225_CAMP_PORTAL_WAIT} ~~ {
+	IF: Death
+		DO: SetState {T225_DEATH_RECOVERY}
+	IF: ExitPortal
+		DO: DoAll
+				SetOpt {EnableNav} {False}
+				SetState {T225_CAMP_SETTLE}
+	IF: SecsInStateGE 60
+		DO: SetState {T225_ROUTE_HOLD}
+~~ }
+
+STATE: {T225_GET_TO_WAIT} ~~ {
+	IF: Death
+		DO: SetState {T225_DEATH_RECOVERY}
+	IF: ChatMatch {(?i)^Using the Northern Hunters' Camp}
+		DO: SetState {T225_CAMP_PORTAL_WAIT}
+	IF: SecsInStateGE 240
+		DO: SetState {T225_ROUTE_HOLD}
+~~ }
+
+STATE: {T225_CAMP_SETTLE} ~~ {
+	IF: Death
+		DO: SetState {T225_DEATH_RECOVERY}
+	IF: All
+			SecsInStateGE 5
+			Expr {getvar[ml_run_mode]==2}
+		DO: SetState {T225_FARM_LOAD}
+	IF: All
+			SecsInStateGE 5
+			Expr {getvar[pt_turnin]==1}
+		DO: SetState {T225_TURNIN_TALK}
+	IF: All
+			SecsInStateGE 5
+			Expr {getvar[pt_recover_hunt]==1}
+		DO: DoAll
+				DoExpr {setvar[pt_recover_hunt,0]}
+				SetState {T225_HUNT_LOAD}
+	IF: SecsInStateGE 5
+		DO: SetState {T225_NPC_TALK}
+~~ }
+
+STATE: {T225_NPC_TALK} ~~ {
+	IF: Death
+		DO: SetState {T225_DEATH_RECOVERY}
+	IF: Expr {getvar[ml_run_mode]==2}
+		DO: SetState {T225_FARM_LOAD}
+	IF: Always
+		DO: DoAll
+				Chat {/ub clearmotion}
+				SetOpt {EnableNav} {False}
+				SetOpt {EnableBuffing} {True}
+				SetOpt {EnableCombat} {True}
+				SetOpt {EnableLooting} {False}
+				SetOpt {AttackDistance} {0.0208333333333333}
+				DoExpr {setvar[pt_pickup_0,0]}
+				DoExpr {setvar[pt_pickup_1,0]}
+				DoExpr {setvar[pt_pickup_2,0]}
+				DoExpr {setvar[pt_pickup_3,0]}
+				DoExpr {setvar[pt_pickup_4,0]}
+				DoExpr {setvar[pt_pickup_5,0]}
+				DoExpr {setvar[pt_pickup_6,0]}
+				DoExpr {setvar[pt_pickup_7,0]}
+				DoExpr {setvar[pt_pickup_8,0]}
+				DoExpr {setvar[pt_pickup_9,0]}
+				DoExpr {setvar[pt_npc_end,0]}
+				Chat {/ra nav load 225 KT - Talk NPCs}
+				SetOpt {EnableNav} {True}
+				SetState {T225_NPC_TALK_WAIT}
+~~ }
+
+STATE: {T225_NPC_TALK_WAIT} ~~ {
+	IF: Death
+		DO: SetState {T225_DEATH_RECOVERY}
+	IF: ChatMatch {^Hea Narekua the Ursuin Hunter tells you, "(?:Slay 50 Drumtaken Woodland Ursuin\. Return when the work is done\.|You have defeated \d+ of 50 Drumtaken Woodland Ursuin\.[^"]*)"}
+		DO: DoExpr {setvar[pt_pickup_0,1]}
+	IF: ChatMatch {^Hea Narekua the Ursuin Hunter tells you, "(?:Your hunt for today is done\. You may take another hunt in [^"]+|Return in [^"]+ for another hunt\.|You have served the Hea well\. Accept this reward for your efforts\.)"}
+		DO: DoAll
+				DoExpr {setvar[pt_pickup_0,1]}
+				DoExpr {setvar[pt_done_0,1]}
+				DoExpr {setvar[pt_unavailable_0,1]}
+	IF: ChatMatch {^Hea Hineroa the Golem Hunter tells you, "(?:Slay 50 Drumtaken Elariwood Golem\. Return when the work is done\.|You have defeated \d+ of 50 Drumtaken Elariwood Golem\.[^"]*)"}
+		DO: DoExpr {setvar[pt_pickup_1,1]}
+	IF: ChatMatch {^Hea Hineroa the Golem Hunter tells you, "(?:Your hunt for today is done\. You may take another hunt in [^"]+|Return in [^"]+ for another hunt\.|You have served the Hea well\. Accept this reward for your efforts\.)"}
+		DO: DoAll
+				DoExpr {setvar[pt_pickup_1,1]}
+				DoExpr {setvar[pt_done_1,1]}
+				DoExpr {setvar[pt_unavailable_1,1]}
+	IF: ChatMatch {^Hea Orewhiti the Zefir Hunter tells you, "(?:Slay 50 Drumtaken Azael Zefir\. Return when the work is done\.|You have defeated \d+ of 50 Drumtaken Azael Zefir\.[^"]*)"}
+		DO: DoExpr {setvar[pt_pickup_2,1]}
+	IF: ChatMatch {^Hea Orewhiti the Zefir Hunter tells you, "(?:Your hunt for today is done\. You may take another hunt in [^"]+|Return in [^"]+ for another hunt\.|You have served the Hea well\. Accept this reward for your efforts\.)"}
+		DO: DoAll
+				DoExpr {setvar[pt_pickup_2,1]}
+				DoExpr {setvar[pt_done_2,1]}
+				DoExpr {setvar[pt_unavailable_2,1]}
+	IF: ChatMatch {^Hea Pukerua the Gromnie Hunter tells you, "(?:Slay 50 Drumtaken Copper Gromnie\. Return when the work is done\.|You have defeated \d+ of 50 Drumtaken Copper Gromnie\.[^"]*)"}
+		DO: DoExpr {setvar[pt_pickup_3,1]}
+	IF: ChatMatch {^Hea Pukerua the Gromnie Hunter tells you, "(?:Your hunt for today is done\. You may take another hunt in [^"]+|Return in [^"]+ for another hunt\.|You have served the Hea well\. Accept this reward for your efforts\.)"}
+		DO: DoAll
+				DoExpr {setvar[pt_pickup_3,1]}
+				DoExpr {setvar[pt_done_3,1]}
+				DoExpr {setvar[pt_unavailable_3,1]}
+	IF: ChatMatch {^Hea Kahureka the Siraluun Hunter tells you, "(?:Slay 50 Drumtaken Kithless Siraluun\. Return when the work is done\.|You have defeated \d+ of 50 Drumtaken Kithless Siraluun\.[^"]*)"}
+		DO: DoExpr {setvar[pt_pickup_4,1]}
+	IF: ChatMatch {^Hea Kahureka the Siraluun Hunter tells you, "(?:Your hunt for today is done\. You may take another hunt in [^"]+|Return in [^"]+ for another hunt\.|You have served the Hea well\. Accept this reward for your efforts\.)"}
+		DO: DoAll
+				DoExpr {setvar[pt_pickup_4,1]}
+				DoExpr {setvar[pt_done_4,1]}
+				DoExpr {setvar[pt_unavailable_4,1]}
+	IF: ChatMatch {^Hea Marenua the Carenzi Hunter tells you, "(?:Slay 50 Drumtaken Rabid Carenzi\. Return when the work is done\.|You have defeated \d+ of 50 Drumtaken Rabid Carenzi\.[^"]*)"}
+		DO: DoExpr {setvar[pt_pickup_5,1]}
+	IF: ChatMatch {^Hea Marenua the Carenzi Hunter tells you, "(?:Your hunt for today is done\. You may take another hunt in [^"]+|Return in [^"]+ for another hunt\.|You have served the Hea well\. Accept this reward for your efforts\.)"}
+		DO: DoAll
+				DoExpr {setvar[pt_pickup_5,1]}
+				DoExpr {setvar[pt_done_5,1]}
+				DoExpr {setvar[pt_unavailable_5,1]}
+	IF: ChatMatch {^Hea Zanuah the Siberite Hunter tells you, "(?:Slay 50 Siberite Shard\. Return when the work is done\.|You have defeated \d+ of 50 Siberite Shard\.[^"]*)"}
+		DO: DoExpr {setvar[pt_pickup_6,1]}
+	IF: ChatMatch {^Hea Zanuah the Siberite Hunter tells you, "(?:Your hunt for today is done\. You may take another hunt in [^"]+|Return in [^"]+ for another hunt\.|You have served the Hea well\. Accept this reward for your efforts\.)"}
+		DO: DoAll
+				DoExpr {setvar[pt_pickup_6,1]}
+				DoExpr {setvar[pt_done_6,1]}
+				DoExpr {setvar[pt_unavailable_6,1]}
+	IF: ChatMatch {^Hea Tamaneru the Aun Hunter tells you, "(?:Slay 50 Aun Shaman\. Return when the work is done\.|You have defeated \d+ of 50 Aun Shaman\.[^"]*)"}
+		DO: DoExpr {setvar[pt_pickup_7,1]}
+	IF: ChatMatch {^Hea Tamaneru the Aun Hunter tells you, "(?:Your hunt for today is done\. You may take another hunt in [^"]+|Return in [^"]+ for another hunt\.|You have served the Hea well\. Accept this reward for your efforts\.)"}
+		DO: DoAll
+				DoExpr {setvar[pt_pickup_7,1]}
+				DoExpr {setvar[pt_done_7,1]}
+				DoExpr {setvar[pt_unavailable_7,1]}
+	IF: ChatMatch {^Hea Ngarekau the Mattekar Hunter tells you, "(?:Slay 50 Drumtaken Canescent Mattekar\. Return when the work is done\.|You have defeated \d+ of 50 Drumtaken Canescent Mattekar\.[^"]*)"}
+		DO: DoExpr {setvar[pt_pickup_8,1]}
+	IF: ChatMatch {^Hea Ngarekau the Mattekar Hunter tells you, "(?:Your hunt for today is done\. You may take another hunt in [^"]+|Return in [^"]+ for another hunt\.|You have served the Hea well\. Accept this reward for your efforts\.)"}
+		DO: DoAll
+				DoExpr {setvar[pt_pickup_8,1]}
+				DoExpr {setvar[pt_done_8,1]}
+				DoExpr {setvar[pt_unavailable_8,1]}
+	IF: ChatMatch {^Hea Hakerea the Olthoi Hunter tells you, "(?:Slay 50 Olthoi Eviscerator Grub\. Return when the work is done\.|You have defeated \d+ of 50 Olthoi Eviscerator Grub\.[^"]*)"}
+		DO: DoExpr {setvar[pt_pickup_9,1]}
+	IF: ChatMatch {^Hea Hakerea the Olthoi Hunter tells you, "(?:Your hunt for today is done\. You may take another hunt in [^"]+|Return in [^"]+ for another hunt\.|You have served the Hea well\. Accept this reward for your efforts\.)"}
+		DO: DoAll
+				DoExpr {setvar[pt_pickup_9,1]}
+				DoExpr {setvar[pt_done_9,1]}
+				DoExpr {setvar[pt_unavailable_9,1]}
+	IF: Expr {getvar[pt_npc_end]==1 && getvar[pt_unavailable_0]==1 && getvar[pt_unavailable_1]==1 && getvar[pt_unavailable_2]==1 && getvar[pt_unavailable_3]==1 && getvar[pt_unavailable_4]==1 && getvar[pt_unavailable_5]==1 && getvar[pt_unavailable_6]==1 && getvar[pt_unavailable_7]==1 && getvar[pt_unavailable_8]==1 && getvar[pt_unavailable_9]==1}
+		DO: DoAll
+				DoExpr {echo[`All hunters are on cooldown or already rewarded.`]}
+				SetState {AREA_COOLDOWN}
+	IF: Expr {getvar[pt_npc_end]==1 && getvar[pt_pickup_0]==1 && getvar[pt_pickup_1]==1 && getvar[pt_pickup_2]==1 && getvar[pt_pickup_3]==1 && getvar[pt_pickup_4]==1 && getvar[pt_pickup_5]==1 && getvar[pt_pickup_6]==1 && getvar[pt_pickup_7]==1 && getvar[pt_pickup_8]==1 && getvar[pt_pickup_9]==1}
+		DO: SetState {T225_HUNT_LOAD}
+	IF: SecsInStateGE 300
+		DO: SetState {T225_ROUTE_HOLD}
+~~ }
+
+STATE: {T225_HUNT_LOAD} ~~ {
+	IF: Death
+		DO: SetState {T225_DEATH_RECOVERY}
+	IF: Always
+		DO: DoAll
+				SetOpt {EnableNav} {False}
+				DoExpr {setvar[pt_region,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+				Chat {/ra nav load 225 - Hunt Loop}
+				SetState {T225_HUNT_RESUME}
+~~ }
+
+STATE: {T225_HUNT_RESUME} ~~ {
+	IF: Death
+		DO: SetState {T225_DEATH_RECOVERY}
+	IF: Always
+		DO: DoAll
+				Chat {/ub clearmotion}
+				SetOpt {EnableCombat} {True}
+				SetOpt {EnableBuffing} {True}
+				SetOpt {EnableLooting} {True}
+				SetOpt {EnableNav} {True}
+				SetOpt {AttackDistance} {0.1291666666666667}
+				SetState {T225_HUNT}
+~~ }
+
+STATE: {T225_HUNT} ~~ {
+	IF: Death
+		DO: SetState {T225_DEATH_RECOVERY}
+	IF: Expr {getvar[ml_run_mode]==2}
+		DO: SetState {T225_FARM_RUN}
+	IF: Expr {getvar[ml_fship_attempted]==0 && !isportaling[] && getfellowshipcount[]>0}
+		DO: DoAll
+				DoExpr {setvar[ml_fship_attempted,1]}
+				DoExpr {setvar[ml_fship_leave_at,getunixtime[]]}
+				Chat {/fship quit}
+	IF: Expr {getvar[ml_fship_attempted]<2 && !isportaling[] && getfellowshipcount[]==0}
+		DO: DoAll
+				DoExpr {setvar[ml_fship_attempted,2]}
+				Chat {/fship joinlandblock}
+	IF: Expr {getvar[ml_fship_attempted]==1 && getunixtime[]-getvar[ml_fship_leave_at]>=8}
+		DO: DoExpr {setvar[ml_fship_attempted,2]}
+	IF: ChatMatch {^You have killed 50 Drumtaken Woodland Ursuin(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setvar[pt_done_0,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: ChatMatch {^You have killed \d+ Drumtaken Woodland Ursuin(?:s|es)?! You must kill 50 to complete your task\.}
+		DO: DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: ChatMatch {^You have killed 50 Drumtaken Elariwood Golem(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setvar[pt_done_1,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: ChatMatch {^You have killed \d+ Drumtaken Elariwood Golem(?:s|es)?! You must kill 50 to complete your task\.}
+		DO: DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: ChatMatch {^You have killed 50 Drumtaken Azael Zefir(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setvar[pt_done_2,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: ChatMatch {^You have killed \d+ Drumtaken Azael Zefir(?:s|es)?! You must kill 50 to complete your task\.}
+		DO: DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: ChatMatch {^You have killed 50 Drumtaken Copper Gromnies! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setvar[pt_done_3,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: ChatMatch {^You have killed \d+ Drumtaken Copper Gromnies! You must kill 50 to complete your task\.}
+		DO: DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: ChatMatch {^You have killed 50 Drumtaken Kithless Siraluun(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setvar[pt_done_4,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: ChatMatch {^You have killed \d+ Drumtaken Kithless Siraluun(?:s|es)?! You must kill 50 to complete your task\.}
+		DO: DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: ChatMatch {^You have killed 50 Drumtaken Rabid Carenzi(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setvar[pt_done_5,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: ChatMatch {^You have killed \d+ Drumtaken Rabid Carenzi(?:s|es)?! You must kill 50 to complete your task\.}
+		DO: DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: ChatMatch {^You have killed 50 Siberite Shard(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setvar[pt_done_6,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: ChatMatch {^You have killed \d+ Siberite Shard(?:s|es)?! You must kill 50 to complete your task\.}
+		DO: DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: ChatMatch {^You have killed 50 Aun Shaman(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setvar[pt_done_7,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: ChatMatch {^You have killed \d+ Aun Shaman(?:s|es)?! You must kill 50 to complete your task\.}
+		DO: DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: ChatMatch {^You have killed 50 Drumtaken Canescent Mattekar(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setvar[pt_done_8,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: ChatMatch {^You have killed \d+ Drumtaken Canescent Mattekar(?:s|es)?! You must kill 50 to complete your task\.}
+		DO: DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: ChatMatch {^You have killed 50 Olthoi Eviscerator Grub(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setvar[pt_done_9,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: ChatMatch {^You have killed \d+ Olthoi Eviscerator Grub(?:s|es)?! You must kill 50 to complete your task\.}
+		DO: DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Expr {getvar[pt_done_0]==1 && getvar[pt_done_1]==1 && getvar[pt_done_2]==1 && getvar[pt_done_3]==1 && getvar[pt_done_4]==1 && getvar[pt_done_5]==1 && getvar[pt_done_6]==1 && getvar[pt_done_7]==1 && getvar[pt_done_8]==1 && getvar[pt_done_9]==1}
+		DO: DoAll
+				DoExpr {setvar[pt_turnin,1]}
+				SetState {T225_GET_TO}
+	IF: Expr {getunixtime[]-getvar[pt_last_progress]>=2700}
+		DO: DoAll
+				DoExpr {echo[`225 High Country KT: no KT progress for 45 minutes. Check the current hunt route.`]}
+				SetState {T225_DEATH_HOLD}
+	IF: Expr {getunixtime[]>=getvar[pt_refresh_at]}
+		DO: DoAll
+				DoExpr {setvar[pt_refresh_at,getunixtime[]+120]}
+				Chat {/ra quests refresh}
+	IF: Expr {getvar[tm_resume_needed]==1 && coordinatedistanceflat[getplayercoordinates[],getvar[tm_resume_pos]]>=30}
+		DO: DoExpr {setvar[tm_resume_needed,0]}
+	IF: Expr {getvar[ml_use_maps]==1 && getcharvital_current[1]*100>=getcharvital_buffedmax[1]*85 && getvar[tm_resume_needed]==0 && getunixtime[]>=getvar[tm_map_gate_until] && getvar[tm_map_id]!=0 && (listcount[listfilter[wobjectfindallbycontainer[wobjectgetplayer[]],wobjectgetid[$1]==getvar[tm_map_id]]]+listcount[listfilter[wobjectfindallinventorybyobjectclass[10],listcount[listfilter[wobjectfindallbycontainer[$1],wobjectgetid[$1]==getvar[tm_map_id]]]>0]])>0}
+		DO: DoAll
+				SetOpt {AttackDistance} {0.0416666666666667}
+				SetState {MAP_RESUME}
+	IF: Expr {getvar[tm_map_id]!=0 && (listcount[listfilter[wobjectfindallbycontainer[wobjectgetplayer[]],wobjectgetid[$1]==getvar[tm_map_id]]]+listcount[listfilter[wobjectfindallinventorybyobjectclass[10],listcount[listfilter[wobjectfindallbycontainer[$1],wobjectgetid[$1]==getvar[tm_map_id]]]>0]])==0}
+		DO: DoAll
+				SetOpt {AttackDistance} {0.0416666666666667}
+				SetState {MAP_MISSING}
+	IF: Expr {getvar[ml_use_maps]==1 && getcharvital_current[1]*100>=getcharvital_buffedmax[1]*85 && getvar[tm_map_id]==0 && getunixtime[]>=getvar[tm_map_gate_until] && getitemcountininventorybyname[Treasure Map]>0}
+		DO: DoAll
+				SetOpt {AttackDistance} {0.0416666666666667}
+				SetState {MAP_LOCK}
+~~ }
+
+STATE: {T225_TURNIN_TALK} ~~ {
+	IF: Death
+		DO: SetState {T225_DEATH_RECOVERY}
+	IF: Always
+		DO: DoAll
+				Chat {/ub clearmotion}
+				SetOpt {EnableNav} {False}
+				SetOpt {EnableBuffing} {True}
+				SetOpt {EnableCombat} {True}
+				SetOpt {EnableLooting} {False}
+				SetOpt {AttackDistance} {0.0208333333333333}
+				DoExpr {setvar[pt_npc_end,0]}
+				Chat {/ra nav load 225 KT - Talk NPCs}
+				SetOpt {EnableNav} {True}
+				SetState {T225_TURNIN_WAIT}
+~~ }
+
+STATE: {T225_TURNIN_WAIT} ~~ {
+	IF: Death
+		DO: SetState {T225_DEATH_RECOVERY}
+	IF: ChatMatch {^Hea Narekua the Ursuin Hunter tells you, "(?:Your hunt for today is done\. You may take another hunt in [^"]+|Return in [^"]+ for another hunt\.|You have served the Hea well\. Accept this reward for your efforts\.)"}
+		DO: DoExpr {setvar[pt_unavailable_0,1]}
+	IF: ChatMatch {^Hea Hineroa the Golem Hunter tells you, "(?:Your hunt for today is done\. You may take another hunt in [^"]+|Return in [^"]+ for another hunt\.|You have served the Hea well\. Accept this reward for your efforts\.)"}
+		DO: DoExpr {setvar[pt_unavailable_1,1]}
+	IF: ChatMatch {^Hea Orewhiti the Zefir Hunter tells you, "(?:Your hunt for today is done\. You may take another hunt in [^"]+|Return in [^"]+ for another hunt\.|You have served the Hea well\. Accept this reward for your efforts\.)"}
+		DO: DoExpr {setvar[pt_unavailable_2,1]}
+	IF: ChatMatch {^Hea Pukerua the Gromnie Hunter tells you, "(?:Your hunt for today is done\. You may take another hunt in [^"]+|Return in [^"]+ for another hunt\.|You have served the Hea well\. Accept this reward for your efforts\.)"}
+		DO: DoExpr {setvar[pt_unavailable_3,1]}
+	IF: ChatMatch {^Hea Kahureka the Siraluun Hunter tells you, "(?:Your hunt for today is done\. You may take another hunt in [^"]+|Return in [^"]+ for another hunt\.|You have served the Hea well\. Accept this reward for your efforts\.)"}
+		DO: DoExpr {setvar[pt_unavailable_4,1]}
+	IF: ChatMatch {^Hea Marenua the Carenzi Hunter tells you, "(?:Your hunt for today is done\. You may take another hunt in [^"]+|Return in [^"]+ for another hunt\.|You have served the Hea well\. Accept this reward for your efforts\.)"}
+		DO: DoExpr {setvar[pt_unavailable_5,1]}
+	IF: ChatMatch {^Hea Zanuah the Siberite Hunter tells you, "(?:Your hunt for today is done\. You may take another hunt in [^"]+|Return in [^"]+ for another hunt\.|You have served the Hea well\. Accept this reward for your efforts\.)"}
+		DO: DoExpr {setvar[pt_unavailable_6,1]}
+	IF: ChatMatch {^Hea Tamaneru the Aun Hunter tells you, "(?:Your hunt for today is done\. You may take another hunt in [^"]+|Return in [^"]+ for another hunt\.|You have served the Hea well\. Accept this reward for your efforts\.)"}
+		DO: DoExpr {setvar[pt_unavailable_7,1]}
+	IF: ChatMatch {^Hea Ngarekau the Mattekar Hunter tells you, "(?:Your hunt for today is done\. You may take another hunt in [^"]+|Return in [^"]+ for another hunt\.|You have served the Hea well\. Accept this reward for your efforts\.)"}
+		DO: DoExpr {setvar[pt_unavailable_8,1]}
+	IF: ChatMatch {^Hea Hakerea the Olthoi Hunter tells you, "(?:Your hunt for today is done\. You may take another hunt in [^"]+|Return in [^"]+ for another hunt\.|You have served the Hea well\. Accept this reward for your efforts\.)"}
+		DO: DoExpr {setvar[pt_unavailable_9,1]}
+	IF: Expr {getvar[pt_npc_end]==1 && getvar[pt_unavailable_0]==1 && getvar[pt_unavailable_1]==1 && getvar[pt_unavailable_2]==1 && getvar[pt_unavailable_3]==1 && getvar[pt_unavailable_4]==1 && getvar[pt_unavailable_5]==1 && getvar[pt_unavailable_6]==1 && getvar[pt_unavailable_7]==1 && getvar[pt_unavailable_8]==1 && getvar[pt_unavailable_9]==1}
+		DO: DoAll
+				DoExpr {echo[`All active hunt rewards confirmed.`]}
+				SetState {AREA_DONE}
+	IF: Expr {getvar[pt_npc_end]==1}
+		DO: DoAll
+				DoExpr {echo[`Turn-in finished with unconfirmed rewards. Check NPC replies.`]}
+				DoExpr {setvar[ml_status,`Turn-in finished with unconfirmed rewards.`]}
+				DoExpr {setvar[ml_outcome,`Needs attention`]}
+				SetState {STOP_CLEANUP}
+	IF: SecsInStateGE 300
+		DO: SetState {T225_ROUTE_HOLD}
+~~ }
+
+STATE: {T225_DEATH_RECOVERY} ~~ {
+	IF: Expr {getvar[pt_death_recovered]==1}
+		DO: DoAll
+				DoExpr {echo[`225 High Country KT: second death this run. Holding at the lifestone.`]}
+				DoExpr {setvar[ml_outcome,`Needs attention`]}
+				DoExpr {setvar[ml_status,`Second death in this area. The run is holding at the lifestone.`]}
+				SetState {STOP_CLEANUP}
+	IF: Always
+		DO: DoAll
+				Chat {/ub clearmotion}
+				SetOpt {EnableNav} {False}
+				SetOpt {EnableCombat} {False}
+				SetOpt {EnableLooting} {False}
+				SetOpt {EnableBuffing} {False}
+				SetOpt {AttackDistance} {0.0208333333333333}
+				DoExpr {setvar[pt_death_recovered,1]}
+				DoExpr {setvar[pt_recover_hunt,getvar[pt_region]>0]}
+				DoExpr {setvar[pt_region,0]}
+				DoExpr {setvar[pt_recallwest,0]}
+				DoExpr {listadd[getvar[pt_skipped],getvar[tm_map_id]]}
+				DoExpr {setvar[tm_map_id,0]}
+				DoExpr {setvar[tm_resume_needed,0]}
+				DoExpr {setvar[tm_resume_pos,0]}
+				DoExpr {setvar[tm_map_gate_until,0]}
+				DoExpr {setvar[tm_cache_deadline,0]}
+				DoExpr {setvar[tm_cache_retry_at,0]}
+				DoExpr {setvar[tm_aun_loot_active,0]}
+				DoExpr {setvar[tm_doubloon_before,0]}
+				DoExpr {setvar[tm_run_length,0]}
+				DoExpr {setvar[tm_run_start,0]}
+				DoExpr {setvar[tm_watch_pos,0]}
+				DoExpr {setpvar[tm_dig_active,0]}
+				DoExpr {echo[`225 High Country KT: clearing the current dig and returning via 225 KT - Get to.`]}
+				SetState {T225_DEATH_RETURN_WAIT}
+~~ }
+
+STATE: {T225_DEATH_RETURN_WAIT} ~~ {
+	IF: Death
+		DO: SetState {T225_DEATH_RECOVERY}
+	IF: All
+			SecsInStateGE 5
+			Expr {!isportaling[]}
+			Expr {getcharvital_current[1]>0}
+		DO: SetState {T225_GET_TO}
+	IF: SecsInStateGE 60
+		DO: SetState {T225_ROUTE_HOLD}
+~~ }
+
+STATE: {T225_ROUTE_HOLD} ~~ {
+	IF: Always
+		DO: DoAll
+				DoExpr {setvar[ml_outcome,`Needs attention`]}
+				DoExpr {setvar[ml_status,`Travel or NPC checks timed out.`]}
+				SetState {STOP_CLEANUP}
+~~ }
+
+STATE: {T225_DEATH_HOLD} ~~ {
+	IF: Always
+		DO: DoAll
+				DoExpr {setvar[ml_outcome,`Needs attention`]}
+				DoExpr {setvar[ml_status,`No KT progress for 45 minutes, or recovery limit reached.`]}
+				SetState {STOP_CLEANUP}
+~~ }
+
+STATE: {T225_FARM_LOAD} ~~ {
+	IF: Death
+		DO: SetState {T225_DEATH_RECOVERY}
+	IF: Always
+		DO: DoAll
+				Chat {/ub clearmotion}
+				SetOpt {EnableNav} {False}
+				DoExpr {setvar[pt_travel_end,0]}
+				DoExpr {setvar[pt_region,1]}
+				Chat {/ra nav load 225 - Treasure Circuit}
+				SetState {T225_HUNT_RESUME}
+~~ }
+
+STATE: {T225_FARM_RUN} ~~ {
+	IF: Death
+		DO: SetState {T225_DEATH_RECOVERY}
+	IF: Expr {getvar[pt_travel_end]==1}
+		DO: SetState {T225_FARM_LOAD}
+	IF: Expr {getvar[tm_resume_needed]==1 && coordinatedistanceflat[getplayercoordinates[],getvar[tm_resume_pos]]>=30}
+		DO: DoExpr {setvar[tm_resume_needed,0]}
+	IF: Expr {getvar[ml_use_maps]==1 && getcharvital_current[1]*100>=getcharvital_buffedmax[1]*85 && getvar[tm_resume_needed]==0 && getunixtime[]>=getvar[tm_map_gate_until] && getvar[tm_map_id]!=0 && (listcount[listfilter[wobjectfindallbycontainer[wobjectgetplayer[]],wobjectgetid[$1]==getvar[tm_map_id]]]+listcount[listfilter[wobjectfindallinventorybyobjectclass[10],listcount[listfilter[wobjectfindallbycontainer[$1],wobjectgetid[$1]==getvar[tm_map_id]]]>0]])>0}
+		DO: DoAll
+				SetOpt {AttackDistance} {0.0416666666666667}
+				SetState {MAP_RESUME}
+	IF: Expr {getvar[tm_map_id]!=0 && (listcount[listfilter[wobjectfindallbycontainer[wobjectgetplayer[]],wobjectgetid[$1]==getvar[tm_map_id]]]+listcount[listfilter[wobjectfindallinventorybyobjectclass[10],listcount[listfilter[wobjectfindallbycontainer[$1],wobjectgetid[$1]==getvar[tm_map_id]]]>0]])==0}
+		DO: DoAll
+				SetOpt {AttackDistance} {0.0416666666666667}
+				SetState {MAP_MISSING}
+	IF: Expr {getvar[ml_use_maps]==1 && getcharvital_current[1]*100>=getcharvital_buffedmax[1]*85 && getvar[tm_map_id]==0 && getunixtime[]>=getvar[tm_map_gate_until] && getitemcountininventorybyname[Treasure Map]>0}
+		DO: DoAll
+				SetOpt {AttackDistance} {0.0416666666666667}
+				SetState {MAP_LOCK}
+~~ }
+
+STATE: {T275_Default} ~~ {
+	IF:	Always
+		DO:	DoAll
+				SetOpt {StopMacroOnDeath} {False}
+				SetOpt {AutoCram} {False}
+				SetOpt {AttackDistance} {0.0208333333333333}
+				DoExpr {uboptset[`InventoryManager.AutoCram`,false]}
+				DoExpr {setvar[tm_cache_deadline,0]}
+				DoExpr {setvar[tm_cache_retry_at,0]}
+				DoExpr {setvar[tm_aun_loot_active,0]}
+				DoExpr {setvar[tm_doubloon_before,0]}
+				DoExpr {setvar[tm_map_gate_until,0]}
+				DoExpr {setvar[tm_map_id,0]}
+				DoExpr {setvar[tm_resume_needed,0]}
+				DoExpr {setvar[tm_resume_pos,0]}
+				DoExpr {setvar[tm_run_length,0]}
+				DoExpr {setvar[tm_run_start,0]}
+				DoExpr {setvar[tm_watch_pos,0]}
+				DoExpr {setpvar[tm_dig_active,0]}
+				DoExpr {setvar[pt_skipped,listcreate[]]}
+				DoExpr {setvar[pt_refresh_at,0]}
+				DoExpr {setvar[pt_done_zefir,0]}
+				DoExpr {setvar[pt_done_ursuin,0]}
+				DoExpr {setvar[pt_done_golem,0]}
+				DoExpr {setvar[pt_done_gromnie,0]}
+				DoExpr {setvar[pt_done_siraluun,0]}
+				DoExpr {setvar[pt_done_carenzi,0]}
+				DoExpr {setvar[pt_done_virindi,0]}
+				DoExpr {setvar[pt_done_olthoi,0]}
+				DoExpr {setvar[pt_unavailable_zefir,0]}
+				DoExpr {setvar[pt_unavailable_ursuin,0]}
+				DoExpr {setvar[pt_unavailable_golem,0]}
+				DoExpr {setvar[pt_unavailable_gromnie,0]}
+				DoExpr {setvar[pt_unavailable_siraluun,0]}
+				DoExpr {setvar[pt_unavailable_carenzi,0]}
+				DoExpr {setvar[pt_unavailable_virindi,0]}
+				DoExpr {setvar[pt_unavailable_olthoi,0]}
+				DoExpr {setvar[pt_region,0]}
+				DoExpr {setvar[pt_turnin,0]}
+				DoExpr {setvar[pt_recallwest,0]}
+				DoExpr {setvar[pt_death_recovered,0]}
+				DoExpr {setvar[pt_recover_hunt,0]}
+				SetState {T275_START_LOCATION}
+~~ }
+
+STATE: {T275_START_LOCATION} ~~ {
+	IF: Death
+		DO: SetState {T275_DEATH_RECOVERY}
+	IF: All
+			Expr {getplayerlandcell[]==565641256}
+			Expr {!isportaling[]}
+		DO: SetState {T275_NPC_TALK}
+	IF: Always
+		DO: SetState {T275_GET_TO}
+~~ }
+
+STATE: {T275_GET_TO} ~~ {
+	IF: Death
+		DO: SetState {T275_DEATH_RECOVERY}
+	IF: Always
+		DO: DoAll
+				Chat {/ub clearmotion}
+				SetOpt {EnableNav} {False}
+				SetOpt {EnableCombat} {True}
+				SetOpt {EnableBuffing} {True}
+				SetOpt {EnableLooting} {False}
+				SetOpt {AttackDistance} {0.0208333333333333}
+				Chat {/ra nav load 275 - Get to}
+				SetOpt {EnableNav} {True}
+				SetState {T275_GET_TO_WAIT}
+~~ }
+
+STATE: {T275_GET_TO_WAIT} ~~ {
+	IF: Death
+		DO: SetState {T275_DEATH_RECOVERY}
+	IF: ChatMatch {(?i)^Using the Plateau Hunters' Camp}
+		DO: SetState {T275_CAMP_PORTAL_WAIT}
+	IF: SecsInStateGE 160
+		DO: SetState {T275_ROUTE_HOLD}
+~~ }
+
+STATE: {T275_CAMP_PORTAL_WAIT} ~~ {
+	IF: Death
+		DO: SetState {T275_DEATH_RECOVERY}
+	IF: ExitPortal
+		DO: SetState {T275_CAMP_SETTLE}
+	IF: SecsInStateGE 60
+		DO: SetState {T275_ROUTE_HOLD}
+~~ }
+
+STATE: {T275_CAMP_SETTLE} ~~ {
+	IF: Death
+		DO: SetState {T275_DEATH_RECOVERY}
+	IF: All
+			SecsInStateGE 5
+			Expr {getvar[ml_run_mode]==2}
+		DO: SetState {T275_FARM_LOAD}
+	IF: All
+			SecsInStateGE 5
+			Expr {getvar[pt_turnin]==1}
+		DO: SetState {T275_TURNIN_TALK}
+	IF: All
+			SecsInStateGE 5
+			Expr {getvar[pt_recallwest]==1}
+		DO: SetState {T275_LANDING_WEST}
+	IF: All
+			SecsInStateGE 5
+			Expr {getvar[pt_recover_hunt]==1}
+		DO: DoAll
+				DoExpr {setvar[pt_recover_hunt,0]}
+				SetState {T275_HUNT_INIT}
+	IF: SecsInStateGE 5
+		DO: SetState {T275_NPC_TALK}
+~~ }
+
+STATE: {T275_NPC_TALK} ~~ {
+	IF: Death
+		DO: SetState {T275_DEATH_RECOVERY}
+	IF: Expr {getvar[ml_run_mode]==2}
+		DO: SetState {T275_FARM_LOAD}
+	IF: Always
+		DO: DoAll
+				SetOpt {EnableNav} {False}
+				DoExpr {setvar[pt_pickup_zefir,0]}
+				DoExpr {setvar[pt_pickup_ursuin,0]}
+				DoExpr {setvar[pt_pickup_golem,0]}
+				DoExpr {setvar[pt_pickup_gromnie,0]}
+				DoExpr {setvar[pt_pickup_siraluun,0]}
+				DoExpr {setvar[pt_pickup_carenzi,0]}
+				DoExpr {setvar[pt_pickup_virindi,0]}
+				DoExpr {setvar[pt_pickup_olthoi,0]}
+				DoExpr {setvar[pt_npc_end,0]}
+				SetOpt {AttackDistance} {0.0208333333333333}
+				Chat {/ra nav load 275 - Talk NPCs}
+				SetOpt {EnableNav} {True}
+				SetState {T275_NPC_TALK_WAIT}
+~~ }
+
+STATE: {T275_NPC_TALK_WAIT} ~~ {
+	IF: Death
+		DO: SetState {T275_DEATH_RECOVERY}
+	IF: ChatMatch {^Hea Rukenua the Zefir Hunter tells you, "(?:Slay 50 Drumtaken Enku Zefir\. Return when the work is done\.|You have defeated \d+ of 50 Drumtaken Enku Zefir\.[^"]*)"}
+		DO: DoAll
+				DoExpr {setvar[pt_pickup_zefir,1]}
+	IF: ChatMatch {^Hea Tamarau the Ursuin Hunter tells you, "(?:Slay 50 Drumtaken Ursuin Slicer\. Return when the work is done\.|You have defeated \d+ of 50 Drumtaken Ursuin Slicer\.[^"]*)"}
+		DO: DoAll
+				DoExpr {setvar[pt_pickup_ursuin,1]}
+	IF: ChatMatch {^Hea Koruani the Golem Hunter tells you, "(?:Slay 50 Drumtaken Verdigris Golem\. Return when the work is done\.|You have defeated \d+ of 50 Drumtaken Verdigris Golem\.[^"]*)"}
+		DO: DoAll
+				DoExpr {setvar[pt_pickup_golem,1]}
+	IF: ChatMatch {^Hea Weneria the Gromnie Hunter tells you, "(?:Slay 50 Drumtaken Brass Gromnie\. Return when the work is done\.|You have defeated \d+ of 50 Drumtaken Brass Gromnie\.[^"]*)"}
+		DO: DoAll
+				DoExpr {setvar[pt_pickup_gromnie,1]}
+	IF: ChatMatch {^Hea Taraneki the Siraluun Hunter tells you, "(?:Slay 50 Drumtaken Untamed Siraluun\. Return when the work is done\.|You have defeated \d+ of 50 Drumtaken Untamed Siraluun\.[^"]*)"}
+		DO: DoAll
+				DoExpr {setvar[pt_pickup_siraluun,1]}
+	IF: ChatMatch {^Hea Kurelan the Carenzi Hunter tells you, "(?:Slay 50 Drumtaken Savage Carenzi\. Return when the work is done\.|You have defeated \d+ of 50 Drumtaken Savage Carenzi\.[^"]*)"}
+		DO: DoAll
+				DoExpr {setvar[pt_pickup_carenzi,1]}
+	IF: ChatMatch {^Hea Ruatane the Virindi Hunter tells you, "(?:Slay 50 Virindi Observer\. Return when the work is done\.|You have defeated \d+ of 50 Virindi Observer\.[^"]*)"}
+		DO: DoAll
+				DoExpr {setvar[pt_pickup_virindi,1]}
+	IF: ChatMatch {^Hea Varenkeh the Olthoi Hunter tells you, "(?:Slay 20 Olthoi Hive Mutilator\. Return when the work is done\.|You have defeated \d+ of 20 Olthoi Hive Mutilator\.[^"]*)"}
+		DO: DoAll
+				DoExpr {setvar[pt_pickup_olthoi,1]}
+	IF: ChatMatch {^Hea Rukenua the Zefir Hunter tells you, "(?:Your hunt for today is done\. You may take another hunt in [^"]+|Return in [^"]+ for another hunt\.|You have served the Hea well\. Accept this reward for your efforts\.)"}
+		DO: DoAll
+				DoExpr {setvar[pt_pickup_zefir,1]}
+				DoExpr {setvar[pt_done_zefir,1]}
+				DoExpr {setvar[pt_unavailable_zefir,1]}
+	IF: ChatMatch {^Hea Tamarau the Ursuin Hunter tells you, "(?:Your hunt for today is done\. You may take another hunt in [^"]+|Return in [^"]+ for another hunt\.|You have served the Hea well\. Accept this reward for your efforts\.)"}
+		DO: DoAll
+				DoExpr {setvar[pt_pickup_ursuin,1]}
+				DoExpr {setvar[pt_done_ursuin,1]}
+				DoExpr {setvar[pt_unavailable_ursuin,1]}
+	IF: ChatMatch {^Hea Koruani the Golem Hunter tells you, "(?:Your hunt for today is done\. You may take another hunt in [^"]+|Return in [^"]+ for another hunt\.|You have served the Hea well\. Accept this reward for your efforts\.)"}
+		DO: DoAll
+				DoExpr {setvar[pt_pickup_golem,1]}
+				DoExpr {setvar[pt_done_golem,1]}
+				DoExpr {setvar[pt_unavailable_golem,1]}
+	IF: ChatMatch {^Hea Weneria the Gromnie Hunter tells you, "(?:Your hunt for today is done\. You may take another hunt in [^"]+|Return in [^"]+ for another hunt\.|You have served the Hea well\. Accept this reward for your efforts\.)"}
+		DO: DoAll
+				DoExpr {setvar[pt_pickup_gromnie,1]}
+				DoExpr {setvar[pt_done_gromnie,1]}
+				DoExpr {setvar[pt_unavailable_gromnie,1]}
+	IF: ChatMatch {^Hea Taraneki the Siraluun Hunter tells you, "(?:Your hunt for today is done\. You may take another hunt in [^"]+|Return in [^"]+ for another hunt\.|You have served the Hea well\. Accept this reward for your efforts\.)"}
+		DO: DoAll
+				DoExpr {setvar[pt_pickup_siraluun,1]}
+				DoExpr {setvar[pt_done_siraluun,1]}
+				DoExpr {setvar[pt_unavailable_siraluun,1]}
+	IF: ChatMatch {^Hea Kurelan the Carenzi Hunter tells you, "(?:Your hunt for today is done\. You may take another hunt in [^"]+|Return in [^"]+ for another hunt\.|You have served the Hea well\. Accept this reward for your efforts\.)"}
+		DO: DoAll
+				DoExpr {setvar[pt_pickup_carenzi,1]}
+				DoExpr {setvar[pt_done_carenzi,1]}
+				DoExpr {setvar[pt_unavailable_carenzi,1]}
+	IF: ChatMatch {^Hea Ruatane the Virindi Hunter tells you, "(?:Your hunt for today is done\. You may take another hunt in [^"]+|Return in [^"]+ for another hunt\.|You have served the Hea well\. Accept this reward for your efforts\.)"}
+		DO: DoAll
+				DoExpr {setvar[pt_pickup_virindi,1]}
+				DoExpr {setvar[pt_done_virindi,1]}
+				DoExpr {setvar[pt_unavailable_virindi,1]}
+	IF: ChatMatch {^Hea Varenkeh the Olthoi Hunter tells you, "(?:Your hunt for today is done\. You may take another hunt in [^"]+|Return in [^"]+ for another hunt\.|You have served the Hea well\. Accept this reward for your efforts\.)"}
+		DO: DoAll
+				DoExpr {setvar[pt_pickup_olthoi,1]}
+				DoExpr {setvar[pt_done_olthoi,1]}
+				DoExpr {setvar[pt_unavailable_olthoi,1]}
+	IF: Expr {getvar[pt_npc_end]==1 && getvar[pt_unavailable_zefir]==1 && getvar[pt_unavailable_ursuin]==1 && getvar[pt_unavailable_golem]==1 && getvar[pt_unavailable_gromnie]==1 && getvar[pt_unavailable_siraluun]==1 && getvar[pt_unavailable_carenzi]==1 && getvar[pt_unavailable_virindi]==1 && getvar[pt_unavailable_olthoi]==1}
+		DO: DoAll
+				DoExpr {echo[Plateau Treasure: all eight hunts are on cooldown or already rewarded.]}
+				SetState {AREA_COOLDOWN}
+	IF: Expr {getvar[pt_pickup_zefir]==1 && getvar[pt_pickup_ursuin]==1 && getvar[pt_pickup_golem]==1 && getvar[pt_pickup_gromnie]==1 && getvar[pt_pickup_siraluun]==1 && getvar[pt_pickup_carenzi]==1 && getvar[pt_pickup_virindi]==1 && getvar[pt_pickup_olthoi]==1 && getvar[pt_npc_end]==1}
+		DO: SetState {T275_HUNT_INIT}
+	IF: SecsInStateGE 300
+		DO: SetState {T275_ROUTE_HOLD}
+~~ }
+
+STATE: {T275_HUNT_INIT} ~~ {
+	IF: Death
+		DO: SetState {T275_DEATH_RECOVERY}
+	IF: Expr {getvar[pt_done_golem]==1 && getvar[pt_done_siraluun]==1 && getvar[pt_done_virindi]==1 && getvar[pt_done_olthoi]==1 && getvar[pt_done_gromnie]==1 && getvar[pt_done_zefir]==1 && getvar[pt_done_ursuin]==1 && getvar[pt_done_carenzi]==1}
+		DO: SetState {T275_TURNIN_START}
+	IF: Expr {getvar[pt_region]==0 && (getvar[pt_done_golem]==0 || getvar[pt_done_siraluun]==0 || getvar[pt_done_virindi]==0)}
+		DO: SetState {T275_CAMP_EAST}
+	IF: Expr {getvar[pt_region]==0 && getvar[pt_done_olthoi]==0}
+		DO: SetState {T275_CAMP_NORTHEAST}
+	IF: Expr {getvar[pt_region]==0}
+		DO: SetState {T275_CAMP_WEST}
+	IF: Expr {getvar[pt_region]==1 && getvar[pt_done_olthoi]==0}
+		DO: SetState {T275_EAST_NORTHEAST}
+	IF: Expr {getvar[pt_region]==1}
+		DO: SetState {T275_RECALL_WEST}
+	IF: Expr {getvar[pt_region]==2}
+		DO: SetState {T275_RECALL_WEST}
+	IF: Always
+		DO: SetState {T275_ROUTE_HOLD}
+~~ }
+
+STATE: {T275_CAMP_EAST} ~~ {
+	IF: Death
+		DO: SetState {T275_DEATH_RECOVERY}
+	IF: Always
+		DO: DoAll
+				Chat {/ub clearmotion}
+				SetOpt {EnableNav} {False}
+				SetOpt {AttackDistance} {0.0208333333333333}
+				SetOpt {EnableCombat} {True}
+				SetOpt {EnableLooting} {False}
+				DoExpr {setvar[pt_travel_end,0]}
+				DoExpr {setvar[pt_region,1]}
+				Chat {/ra nav load 275 - Travel Camp East}
+				SetOpt {EnableNav} {True}
+				SetState {T275_TRAVEL_WAIT}
+~~ }
+
+STATE: {T275_CAMP_NORTHEAST} ~~ {
+	IF: Death
+		DO: SetState {T275_DEATH_RECOVERY}
+	IF: Always
+		DO: DoAll
+				Chat {/ub clearmotion}
+				SetOpt {EnableNav} {False}
+				SetOpt {AttackDistance} {0.0208333333333333}
+				SetOpt {EnableCombat} {True}
+				SetOpt {EnableLooting} {False}
+				DoExpr {setvar[pt_travel_end,0]}
+				DoExpr {setvar[pt_region,2]}
+				Chat {/ra nav load 275 - Travel Camp Northeast}
+				SetOpt {EnableNav} {True}
+				SetState {T275_TRAVEL_WAIT}
+~~ }
+
+STATE: {T275_CAMP_WEST} ~~ {
+	IF: Death
+		DO: SetState {T275_DEATH_RECOVERY}
+	IF: Always
+		DO: DoAll
+				Chat {/ub clearmotion}
+				SetOpt {EnableNav} {False}
+				SetOpt {AttackDistance} {0.0208333333333333}
+				SetOpt {EnableCombat} {True}
+				SetOpt {EnableLooting} {False}
+				DoExpr {setvar[pt_travel_end,0]}
+				DoExpr {setvar[pt_region,3]}
+				Chat {/ra nav load 275 - Travel Camp West}
+				SetOpt {EnableNav} {True}
+				SetState {T275_TRAVEL_WAIT}
+~~ }
+
+STATE: {T275_EAST_NORTHEAST} ~~ {
+	IF: Death
+		DO: SetState {T275_DEATH_RECOVERY}
+	IF: Always
+		DO: DoAll
+				Chat {/ub clearmotion}
+				SetOpt {EnableNav} {False}
+				SetOpt {AttackDistance} {0.0208333333333333}
+				SetOpt {EnableCombat} {True}
+				SetOpt {EnableLooting} {False}
+				DoExpr {setvar[pt_travel_end,0]}
+				DoExpr {setvar[pt_region,2]}
+				Chat {/ra nav load 275 - Travel East Northeast}
+				SetOpt {EnableNav} {True}
+				SetState {T275_TRAVEL_WAIT}
+~~ }
+
+STATE: {T275_RECALL_WEST} ~~ {
+	IF: Death
+		DO: SetState {T275_DEATH_RECOVERY}
+	IF: Always
+		DO: DoAll
+				DoExpr {setvar[pt_recallwest,1]}
+				SetState {T275_GET_TO}
+~~ }
+
+STATE: {T275_LANDING_WEST} ~~ {
+	IF: Death
+		DO: SetState {T275_DEATH_RECOVERY}
+	IF: Always
+		DO: DoAll
+				Chat {/ub clearmotion}
+				SetOpt {EnableNav} {False}
+				SetOpt {AttackDistance} {0.0208333333333333}
+				SetOpt {EnableCombat} {True}
+				SetOpt {EnableLooting} {False}
+				DoExpr {setvar[pt_recallwest,0]}
+				DoExpr {setvar[pt_travel_end,0]}
+				DoExpr {setvar[pt_region,3]}
+				Chat {/ra nav load 275 - Travel Landing West}
+				SetOpt {EnableNav} {True}
+				SetState {T275_TRAVEL_WAIT}
+~~ }
+
+STATE: {T275_TRAVEL_WAIT} ~~ {
+	IF: Death
+		DO: SetState {T275_DEATH_RECOVERY}
+	IF: Expr {getvar[pt_travel_end]==1 && getvar[pt_region]==1}
+		DO: DoAll
+				Chat {/ra nav load 275 - Hunt East}
+				SetState {T275_REGION_START}
+	IF: Expr {getvar[pt_travel_end]==1 && getvar[pt_region]==2}
+		DO: DoAll
+				Chat {/ra nav load 275 - Hunt Northeast}
+				SetState {T275_REGION_START}
+	IF: Expr {getvar[pt_travel_end]==1 && getvar[pt_region]==3}
+		DO: DoAll
+				Chat {/ra nav load 275 - Hunt West}
+				SetState {T275_REGION_START}
+	IF: SecsInStateGE 900
+		DO: SetState {T275_ROUTE_HOLD}
+~~ }
+
+STATE: {T275_REGION_START} ~~ {
+	IF: Death
+		DO: SetState {T275_DEATH_RECOVERY}
+	IF: Always
+		DO: DoAll
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+				SetState {T275_HUNT_RESUME}
+~~ }
+
+STATE: {T275_TURNIN_START} ~~ {
+	IF: Death
+		DO: SetState {T275_DEATH_RECOVERY}
+	IF: Always
+		DO: DoAll
+				DoExpr {setvar[pt_turnin,1]}
+				SetState {T275_GET_TO}
+~~ }
+
+STATE: {T275_TURNIN_TALK} ~~ {
+	IF: Death
+		DO: SetState {T275_DEATH_RECOVERY}
+	IF: Always
+		DO: DoAll
+				SetOpt {EnableNav} {False}
+				DoExpr {setvar[pt_npc_end,0]}
+				SetOpt {AttackDistance} {0.0208333333333333}
+				Chat {/ra nav load 275 - Talk NPCs}
+				SetOpt {EnableNav} {True}
+				SetState {T275_TURNIN_WAIT}
+~~ }
+
+STATE: {T275_TURNIN_WAIT} ~~ {
+	IF: Death
+		DO: SetState {T275_DEATH_RECOVERY}
+	IF: ChatMatch {^Hea Rukenua the Zefir Hunter tells you, "You have served the Hea well\. Accept this reward for your efforts\."}
+		DO: DoExpr {setvar[pt_unavailable_zefir,1]}
+	IF: ChatMatch {^Hea Tamarau the Ursuin Hunter tells you, "You have served the Hea well\. Accept this reward for your efforts\."}
+		DO: DoExpr {setvar[pt_unavailable_ursuin,1]}
+	IF: ChatMatch {^Hea Koruani the Golem Hunter tells you, "You have served the Hea well\. Accept this reward for your efforts\."}
+		DO: DoExpr {setvar[pt_unavailable_golem,1]}
+	IF: ChatMatch {^Hea Weneria the Gromnie Hunter tells you, "You have served the Hea well\. Accept this reward for your efforts\."}
+		DO: DoExpr {setvar[pt_unavailable_gromnie,1]}
+	IF: ChatMatch {^Hea Taraneki the Siraluun Hunter tells you, "You have served the Hea well\. Accept this reward for your efforts\."}
+		DO: DoExpr {setvar[pt_unavailable_siraluun,1]}
+	IF: ChatMatch {^Hea Kurelan the Carenzi Hunter tells you, "You have served the Hea well\. Accept this reward for your efforts\."}
+		DO: DoExpr {setvar[pt_unavailable_carenzi,1]}
+	IF: ChatMatch {^Hea Ruatane the Virindi Hunter tells you, "You have served the Hea well\. Accept this reward for your efforts\."}
+		DO: DoExpr {setvar[pt_unavailable_virindi,1]}
+	IF: ChatMatch {^Hea Varenkeh the Olthoi Hunter tells you, "You have served the Hea well\. Accept this reward for your efforts\."}
+		DO: DoExpr {setvar[pt_unavailable_olthoi,1]}
+	IF: Expr {getvar[pt_npc_end]==1 && getvar[pt_unavailable_zefir]==1 && getvar[pt_unavailable_ursuin]==1 && getvar[pt_unavailable_golem]==1 && getvar[pt_unavailable_gromnie]==1 && getvar[pt_unavailable_siraluun]==1 && getvar[pt_unavailable_carenzi]==1 && getvar[pt_unavailable_virindi]==1 && getvar[pt_unavailable_olthoi]==1}
+		DO: DoAll
+				DoExpr {echo[Plateau Treasure: all active hunt rewards confirmed.]}
+				SetState {AREA_DONE}
+	IF: Expr {getvar[pt_npc_end]==1}
+		DO: DoAll
+				DoExpr {echo[`Plateau Treasure: turn-in route finished. Check the NPC reward replies.`]}
+				DoExpr {setvar[ml_status,`Turn-in finished with unconfirmed rewards.`]}
+				DoExpr {setvar[ml_outcome,`Needs attention`]}
+				SetState {STOP_CLEANUP}
+	IF: SecsInStateGE 300
+		DO: SetState {T275_ROUTE_HOLD}
+~~ }
+
+STATE: {T275_HUNT_RESUME} ~~ {
+	IF: Death
+		DO: SetState {T275_DEATH_RECOVERY}
+	IF: Always
+		DO: DoAll
+				Chat {/ub clearmotion}
+				SetOpt {EnableCombat} {True}
+				SetOpt {EnableBuffing} {True}
+				SetOpt {EnableLooting} {True}
+				SetOpt {EnableNav} {True}
+				SetOpt {AttackDistance} {0.1291666666666667}
+				SetState {T275_HUNT}
+~~ }
+
+STATE: {T275_HUNT} ~~ {
+	IF: Death
+		DO: SetState {T275_DEATH_RECOVERY}
+	IF: Expr {getvar[ml_run_mode]==2}
+		DO: SetState {T275_FARM_RUN}
+	IF: Expr {getvar[ml_fship_attempted]==0 && !isportaling[] && getfellowshipcount[]>0}
+		DO: DoAll
+				DoExpr {setvar[ml_fship_attempted,1]}
+				DoExpr {setvar[ml_fship_leave_at,getunixtime[]]}
+				Chat {/fship quit}
+	IF: Expr {getvar[ml_fship_attempted]<2 && !isportaling[] && getfellowshipcount[]==0}
+		DO: DoAll
+				DoExpr {setvar[ml_fship_attempted,2]}
+				Chat {/fship joinlandblock}
+	IF: Expr {getvar[ml_fship_attempted]==1 && getunixtime[]-getvar[ml_fship_leave_at]>=8}
+		DO: DoExpr {setvar[ml_fship_attempted,2]}
+	IF: All
+			Expr {getvar[pt_done_zefir]==0}
+			ChatMatch {(?:^You have killed 50 Drumtaken\ Enku\ Zefirs! Your task is complete!|^huntcount_plateauzefirenkuzefir - 50 solves \()}
+		DO: DoAll
+				DoExpr {setvar[pt_done_zefir,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[pt_done_ursuin]==0}
+			ChatMatch {(?:^You have killed 50 Drumtaken\ Ursuin\ Slicers! Your task is complete!|^huntcount_plateauursuinursuinslicer - 50 solves \()}
+		DO: DoAll
+				DoExpr {setvar[pt_done_ursuin,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[pt_done_golem]==0}
+			ChatMatch {(?:^You have killed 50 Drumtaken\ Verdigris\ Golems! Your task is complete!|^huntcount_plateaugolemverdigrisgolem - 50 solves \()}
+		DO: DoAll
+				DoExpr {setvar[pt_done_golem,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[pt_done_gromnie]==0}
+			ChatMatch {(?:^You have killed 50 Drumtaken\ Brass\ Gromnies! Your task is complete!|^huntcount_plateaugromniebrassgromnie - 50 solves \()}
+		DO: DoAll
+				DoExpr {setvar[pt_done_gromnie,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[pt_done_siraluun]==0}
+			ChatMatch {(?:^You have killed 50 Drumtaken\ Untamed\ Siraluuns! Your task is complete!|^huntcount_plateausiraluununtamedsiraluun - 50 solves \()}
+		DO: DoAll
+				DoExpr {setvar[pt_done_siraluun,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[pt_done_carenzi]==0}
+			ChatMatch {(?:^You have killed 50 Drumtaken\ Savage\ Carenzis! Your task is complete!|^huntcount_plateaucarenzisavagecarenzi - 50 solves \()}
+		DO: DoAll
+				DoExpr {setvar[pt_done_carenzi,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[pt_done_virindi]==0}
+			ChatMatch {(?:^You have killed 50 Virindi\ Observers! Your task is complete!|^huntcount_plateauvirindivirindiobserver - 50 solves \()}
+		DO: DoAll
+				DoExpr {setvar[pt_done_virindi,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[pt_done_olthoi]==0}
+			ChatMatch {(?:^You have killed 20 Olthoi\ Hive\ Mutilators! Your task is complete!|^huntcount_plateauolthoiolthoihivemutilator - 20 solves \()}
+		DO: DoAll
+				DoExpr {setvar[pt_done_olthoi,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: ChatMatch {^You have killed \d+ Drumtaken\ Enku\ Zefirs! You must kill 50 to complete your task\.}
+		DO: DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: ChatMatch {^You have killed \d+ Drumtaken\ Ursuin\ Slicers! You must kill 50 to complete your task\.}
+		DO: DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: ChatMatch {^You have killed \d+ Drumtaken\ Verdigris\ Golems! You must kill 50 to complete your task\.}
+		DO: DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: ChatMatch {^You have killed \d+ Drumtaken\ Brass\ Gromnies! You must kill 50 to complete your task\.}
+		DO: DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: ChatMatch {^You have killed \d+ Drumtaken\ Untamed\ Siraluuns! You must kill 50 to complete your task\.}
+		DO: DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: ChatMatch {^You have killed \d+ Drumtaken\ Savage\ Carenzis! You must kill 50 to complete your task\.}
+		DO: DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: ChatMatch {^You have killed \d+ Virindi\ Observers! You must kill 50 to complete your task\.}
+		DO: DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: ChatMatch {^You have killed \d+ Olthoi\ Hive\ Mutilators! You must kill 20 to complete your task\.}
+		DO: DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Expr {getvar[pt_done_golem]==1 && getvar[pt_done_siraluun]==1 && getvar[pt_done_virindi]==1 && getvar[pt_done_olthoi]==1 && getvar[pt_done_gromnie]==1 && getvar[pt_done_zefir]==1 && getvar[pt_done_ursuin]==1 && getvar[pt_done_carenzi]==1}
+		DO: DoAll
+				SetOpt {AttackDistance} {0.0416666666666667}
+				SetState {T275_HUNT_INIT}
+	IF: Expr {getvar[pt_region]==1 && getvar[pt_done_golem]==1 && getvar[pt_done_siraluun]==1 && getvar[pt_done_virindi]==1}
+		DO: DoAll
+				SetOpt {AttackDistance} {0.0416666666666667}
+				SetState {T275_HUNT_INIT}
+	IF: Expr {getvar[pt_region]==2 && getvar[pt_done_olthoi]==1}
+		DO: DoAll
+				SetOpt {AttackDistance} {0.0416666666666667}
+				SetState {T275_HUNT_INIT}
+	IF: Expr {getvar[pt_region]==3 && getvar[pt_done_gromnie]==1 && getvar[pt_done_zefir]==1 && getvar[pt_done_ursuin]==1 && getvar[pt_done_carenzi]==1}
+		DO: DoAll
+				SetOpt {AttackDistance} {0.0416666666666667}
+				SetState {T275_HUNT_INIT}
+	IF: Expr {getunixtime[]-getvar[pt_last_progress]>=2700}
+		DO: DoAll
+				DoExpr {echo[`Plateau Treasure: no KT progress for 45 minutes. Check the current hunt route.`]}
+				SetState {T275_DEATH_HOLD}
+	IF: Expr {getunixtime[]>=getvar[pt_refresh_at]}
+		DO: DoAll
+				DoExpr {setvar[pt_refresh_at,getunixtime[]+120]}
+				Chat {/ra quests refresh}
+	IF: Expr {getvar[tm_resume_needed]==1 && coordinatedistanceflat[getplayercoordinates[],getvar[tm_resume_pos]]>=30}
+		DO: DoExpr {setvar[tm_resume_needed,0]}
+	IF: Expr {getvar[ml_use_maps]==1 && getcharvital_current[1]*100>=getcharvital_buffedmax[1]*85 && getvar[tm_resume_needed]==0 && getunixtime[]>=getvar[tm_map_gate_until] && getvar[tm_map_id]!=0 && (listcount[listfilter[wobjectfindallbycontainer[wobjectgetplayer[]],wobjectgetid[$1]==getvar[tm_map_id]]]+listcount[listfilter[wobjectfindallinventorybyobjectclass[10],listcount[listfilter[wobjectfindallbycontainer[$1],wobjectgetid[$1]==getvar[tm_map_id]]]>0]])>0}
+		DO: DoAll
+				SetOpt {AttackDistance} {0.0416666666666667}
+				SetState {MAP_RESUME}
+	IF: Expr {getvar[tm_map_id]!=0 && (listcount[listfilter[wobjectfindallbycontainer[wobjectgetplayer[]],wobjectgetid[$1]==getvar[tm_map_id]]]+listcount[listfilter[wobjectfindallinventorybyobjectclass[10],listcount[listfilter[wobjectfindallbycontainer[$1],wobjectgetid[$1]==getvar[tm_map_id]]]>0]])==0}
+		DO: DoAll
+				SetOpt {AttackDistance} {0.0416666666666667}
+				SetState {MAP_MISSING}
+	IF: Expr {getvar[ml_use_maps]==1 && getcharvital_current[1]*100>=getcharvital_buffedmax[1]*85 && getvar[tm_map_id]==0 && getunixtime[]>=getvar[tm_map_gate_until] && getitemcountininventorybyname[Treasure Map]>0}
+		DO: DoAll
+				SetOpt {AttackDistance} {0.0416666666666667}
+				SetState {MAP_LOCK}
+~~ }
+
+STATE: {T275_DEATH_RECOVERY} ~~ {
+	IF: Expr {getvar[pt_death_recovered]==1}
+		DO: DoAll
+				DoExpr {echo[`Plateau Treasure: second death this run. Holding at the lifestone.`]}
+				DoExpr {setvar[ml_outcome,`Needs attention`]}
+				DoExpr {setvar[ml_status,`Second death in this area. The run is holding at the lifestone.`]}
+				SetState {STOP_CLEANUP}
+	IF: Always
+		DO: DoAll
+				Chat {/ub clearmotion}
+				SetOpt {EnableNav} {False}
+				SetOpt {EnableCombat} {False}
+				SetOpt {EnableLooting} {False}
+				SetOpt {EnableBuffing} {False}
+				SetOpt {AttackDistance} {0.0208333333333333}
+				DoExpr {setvar[pt_death_recovered,1]}
+				DoExpr {setvar[pt_recover_hunt,getvar[pt_region]>0]}
+				DoExpr {setvar[pt_region,0]}
+				DoExpr {setvar[pt_recallwest,0]}
+				DoExpr {listadd[getvar[pt_skipped],getvar[tm_map_id]]}
+				DoExpr {setvar[tm_map_id,0]}
+				DoExpr {setvar[tm_resume_needed,0]}
+				DoExpr {setvar[tm_resume_pos,0]}
+				DoExpr {setvar[tm_map_gate_until,0]}
+				DoExpr {setvar[tm_cache_deadline,0]}
+				DoExpr {setvar[tm_cache_retry_at,0]}
+				DoExpr {setvar[tm_aun_loot_active,0]}
+				DoExpr {setvar[tm_doubloon_before,0]}
+				DoExpr {setvar[tm_run_length,0]}
+				DoExpr {setvar[tm_run_start,0]}
+				DoExpr {setvar[tm_watch_pos,0]}
+				DoExpr {setpvar[tm_dig_active,0]}
+				DoExpr {echo[`Plateau Treasure: clearing the current dig and returning via 275 - Get to.`]}
+				SetState {T275_DEATH_RETURN_WAIT}
+~~ }
+
+STATE: {T275_DEATH_RETURN_WAIT} ~~ {
+	IF: Death
+		DO: SetState {T275_DEATH_RECOVERY}
+	IF: All
+			SecsInStateGE 5
+			Expr {!isportaling[]}
+			Expr {getcharvital_current[1]>0}
+		DO: SetState {T275_GET_TO}
+	IF: SecsInStateGE 60
+		DO: SetState {T275_ROUTE_HOLD}
+~~ }
+
+STATE: {T275_ROUTE_HOLD} ~~ {
+	IF: Always
+		DO: DoAll
+				DoExpr {setvar[ml_outcome,`Needs attention`]}
+				DoExpr {setvar[ml_status,`Travel or NPC checks timed out.`]}
+				SetState {STOP_CLEANUP}
+~~ }
+
+STATE: {T275_DEATH_HOLD} ~~ {
+	IF: Always
+		DO: DoAll
+				DoExpr {setvar[ml_outcome,`Needs attention`]}
+				DoExpr {setvar[ml_status,`No KT progress for 45 minutes, or recovery limit reached.`]}
+				SetState {STOP_CLEANUP}
+~~ }
+
+STATE: {T275_FARM_LOAD} ~~ {
+	IF: Death
+		DO: SetState {T275_DEATH_RECOVERY}
+	IF: Always
+		DO: DoAll
+				Chat {/ub clearmotion}
+				SetOpt {EnableNav} {False}
+				DoExpr {setvar[pt_travel_end,0]}
+				DoExpr {setvar[pt_region,1]}
+				Chat {/ra nav load 275 - Treasure Circuit}
+				SetState {T275_HUNT_RESUME}
+~~ }
+
+STATE: {T275_FARM_RUN} ~~ {
+	IF: Death
+		DO: SetState {T275_DEATH_RECOVERY}
+	IF: Expr {getvar[pt_travel_end]==1}
+		DO: SetState {T275_FARM_LOAD}
+	IF: Expr {getvar[tm_resume_needed]==1 && coordinatedistanceflat[getplayercoordinates[],getvar[tm_resume_pos]]>=30}
+		DO: DoExpr {setvar[tm_resume_needed,0]}
+	IF: Expr {getvar[ml_use_maps]==1 && getcharvital_current[1]*100>=getcharvital_buffedmax[1]*85 && getvar[tm_resume_needed]==0 && getunixtime[]>=getvar[tm_map_gate_until] && getvar[tm_map_id]!=0 && (listcount[listfilter[wobjectfindallbycontainer[wobjectgetplayer[]],wobjectgetid[$1]==getvar[tm_map_id]]]+listcount[listfilter[wobjectfindallinventorybyobjectclass[10],listcount[listfilter[wobjectfindallbycontainer[$1],wobjectgetid[$1]==getvar[tm_map_id]]]>0]])>0}
+		DO: DoAll
+				SetOpt {AttackDistance} {0.0416666666666667}
+				SetState {MAP_RESUME}
+	IF: Expr {getvar[tm_map_id]!=0 && (listcount[listfilter[wobjectfindallbycontainer[wobjectgetplayer[]],wobjectgetid[$1]==getvar[tm_map_id]]]+listcount[listfilter[wobjectfindallinventorybyobjectclass[10],listcount[listfilter[wobjectfindallbycontainer[$1],wobjectgetid[$1]==getvar[tm_map_id]]]>0]])==0}
+		DO: DoAll
+				SetOpt {AttackDistance} {0.0416666666666667}
+				SetState {MAP_MISSING}
+	IF: Expr {getvar[ml_use_maps]==1 && getcharvital_current[1]*100>=getcharvital_buffedmax[1]*85 && getvar[tm_map_id]==0 && getunixtime[]>=getvar[tm_map_gate_until] && getitemcountininventorybyname[Treasure Map]>0}
+		DO: DoAll
+				SetOpt {AttackDistance} {0.0416666666666667}
+				SetState {MAP_LOCK}
+~~ }
+
+STATE: {MAP_LOCK} ~~ {
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF:	Always
+		DO:	DoAll
+				DoExpr {setpvar[tm_dig_active,0]}
+				DoExpr {setvar[tm_map_id,wobjectgetid[wobjectfindininventorybyname[Treasure Map]]]}
+				DoExpr {setvar[tm_watch_pos,getplayercoordinates[]]}
+				DoExpr {setvar[pt_last_move,getunixtime[]]}
+				DoExpr {setvar[tm_map_gate_until,0]}
+				DoExpr {setvar[pt_rerolled,0]}
+				SetState {MAP_LOCK_CHECK}
+~~ }
+
+STATE: {MAP_LOCK_CHECK} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getvar[tm_map_id]!=0 && isfalse[listcontains[getvar[pt_skipped],getvar[tm_map_id]]]}
+		DO: SetState {MAP_RESUME}
+	IF: Always
+		DO: DoAll
+				DoExpr {setvar[tm_map_id,wobjectgetid[listgetitem[listfilter[wobjectfindallinventorybytemplatetype[1004100],isfalse[listcontains[getvar[pt_skipped],wobjectgetid[$1]]]],0]]]}
+				SetState {MAP_LOCK_FALLBACK}
+~~ }
+
+STATE: {MAP_LOCK_FALLBACK} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getvar[tm_map_id]!=0}
+		DO: SetState {MAP_RESUME}
+	IF: Always
+		DO: DoAll
+				DoExpr {setvar[tm_map_gate_until,getunixtime[]+15]}
+				SetState {MAP_RETURN}
+~~ }
+
+STATE: {MAP_RESUME} ~~ {
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF:	Expr {(listcount[listfilter[wobjectfindallbycontainer[wobjectgetplayer[]],wobjectgetid[$1]==getvar[tm_map_id]]]+listcount[listfilter[wobjectfindallinventorybyobjectclass[10],listcount[listfilter[wobjectfindallbycontainer[$1],wobjectgetid[$1]==getvar[tm_map_id]]]>0]])==0}
+		DO:	SetState {MAP_MISSING}
+	IF:	Always
+		DO:	DoAll
+				Chat {/ub clearmotion}
+				SetOpt {EnableBuffing} {True}
+				SetOpt {EnableNav} {False}
+				SetOpt {EnableCombat} {True}
+				SetOpt {AttackDistance} {0.0208333333333333}
+				SetOpt {EnableLooting} {False}
+				SetState {MAP_USE}
+~~ }
+
+STATE: {MAP_USE} ~~ {
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF:	Expr {(listcount[listfilter[wobjectfindallbycontainer[wobjectgetplayer[]],wobjectgetid[$1]==getvar[tm_map_id]]]+listcount[listfilter[wobjectfindallinventorybyobjectclass[10],listcount[listfilter[wobjectfindallbycontainer[$1],wobjectgetid[$1]==getvar[tm_map_id]]]>0]])==0}
+		DO:	SetState {MAP_MISSING}
+	IF:	Always
+		DO:	DoAll
+				Chat {/ub clearmotion}
+				DoExpr {actiontryuseitem[wobjectfindbyid[getvar[tm_map_id]]]}
+				SetState {MAP_CLUE}
+~~ }
+
+STATE: {MAP_CLUE} ~~ {
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF:	ChatMatch {You dig at the site\. \(1/3\)}
+		DO:	SetState {DIG_FIRST}
+	IF:	ChatMatch {You dig at the site\. \(2/3\)}
+		DO:	SetState {DIG_SECOND}
+	IF:	ChatMatch {(?i)(The earth splits|The ground splits wide|The dig collapses inward|The dig breaks into something hollow|\[Digsite\] (Boss at|Wave |Corrupted))}
+		DO:	SetState {ENCOUNTER_INIT}
+	IF:	ChatMatch {(?i)lies far off to the north\.}
+		DO:	SetState {FAR_NORTH}
+	IF:	ChatMatch {(?i)lies far off to the northeast\.}
+		DO:	SetState {FAR_NORTHEAST}
+	IF:	ChatMatch {(?i)lies far off to the east\.}
+		DO:	SetState {FAR_EAST}
+	IF:	ChatMatch {(?i)lies far off to the southeast\.}
+		DO:	SetState {FAR_SOUTHEAST}
+	IF:	ChatMatch {(?i)lies far off to the south\.}
+		DO:	SetState {FAR_SOUTH}
+	IF:	ChatMatch {(?i)lies far off to the southwest\.}
+		DO:	SetState {FAR_SOUTHWEST}
+	IF:	ChatMatch {(?i)lies far off to the west\.}
+		DO:	SetState {FAR_WEST}
+	IF:	ChatMatch {(?i)lies far off to the northwest\.}
+		DO:	SetState {FAR_NORTHWEST}
+	IF:	ChatMatch {(?i)is to the north\. You are getting close\.}
+		DO:	SetState {CLOSE_NORTH}
+	IF:	ChatMatch {(?i)is to the northeast\. You are getting close\.}
+		DO:	SetState {CLOSE_NORTHEAST}
+	IF:	ChatMatch {(?i)is to the east\. You are getting close\.}
+		DO:	SetState {CLOSE_EAST}
+	IF:	ChatMatch {(?i)is to the southeast\. You are getting close\.}
+		DO:	SetState {CLOSE_SOUTHEAST}
+	IF:	ChatMatch {(?i)is to the south\. You are getting close\.}
+		DO:	SetState {CLOSE_SOUTH}
+	IF:	ChatMatch {(?i)is to the southwest\. You are getting close\.}
+		DO:	SetState {CLOSE_SOUTHWEST}
+	IF:	ChatMatch {(?i)is to the west\. You are getting close\.}
+		DO:	SetState {CLOSE_WEST}
+	IF:	ChatMatch {(?i)is to the northwest\. You are getting close\.}
+		DO:	SetState {CLOSE_NORTHWEST}
+	IF:	Expr {(listcount[listfilter[wobjectfindallbycontainer[wobjectgetplayer[]],wobjectgetid[$1]==getvar[tm_map_id]]]+listcount[listfilter[wobjectfindallinventorybyobjectclass[10],listcount[listfilter[wobjectfindallbycontainer[$1],wobjectgetid[$1]==getvar[tm_map_id]]]>0]])==0}
+		DO:	SetState {MAP_MISSING}
+	IF:	SecsInStateGE 9
+		DO:	SetState {MAP_CLUE_RETRY}
+~~ }
+
+STATE: {MAP_CLUE_RETRY} ~~ {
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF:	Expr {(listcount[listfilter[wobjectfindallbycontainer[wobjectgetplayer[]],wobjectgetid[$1]==getvar[tm_map_id]]]+listcount[listfilter[wobjectfindallinventorybyobjectclass[10],listcount[listfilter[wobjectfindallbycontainer[$1],wobjectgetid[$1]==getvar[tm_map_id]]]>0]])==0}
+		DO:	SetState {MAP_MISSING}
+	IF:	Always
+		DO:	DoAll
+				DoExpr {setvar[tm_resume_needed,1]}
+				DoExpr {setvar[tm_resume_pos,getplayercoordinates[]]}
+				SetState {MAP_RETURN}
+~~ }
+
+STATE: {FAR_NORTH} ~~ {
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF:	Always
+		DO:	DoAll
+				DoExpr {setvar[tm_run_length,6]}
+				Chat {/ub setmotion Forward 0}
+				Chat {/ub face 0}
+				SetState {TURN_SETTLE}
+~~ }
+
+STATE: {FAR_NORTHEAST} ~~ {
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF:	Always
+		DO:	DoAll
+				DoExpr {setvar[tm_run_length,6]}
+				Chat {/ub setmotion Forward 0}
+				Chat {/ub face 45}
+				SetState {TURN_SETTLE}
+~~ }
+
+STATE: {FAR_EAST} ~~ {
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF:	Always
+		DO:	DoAll
+				DoExpr {setvar[tm_run_length,6]}
+				Chat {/ub setmotion Forward 0}
+				Chat {/ub face 90}
+				SetState {TURN_SETTLE}
+~~ }
+
+STATE: {FAR_SOUTHEAST} ~~ {
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF:	Always
+		DO:	DoAll
+				DoExpr {setvar[tm_run_length,6]}
+				Chat {/ub setmotion Forward 0}
+				Chat {/ub face 135}
+				SetState {TURN_SETTLE}
+~~ }
+
+STATE: {FAR_SOUTH} ~~ {
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF:	Always
+		DO:	DoAll
+				DoExpr {setvar[tm_run_length,6]}
+				Chat {/ub setmotion Forward 0}
+				Chat {/ub face 180}
+				SetState {TURN_SETTLE}
+~~ }
+
+STATE: {FAR_SOUTHWEST} ~~ {
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF:	Always
+		DO:	DoAll
+				DoExpr {setvar[tm_run_length,6]}
+				Chat {/ub setmotion Forward 0}
+				Chat {/ub face 225}
+				SetState {TURN_SETTLE}
+~~ }
+
+STATE: {FAR_WEST} ~~ {
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF:	Always
+		DO:	DoAll
+				DoExpr {setvar[tm_run_length,6]}
+				Chat {/ub setmotion Forward 0}
+				Chat {/ub face 270}
+				SetState {TURN_SETTLE}
+~~ }
+
+STATE: {FAR_NORTHWEST} ~~ {
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF:	Always
+		DO:	DoAll
+				DoExpr {setvar[tm_run_length,6]}
+				Chat {/ub setmotion Forward 0}
+				Chat {/ub face 315}
+				SetState {TURN_SETTLE}
+~~ }
+
+STATE: {CLOSE_NORTH} ~~ {
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF:	Always
+		DO:	DoAll
+				DoExpr {setvar[tm_run_length,2]}
+				Chat {/ub setmotion Forward 0}
+				Chat {/ub face 0}
+				SetState {TURN_SETTLE}
+~~ }
+
+STATE: {CLOSE_NORTHEAST} ~~ {
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF:	Always
+		DO:	DoAll
+				DoExpr {setvar[tm_run_length,2]}
+				Chat {/ub setmotion Forward 0}
+				Chat {/ub face 45}
+				SetState {TURN_SETTLE}
+~~ }
+
+STATE: {CLOSE_EAST} ~~ {
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF:	Always
+		DO:	DoAll
+				DoExpr {setvar[tm_run_length,2]}
+				Chat {/ub setmotion Forward 0}
+				Chat {/ub face 90}
+				SetState {TURN_SETTLE}
+~~ }
+
+STATE: {CLOSE_SOUTHEAST} ~~ {
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF:	Always
+		DO:	DoAll
+				DoExpr {setvar[tm_run_length,2]}
+				Chat {/ub setmotion Forward 0}
+				Chat {/ub face 135}
+				SetState {TURN_SETTLE}
+~~ }
+
+STATE: {CLOSE_SOUTH} ~~ {
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF:	Always
+		DO:	DoAll
+				DoExpr {setvar[tm_run_length,2]}
+				Chat {/ub setmotion Forward 0}
+				Chat {/ub face 180}
+				SetState {TURN_SETTLE}
+~~ }
+
+STATE: {CLOSE_SOUTHWEST} ~~ {
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF:	Always
+		DO:	DoAll
+				DoExpr {setvar[tm_run_length,2]}
+				Chat {/ub setmotion Forward 0}
+				Chat {/ub face 225}
+				SetState {TURN_SETTLE}
+~~ }
+
+STATE: {CLOSE_WEST} ~~ {
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF:	Always
+		DO:	DoAll
+				DoExpr {setvar[tm_run_length,2]}
+				Chat {/ub setmotion Forward 0}
+				Chat {/ub face 270}
+				SetState {TURN_SETTLE}
+~~ }
+
+STATE: {CLOSE_NORTHWEST} ~~ {
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF:	Always
+		DO:	DoAll
+				DoExpr {setvar[tm_run_length,2]}
+				Chat {/ub setmotion Forward 0}
+				Chat {/ub face 315}
+				SetState {TURN_SETTLE}
+~~ }
+
+STATE: {TURN_SETTLE} ~~ {
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF:	SecsInStateGE 1
+		DO:	SetState {RUN_START}
+~~ }
+
+STATE: {RUN_START} ~~ {
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF:	Always
+		DO:	DoAll
+				DoExpr {setvar[tm_run_start,getunixtime[]]}
+				Chat {/ub setmotion Forward 1}
+				SetState {RUN_WAIT}
+~~ }
+
+STATE: {RUN_WAIT} ~~ {
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF:	Expr {(listcount[listfilter[wobjectfindallbycontainer[wobjectgetplayer[]],wobjectgetid[$1]==getvar[tm_map_id]]]+listcount[listfilter[wobjectfindallinventorybyobjectclass[10],listcount[listfilter[wobjectfindallbycontainer[$1],wobjectgetid[$1]==getvar[tm_map_id]]]>0]])==0}
+		DO:	SetState {MAP_MISSING}
+	IF:	Expr {getvar[tm_run_length]==2 && getunixtime[]-getvar[tm_run_start]>=2}
+		DO:	SetState {RUN_ACCOUNT}
+	IF:	Expr {getvar[tm_run_length]==6 && getunixtime[]-getvar[tm_run_start]>=6}
+		DO:	SetState {RUN_ACCOUNT}
+	IF:	SecsInStateGE 12
+		DO:	SetState {STUCK}
+~~ }
+
+STATE: {RUN_ACCOUNT} ~~ {
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF:	Always
+		DO:	DoAll
+				Chat {/ub clearmotion}
+				SetState {RUN_ASSESS}
+~~ }
+
+STATE: {RUN_ASSESS} ~~ {
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF:	Expr {coordinatedistanceflat[getplayercoordinates[],getvar[tm_watch_pos]]>=4}
+		DO:	DoAll
+				DoExpr {setvar[tm_watch_pos,getplayercoordinates[]]}
+				DoExpr {setvar[pt_last_move,getunixtime[]]}
+				SetState {MAP_USE}
+	IF:	Expr {getunixtime[]-getvar[pt_last_move]>=120}
+		DO:	SetState {STUCK}
+	IF:	Always
+		DO:	SetState {MAP_USE}
+~~ }
+
+STATE: {STUCK} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF: Expr {getvar[pt_rerolled]==1}
+		DO: SetState {SKIP_MAP}
+	IF: Always
+		DO: DoAll
+				Chat {/ub clearmotion}
+				DoExpr {setvar[pt_retreat_from,getplayercoordinates[]]}
+				Chat {/ub setmotion Backward 1}
+				SetState {RETREAT_WAIT}
+~~ }
+
+STATE: {RETREAT_WAIT} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF: Expr {(listcount[listfilter[wobjectfindallbycontainer[wobjectgetplayer[]],wobjectgetid[$1]==getvar[tm_map_id]]]+listcount[listfilter[wobjectfindallinventorybyobjectclass[10],listcount[listfilter[wobjectfindallbycontainer[$1],wobjectgetid[$1]==getvar[tm_map_id]]]>0]])==0}
+		DO: DoAll
+				Chat {/ub clearmotion}
+				SetState {MAP_MISSING}
+	IF: Expr {coordinatedistanceflat[getplayercoordinates[],getvar[pt_retreat_from]]>=8}
+		DO: DoAll
+				Chat {/ub clearmotion}
+				DoExpr {setvar[pt_rerolled,1]}
+				DoExpr {echo[`180 Lowlands KT: trying /rrtm after retreat.`]}
+				Chat {/rrtm}
+				SetState {REROLL_WAIT}
+	IF: SecsInStateGE 5
+		DO: SetState {SKIP_MAP}
+~~ }
+
+STATE: {REROLL_WAIT} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF: SecsInStateGE 3
+		DO: DoAll
+				DoExpr {setvar[tm_watch_pos,getplayercoordinates[]]}
+				DoExpr {setvar[pt_last_move,getunixtime[]]}
+				SetState {MAP_RESUME}
+~~ }
+
+STATE: {MAP_COMBAT_RESUME} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Always
+		DO: DoAll
+				Chat {/ub clearmotion}
+				DoExpr {setpvar[tm_dig_active,0]}
+				DoExpr {setvar[tm_resume_pos,getplayercoordinates[]]}
+				DoExpr {setvar[tm_resume_needed,1]}
+				DoExpr {setvar[tm_map_gate_until,getunixtime[]+60]}
+				DoExpr {echo[`180 Lowlands KT: pausing the map to fight and recover.`]}
+				SetState {MAP_RETURN}
+~~ }
+
+STATE: {SKIP_MAP} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Always
+		DO: DoAll
+				Chat {/ub clearmotion}
+				DoExpr {listadd[getvar[pt_skipped],getvar[tm_map_id]]}
+				DoExpr {echo[`180 Lowlands KT: skipping unreachable map for this session.`]}
+				DoExpr {setvar[tm_map_id,0]}
+				DoExpr {setvar[tm_resume_needed,0]}
+				DoExpr {setvar[tm_map_gate_until,getunixtime[]+15]}
+				SetState {MAP_RETURN}
+~~ }
+
+STATE: {TEMP_HUNT} ~~ {
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF:	Always
+		DO:	DoAll
+				Chat {/ub clearmotion}
+				DoExpr {setvar[tm_resume_pos,getplayercoordinates[]]}
+				DoExpr {setvar[tm_resume_needed,1]}
+				SetState {MAP_RETURN}
+~~ }
+
+STATE: {DIG_FIRST} ~~ {
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF:	Always
+		DO:	DoAll
+				DoExpr {setpvar[tm_stat_dig1,getpvar[tm_stat_dig1]+1]}
+				DoExpr {setvar[tm_doubloon_before,getinventorycountbytemplatetype[1004101]]}
+				DoExpr {setpvar[tm_dig_active,1]}
+				Chat {/ub clearmotion}
+				SetState {DIG_1_WAIT}
+~~ }
+
+STATE: {DIG_1_WAIT} ~~ {
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF:	SecsInStateGE 2
+		DO:	SetState {DIG_CLICK_2}
+~~ }
+
+STATE: {DIG_CLICK_2} ~~ {
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF:	Expr {(listcount[listfilter[wobjectfindallbycontainer[wobjectgetplayer[]],wobjectgetid[$1]==getvar[tm_map_id]]]+listcount[listfilter[wobjectfindallinventorybyobjectclass[10],listcount[listfilter[wobjectfindallbycontainer[$1],wobjectgetid[$1]==getvar[tm_map_id]]]>0]])==0}
+		DO:	SetState {MAP_MISSING}
+	IF:	Always
+		DO:	DoAll
+				DoExpr {actiontryuseitem[wobjectfindbyid[getvar[tm_map_id]]]}
+				SetState {DIG_2_RESPONSE}
+~~ }
+
+STATE: {DIG_2_RESPONSE} ~~ {
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF:	ChatMatch {You dig at the site\. \(2/3\)}
+		DO:	SetState {DIG_SECOND}
+	IF:	ChatMatch {(?i)(The earth splits|The ground splits wide|The dig collapses inward|The dig breaks into something hollow)}
+		DO:	SetState {ENCOUNTER_INIT}
+	IF:	SecsInStateGE 9
+		DO:	SetState {DIG_UNCERTAIN}
+~~ }
+
+STATE: {DIG_SECOND} ~~ {
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF:	Always
+		DO:	DoAll
+				DoExpr {setpvar[tm_stat_dig2,getpvar[tm_stat_dig2]+1]}
+				DoExpr {setpvar[tm_dig_active,1]}
+				Chat {/ub clearmotion}
+				SetState {DIG_2_WAIT}
+~~ }
+
+STATE: {DIG_2_WAIT} ~~ {
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF:	SecsInStateGE 2
+		DO:	SetState {DIG_CLICK_3}
+~~ }
+
+STATE: {DIG_CLICK_3} ~~ {
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF:	Expr {(listcount[listfilter[wobjectfindallbycontainer[wobjectgetplayer[]],wobjectgetid[$1]==getvar[tm_map_id]]]+listcount[listfilter[wobjectfindallinventorybyobjectclass[10],listcount[listfilter[wobjectfindallbycontainer[$1],wobjectgetid[$1]==getvar[tm_map_id]]]>0]])==0}
+		DO:	SetState {MAP_MISSING}
+	IF:	Always
+		DO:	DoAll
+				DoExpr {setpvar[tm_stat_dig3_attempt,getpvar[tm_stat_dig3_attempt]+1]}
+				DoExpr {actiontryuseitem[wobjectfindbyid[getvar[tm_map_id]]]}
+				SetState {DIG_3_RESPONSE}
+~~ }
+
+STATE: {DIG_3_RESPONSE} ~~ {
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF:	ChatMatch {(?i)(The earth splits|The ground splits wide|The dig collapses inward|The dig breaks into something hollow|\[Digsite\] (Boss at|Wave |Corrupted))}
+		DO:	SetState {ENCOUNTER_INIT}
+	IF:	Expr {(listcount[listfilter[wobjectfindallbycontainer[wobjectgetplayer[]],wobjectgetid[$1]==getvar[tm_map_id]]]+listcount[listfilter[wobjectfindallinventorybyobjectclass[10],listcount[listfilter[wobjectfindallbycontainer[$1],wobjectgetid[$1]==getvar[tm_map_id]]]>0]])==0}
+		DO:	SetState {ENCOUNTER_INIT}
+	IF:	SecsInStateGE 15
+		DO:	SetState {DIG_UNCERTAIN}
+~~ }
+
+STATE: {DIG_UNCERTAIN} ~~ {
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF:	Expr {(listcount[listfilter[wobjectfindallbycontainer[wobjectgetplayer[]],wobjectgetid[$1]==getvar[tm_map_id]]]+listcount[listfilter[wobjectfindallinventorybyobjectclass[10],listcount[listfilter[wobjectfindallbycontainer[$1],wobjectgetid[$1]==getvar[tm_map_id]]]>0]])==0}
+		DO:	SetState {ENCOUNTER_INIT}
+	IF:	Always
+		DO:	DoAll
+				DoExpr {setpvar[tm_dig_active,0]}
+				SetState {TEMP_HUNT}
+~~ }
+
+STATE: {ENCOUNTER_INIT} ~~ {
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF:	Always
+		DO:	DoAll
+				DoExpr {setpvar[tm_stat_encounter,getpvar[tm_stat_encounter]+1]}
+				DoExpr {setvar[tm_cache_retry_at,0]}
+				DoExpr {setvar[tm_aun_loot_active,0]}
+				Chat {/ub clearmotion}
+				SetOpt {EnableNav} {False}
+				SetOpt {EnableBuffing} {True}
+				SetOpt {EnableCombat} {True}
+				DoExpr {setcombatstate[magic]}
+				SetOpt {EnableLooting} {False}
+				SetOpt {AttackDistance} {0.0416666666666667}
+				SetState {ENCOUNTER}
+~~ }
+
+STATE: {ENCOUNTER} ~~ {
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF: All
+			Expr {getvar[pt_done_zefir]==0}
+			ChatMatch {(?:^You have killed 50 Drumtaken\ Enku\ Zefirs! Your task is complete!|^huntcount_plateauzefirenkuzefir - 50 solves \()}
+		DO: DoAll
+				DoExpr {setvar[pt_done_zefir,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[pt_done_ursuin]==0}
+			ChatMatch {(?:^You have killed 50 Drumtaken\ Ursuin\ Slicers! Your task is complete!|^huntcount_plateauursuinursuinslicer - 50 solves \()}
+		DO: DoAll
+				DoExpr {setvar[pt_done_ursuin,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[pt_done_golem]==0}
+			ChatMatch {(?:^You have killed 50 Drumtaken\ Verdigris\ Golems! Your task is complete!|^huntcount_plateaugolemverdigrisgolem - 50 solves \()}
+		DO: DoAll
+				DoExpr {setvar[pt_done_golem,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[pt_done_gromnie]==0}
+			ChatMatch {(?:^You have killed 50 Drumtaken\ Brass\ Gromnies! Your task is complete!|^huntcount_plateaugromniebrassgromnie - 50 solves \()}
+		DO: DoAll
+				DoExpr {setvar[pt_done_gromnie,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[pt_done_siraluun]==0}
+			ChatMatch {(?:^You have killed 50 Drumtaken\ Untamed\ Siraluuns! Your task is complete!|^huntcount_plateausiraluununtamedsiraluun - 50 solves \()}
+		DO: DoAll
+				DoExpr {setvar[pt_done_siraluun,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[pt_done_carenzi]==0}
+			ChatMatch {(?:^You have killed 50 Drumtaken\ Savage\ Carenzis! Your task is complete!|^huntcount_plateaucarenzisavagecarenzi - 50 solves \()}
+		DO: DoAll
+				DoExpr {setvar[pt_done_carenzi,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[pt_done_virindi]==0}
+			ChatMatch {(?:^You have killed 50 Virindi\ Observers! Your task is complete!|^huntcount_plateauvirindivirindiobserver - 50 solves \()}
+		DO: DoAll
+				DoExpr {setvar[pt_done_virindi,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[pt_done_olthoi]==0}
+			ChatMatch {(?:^You have killed 20 Olthoi\ Hive\ Mutilators! Your task is complete!|^huntcount_plateauolthoiolthoihivemutilator - 20 solves \()}
+		DO: DoAll
+				DoExpr {setvar[pt_done_olthoi,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF:	Expr {getvar[tm_aun_loot_active]==0 && listcount[wobjectfindalllandscapebynamerx[`(?i)Corpse of .*Aun Relaria.*`]]>0}
+		DO:	DoAll
+				SetOpt {EnableLooting} {True}
+				DoExpr {setvar[tm_aun_loot_active,1]}
+	IF:	Expr {getvar[tm_aun_loot_active]==1 && listcount[wobjectfindalllandscapebynamerx[`(?i)Corpse of .*Aun Relaria.*`]]==0}
+		DO:	DoAll
+				SetOpt {EnableLooting} {False}
+				DoExpr {setvar[tm_aun_loot_active,0]}
+	IF:	Expr {getpvar[tm_dig_active]==1 && getinventorycountbytemplatetype[1004101]>getvar[tm_doubloon_before]}
+		DO:	DoAll
+				DoExpr {setpvar[tm_stat_success_encounter,getpvar[tm_stat_success_encounter]+1]}
+				DoExpr {echo[`Treasure Hunter: +`+(getinventorycountbytemplatetype[1004101]-getvar[tm_doubloon_before])+` Marae Lassel Doubloons (corpse)`]}
+				SetState {CACHE_FINISH}
+	IF:	ChatMatch {(?i)(Something buried at the dig gives way|smaller cache settles into the loose earth|The last of them falls\. Wave 8 is cleared|The last of the corruption is put down|You've earned [0-9,]+ experience)}
+		DO:	DoAll
+				DoExpr {setpvar[tm_stat_completion,getpvar[tm_stat_completion]+1]}
+				DoExpr {setpvar[tm_stat_cache_search,getpvar[tm_stat_cache_search]+1]}
+				Chat {/ub clearmotion}
+				SetOpt {EnableNav} {False}
+				SetOpt {EnableCombat} {False}
+				SetOpt {EnableBuffing} {False}
+				SetOpt {EnableLooting} {False}
+				DoExpr {setvar[tm_aun_loot_active,0]}
+				DoExpr {setvar[tm_cache_deadline,getunixtime[]+300]}
+				SetState {CACHE_SEARCH}
+	IF:	SecsInStateGE 1800
+		DO:	DoAll
+				DoExpr {setpvar[tm_stat_timeout_encounter,getpvar[tm_stat_timeout_encounter]+1]}
+				SetState {ENCOUNTER_TIMEOUT}
+~~ }
+
+STATE: {CACHE_SEARCH} ~~ {
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF:	Expr {getinventorycountbytemplatetype[1004101]>getvar[tm_doubloon_before]}
+		DO:	DoAll
+				DoExpr {setpvar[tm_stat_success_search,getpvar[tm_stat_success_search]+1]}
+				DoExpr {echo[`Treasure Hunter: +`+(getinventorycountbytemplatetype[1004101]-getvar[tm_doubloon_before])+` Marae Lassel Doubloons (search)`]}
+				SetState {CACHE_FINISH}
+	IF:	Expr {getunixtime[]>=getvar[tm_cache_deadline]}
+		DO:	DoAll
+				DoExpr {setpvar[tm_stat_timeout_search,getpvar[tm_stat_timeout_search]+1]}
+				SetState {CACHE_FINISH}
+	IF:	All
+			SecsInStateGE 5
+			Expr {getunixtime[]>=getvar[tm_cache_retry_at]}
+		DO:	DoAll
+				DoExpr {setvar[tm_cache_retry_at,getunixtime[]+8]}
+				DoExpr {setpvar[tm_stat_cache_use,getpvar[tm_stat_cache_use]+1]}
+				Chat {/ub use Unearthed Cache}
+				SetState {CACHE_SEARCH}
+~~ }
+
+STATE: {CACHE_FINISH} ~~ {
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF:	Always
+		DO:	DoAll
+				DoExpr {setpvar[tm_dig_active,0]}
+				DoExpr {setvar[tm_map_id,0]}
+				DoExpr {setvar[tm_cache_deadline,0]}
+				DoExpr {setvar[tm_cache_retry_at,0]}
+				DoExpr {setvar[tm_doubloon_before,0]}
+				SetState {MAP_RETURN}
+~~ }
+
+STATE: {ENCOUNTER_TIMEOUT} ~~ {
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF:	Always
+		DO:	DoAll
+				DoExpr {setpvar[tm_dig_active,0]}
+				DoExpr {setvar[tm_map_id,0]}
+				SetState {MAP_RETURN}
+~~ }
+
+STATE: {MAP_MISSING} ~~ {
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF:	ChatMatch {(?i)(The earth splits|The ground splits wide|The dig collapses inward|The dig breaks into something hollow|\[Digsite\])}
+		DO:	SetState {ENCOUNTER_INIT}
+	IF:	SecsInStateGE 12
+		DO:	DoAll
+				DoExpr {setpvar[tm_stat_map_missing,getpvar[tm_stat_map_missing]+1]}
+				DoExpr {setpvar[tm_dig_active,0]}
+				DoExpr {setvar[tm_map_id,0]}
+				SetState {MAP_RETURN}
+~~ }
