@@ -1,0 +1,42 @@
+name: Verify and publish Plateau treasure meta
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: tombohar/RynthSuite
+          ref: 5e70799b1c83d3cc1f2b06e06a274dd3f7449c82
+          path: reviewed-rynth-suite
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Check AF, MET, NPC handshakes and nav files without a game
+        run: dotnet run --project tools/ACAI2.PlateauMeta -p:RynthSuiteRoot="$GITHUB_WORKSPACE/reviewed-rynth-suite" -- metas/plateau-treasure-verified-v1
+      - name: Package and publish meta files only
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          cd metas/plateau-treasure-verified-v1
+          sha256sum -c SHA256SUMS.txt
+          zip -qr "$RUNNER_TEMP/Plateau-Treasure-Verified-v1.zip" .
+          cd "$RUNNER_TEMP"
+          sha256sum Plateau-Treasure-Verified-v1.zip > Plateau-Treasure-Verified-v1.zip.sha256
+          cat > notes.md <<NOTES
+          Soot's supplied Plateau Treasure Beta adapted with sequential NPC acknowledgement and task-independent treasure hunting. Includes AF, MET, all original navs and eight one-NPC navs. Captures actual assignment names/counts, including Hive Guardians and Virindi Sentries; bounded retries identify the failed hunter. Task completion/cooldown no longer stops hunting or triggers region transfers. Original travel/treasure workflow retained; read README before starting. No plugin or Bridge update.
+
+          Verified 331 equivalent AF/MET rules using genuine pinned RynthSuite parsers and 44 offline checks. No live validation. Source: $GITHUB_SHA. Original Get-to spell 1636/Lifestone Sending and the encounter magic-mode request remain unchanged.
+          NOTES
+          tag=plateau-treasure-verified-v1.0.0
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" Plateau-Treasure-Verified-v1.zip Plateau-Treasure-Verified-v1.zip.sha256 --clobber
+          else
+            gh release create "$tag" Plateau-Treasure-Verified-v1.zip Plateau-Treasure-Verified-v1.zip.sha256 --target "$GITHUB_SHA" --title "Plateau Treasure - verified NPC sequence v1" --notes-file notes.md --latest=false
+          fi
