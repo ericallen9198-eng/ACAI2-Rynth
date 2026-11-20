@@ -1,5 +1,5 @@
 RynthSuite parser source: 5e70799b1c83d3cc1f2b06e06a274dd3f7449c82
 331 rules in both AF and MET; identical executable rule trees.
-44 .NET offline checks passed: regex compilation, sequential NPC simulation, alternate assignments, cooldowns/rewards, bounded retry, task-independent hunting, and 8 parsed one-NPC navs.
+44 .NET offline checks passed: regex compilation, sequential NPC simulation, alternate assignments, cooldowns/rewards, bounded retry, task-independent hunting, and 8 parsed approach-plus-explicit-NPC-use navs.
 Original 10 nav files byte-identical. Treasure states from MAP_LOCK onward preserved except ENCOUNTER task acknowledgement rules.
 No game/native commands executed. Live NPC interaction and a full treasure cycle still need confirmation.

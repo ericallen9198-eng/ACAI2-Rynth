@@ -30,11 +30,11 @@ jobs:
           cd "$RUNNER_TEMP"
           sha256sum Plateau-Treasure-Verified-v1.zip > Plateau-Treasure-Verified-v1.zip.sha256
           cat > notes.md <<NOTES
-          Soot's supplied Plateau Treasure Beta adapted with sequential NPC acknowledgement and task-independent treasure hunting. Includes AF, MET, all original navs and eight one-NPC navs. Captures actual assignment names/counts, including Hive Guardians and Virindi Sentries; bounded retries identify the failed hunter. Task completion/cooldown no longer stops hunting or triggers region transfers. Original travel/treasure workflow retained; read README before starting. No plugin or Bridge update.
+          Soot's supplied Plateau Treasure Beta adapted with sequential NPC acknowledgement and task-independent treasure hunting. Includes AF, MET, all original navs and eight one-NPC navs. Captures actual assignment names/counts, including Hive Guardians and Virindi Sentries; bounded retries identify the failed hunter. NPC routes use explicit /ra usel commands after approaching, avoiding the type-7 NPC nav dispatch gap. Task completion/cooldown no longer stops hunting or triggers region transfers. Original travel/treasure workflow retained; read README before starting. No plugin or Bridge update.
 
           Verified 331 equivalent AF/MET rules using genuine pinned RynthSuite parsers and 44 offline checks. No live validation. Source: $GITHUB_SHA. Original Get-to spell 1636/Lifestone Sending and the encounter magic-mode request remain unchanged.
           NOTES
-          tag=plateau-treasure-verified-v1.0.0
+          tag=plateau-treasure-verified-v1.0.1
           if gh release view "$tag" >/dev/null 2>&1; then
             gh release upload "$tag" Plateau-Treasure-Verified-v1.zip Plateau-Treasure-Verified-v1.zip.sha256 --clobber
           else

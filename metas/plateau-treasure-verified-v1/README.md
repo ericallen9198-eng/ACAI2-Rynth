@@ -9,7 +9,7 @@ INSTALL
 4. Start in Default. Keep your existing treasure-map/doubloon loot profile and combat profile.
 
 CHANGES
-Each hunter is a separate Talk-NPC route. The meta stops that route after a recognized assignment, progress, cooldown or reward reply, then proceeds to the next hunter. Introductory level/flavor text is insufficient. It retries the same hunter at most 3 times (20-second waits), then names the failed hunter and holds. It never assumes a task was accepted.
+Each hunter has a separate approach route followed by an explicit /ra usel <NPC name> action. Type-7 NPC nav steps are not relied on: the reviewed Rynth navigation engine reads them but does not dispatch an NPC-use action. The meta stops that route after a recognized assignment, progress, cooldown or reward reply, then proceeds to the next hunter. Introductory level/flavor text is insufficient. It retries the same hunter at most 3 times (20-second waits), then names the failed hunter and holds. It never assumes a task was accepted.
 
 The exact target and required kill count are captured from the assignment/progress reply, including Hive Guardians and Virindi Sentries. Completion notices are matched against those captured values, not hardcoded Mutilator/Observer flags. These markers are informative: task status does not stop treasure hunting or trigger automatic zone transfers.
 

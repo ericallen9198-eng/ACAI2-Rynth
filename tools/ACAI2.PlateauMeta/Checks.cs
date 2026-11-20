@@ -35,7 +35,7 @@ static class Checks
   Check(!Flatten(hunt).Any(r=>r.ConditionData.Contains("pt_last_progress")||r.ConditionData.Contains("pt_done_")),"empty, partial, full and cooldown task flags never gate the treasure loop");
   Check(!Flatten(meta.Rules).Any(r=>r.ConditionData.Contains("huntcount_plateau")),"no hardcoded Mutilator/Observer quest-flag completion remains");
   for(int i=0;i<8;i++)
-  {var nav=NavRouteParser.Load(Path.Combine(folder,"PT Verify - "+System.Globalization.CultureInfo.InvariantCulture.TextInfo.ToTitleCase(keys[i])+".nav"));Check(nav.RouteType==NavRouteType.Once&&nav.Points.Count==1&&nav.Points[0].Type==NavPointType.Npc&&nav.Points[0].TargetName==names[i],"genuine nav parser verifies one talk target: "+keys[i]);}
+  {var nav=NavRouteParser.Load(Path.Combine(folder,"PT Verify - "+System.Globalization.CultureInfo.InvariantCulture.TextInfo.ToTitleCase(keys[i])+".nav"));Check(nav.RouteType==NavRouteType.Once&&nav.Points.Count==2&&nav.Points[0].Type==NavPointType.Point&&nav.Points[1].Type==NavPointType.Chat&&nav.Points[1].ChatCommand=="/ra usel "+names[i],"genuine nav parser verifies approach plus explicit NPC-use command: "+keys[i]);}
   var completion=meta.Rules.First(r=>r.State=="HUNT"&&r.Condition==MetaConditionType.All).Children[0];
   var m=Regex.Match("You have killed 20 Olthoi Hive Guardians! Your task is complete!",completion.ConditionData);
   Check(m.Success&&m.Groups["kills"].Value=="20"&&m.Groups["killed"].Value==tasks[7]+"s","actual Guardian completion can match the captured assignment");
