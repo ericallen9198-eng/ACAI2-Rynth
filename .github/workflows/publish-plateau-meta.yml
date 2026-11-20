@@ -32,9 +32,9 @@ jobs:
           pathlib.Path(os.environ['RUNNER_TEMP'],'original-loot.utl').write_bytes(data)
           PY
       - name: Prepare currency profile with genuine LootSdk
-        run: dotnet run --project tools/ACAI2.PlateauMeta -p:RynthSuiteRoot="$GITHUB_WORKSPACE/reviewed-rynth-suite" -- --prepare-loot "$RUNNER_TEMP/original-loot.utl" metas/plateau-treasure-verified-v2/DW_Farm_Peas_Rares_Custom-Currency.utl
+        run: dotnet run --project tools/ACAI2.PlateauMeta -p:RynthSuiteRoot="$GITHUB_WORKSPACE/reviewed-rynth-suite" -- --prepare-loot "$RUNNER_TEMP/original-loot.utl" metas/plateau-treasure-verified-v3/DW_Farm_Peas_Rares_Custom-Currency.utl
       - name: Check AF, MET, NPC handshakes, navs and currency rules
-        run: dotnet run --project tools/ACAI2.PlateauMeta -p:RynthSuiteRoot="$GITHUB_WORKSPACE/reviewed-rynth-suite" -- metas/plateau-treasure-verified-v2 "$RUNNER_TEMP/original-loot.utl" "$RUNNER_TEMP/plateau-rules.json"
+        run: dotnet run --project tools/ACAI2.PlateauMeta -p:RynthSuiteRoot="$GITHUB_WORKSPACE/reviewed-rynth-suite" -- metas/plateau-treasure-verified-v3 "$RUNNER_TEMP/original-loot.utl" "$RUNNER_TEMP/plateau-rules.json"
       - name: Simulate cache pickup, optional notes, corpse payout and death branches
         run: python tools/ACAI2.PlateauMeta/test_cache.py "$RUNNER_TEMP/plateau-rules.json"
       - name: Package and publish meta and loot files only
@@ -43,22 +43,21 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          cd metas/plateau-treasure-verified-v2
+          cd metas/plateau-treasure-verified-v3
           sha256sum -c SHA256SUMS.txt
-          zip -qr "$RUNNER_TEMP/Plateau-Treasure-Verified-v2.zip" . -x .gitignore
+          zip -qr "$RUNNER_TEMP/Plateau-Treasure-Verified-v3.zip" . -x .gitignore
           cd "$RUNNER_TEMP"
-          sha256sum Plateau-Treasure-Verified-v2.zip > Plateau-Treasure-Verified-v2.zip.sha256
+          sha256sum Plateau-Treasure-Verified-v3.zip > Plateau-Treasure-Verified-v3.zip.sha256
           cat > notes.md <<NOTES
-          Plateau Treasure Verified v2: explicit doubloon/trade-note pickup adapted from the supplied working treasure meta; notes are optional and the corpse payout path remains. Each pickup waits for inventory/source confirmation, and cache hunting resumes only after observed currencies are drained. Unconfirmed sends hold without blind resend. The supplied 52-rule loot profile keeps all rules intact except removal of the six-free-slot gate on its two enabled currency Keep rules. All Lifestone Sending nav steps are replaced by /ls. Sequential NPC acknowledgement and continued treasure hunting from v1 remain.
+          Plateau Treasure Verified v3 automatically continues after death: keeps the macro running, waits for natural respawn/health/portal readiness, clears interrupted pickup/map state without crediting a reward, and resumes the previous hunting region. It uses the existing camp lifestone or recorded town-to-camp approach without issuing another /ls after death. Startup also checks the /ls landing before choosing a route. An interrupted initial NPC sequence is reverified. Disables competing native death recall/corpse travel/outdoor-hunt recovery at startup; see README for exact UI locations. Non-death errors still stop with a clear message.
 
-          Death/logic review: immediate stop on death retained, every active state guarded, failure holds explicitly stop the macro, restart cleanup in Default, ordinary XP alone cannot trigger the cache phase, and encounter timeouts hold for review. See README for the temporary cache-only pickup-setting restoration and independent Rynth death-recovery settings.
+          Retains v2 explicit optional currency pickup and the unchanged 52-rule Currency loot profile. No plugin or Bridge update. Includes AF/MET, 19 navs and the loot profile. Genuine pinned parsers, AF/MET equivalence, 172 meta/nav checks and 65 cache/death simulations passed; no live game actions were executed during verification. Source: $GITHUB_SHA.
 
-          Genuine pinned RynthSuite parsers, AF/MET rule-tree equivalence, 159 meta/nav checks, 37 cache/death simulations and 52-rule LootSdk comparison passed. No live game validation or game commands executed during checks. No plugin or Bridge update. Source: $GITHUB_SHA.
           NOTES
-          tag=plateau-treasure-verified-v2.0.0
+          tag=plateau-treasure-verified-v3.0.0
           if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag" Plateau-Treasure-Verified-v2.zip Plateau-Treasure-Verified-v2.zip.sha256 --clobber
+            gh release upload "$tag" Plateau-Treasure-Verified-v3.zip Plateau-Treasure-Verified-v3.zip.sha256 --clobber
             gh release edit "$tag" --notes-file notes.md
           else
-            gh release create "$tag" Plateau-Treasure-Verified-v2.zip Plateau-Treasure-Verified-v2.zip.sha256 --target "$GITHUB_SHA" --title "Plateau Treasure v2 - explicit currency pickup and /ls" --notes-file notes.md --latest=false
+            gh release create "$tag" Plateau-Treasure-Verified-v3.zip Plateau-Treasure-Verified-v3.zip.sha256 --target "$GITHUB_SHA" --title "Plateau Treasure v3 - automatic death return" --notes-file notes.md --latest=false
           fi

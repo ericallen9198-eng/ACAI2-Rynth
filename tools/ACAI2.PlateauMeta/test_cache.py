@@ -40,7 +40,7 @@ def yes(x):return x not in ('',0,None,'false','False')
 
 class World:
  def __init__(self,items,opened=1):
-  self.now=0;self.v={'tm_cache_deadline':300,'tm_doubloon_before':0};self.p={'tm_dig_active':1};self.options={'LootChestsMacroOff':1};self.open=opened;self.items={i['id']:dict(i) for i in items};self.inv={};self.moves=[];self.used=[];self.messages=[];self.dispatch=1;self.autoopen=True;self.dead=False
+  self.now=0;self.v={'tm_cache_deadline':300,'tm_doubloon_before':0};self.p={'tm_dig_active':1};self.options={'LootChestsMacroOff':1};self.open=opened;self.items={i['id']:dict(i) for i in items};self.inv={};self.moves=[];self.used=[];self.messages=[];self.dispatch=1;self.autoopen=True;self.dead=False;self.health=100;self.maxhealth=100;self.portaling=False;self.cell=565641256;self.portal_exit=False
  def item(self,i):return self.items.get(int(i),{})
  def container(self,i):return [k for k,v in self.items.items() if v.get('container',1)==i]
  def ack(self,item,amount=None):
@@ -69,6 +69,11 @@ class World:
   if f in ('getvar','getpvar'):return (self.v if f=='getvar' else self.p).get(a[0],0)
   if f in ('setvar','setpvar'):(self.v if f=='setvar' else self.p)[a[0]]=a[1];return a[1]
   if f=='getunixtime':return self.now
+  if f=='getcharvital_current':return 0 if self.dead else self.health
+  if f=='getcharvital_buffedmax':return self.maxhealth
+  if f=='isportaling':return int(self.portaling)
+  if f=='getplayerlandcell':return self.cell
+  if f=='getplayerlandblock':return self.cell & 0xffff0000
   if f=='wobjectgetopencontainer':return self.open
   if f=='wobjectgetplayer':return 999
   if f=='wobjectgetname':return 'Unearthed Cache' if a[0] in (1,2) else 'Other container' if a[0] else ''
@@ -106,6 +111,7 @@ class Sim:
   if c==0:return False
   if c==1:return True
   if c==7:return self.w.dead
+  if c==19:return self.w.portal_exit
   if c==2:return all(self.cond(x) for x in r['Children'])
   if c==6:return self.w.now-self.entered>=float(r['ConditionData'])
   if c==26:return yes(self.w.eval(r['ConditionData']))
@@ -159,7 +165,7 @@ check(w.moves[-1][-1]==0 and len(w.moves)==2,'partial merge is acknowledged and 
 w.ack(10);finish(s);check(w.inv[1004101]==10,'partial plus final pickup counts only actual inventory additions')
 
 w=World([item(10)]);s=Sim(w);s.until('CACHE_CONFIRM');s.tick(21)
-check(s.state=='DEATH_HOLD' and len(w.moves)==1,'unacknowledged dispatched move holds without a blind resend')
+check(s.state=='ERROR_HOLD' and len(w.moves)==1,'unacknowledged dispatched move holds without a blind resend')
 s.tick();check(w.options['LootChestsMacroOff']==1,'failure handler restores prior pickup option')
 
 w=World([item(10)]);w.dispatch=0;s=Sim(w);s.until('CACHE_CONFIRM');s.tick(2);w.dispatch=1;s.until('CACHE_CONFIRM')
@@ -170,7 +176,7 @@ for _ in range(8):s.tick()
 check(not w.moves,'a different open cache cannot supply items to the bound pickup')
 
 w=World([]);s=Sim(w);s.until('CACHE_SEARCH');s.tick();s.tick(301)
-check(s.state=='DEATH_HOLD','an initially empty/unobserved cache is not falsely reported as a successful pickup')
+check(s.state=='ERROR_HOLD','an initially empty/unobserved cache is not falsely reported as a successful pickup')
 
 w=World([],opened=0);w.inv[1004101]=7;s=Sim(w,'ENCOUNTER');s.tick()
 check(s.state=='CACHE_FINISH' and not w.moves and not w.used,'existing corpse doubloon payout completes without opening or waiting for a cache')
@@ -180,12 +186,37 @@ w=World([item(10)],opened=0);s=Sim(w);s.until('CACHE_CONFIRM');w.ack(10);s.tick(
 for _ in range(8):s.tick()
 check(1 in w.used,'a closed known cache is reopened by bound id')
 for phase in ['CACHE_PREP','CACHE_PICKUP','CACHE_CONFIRM','CACHE_SETTLE','HUNT','VERIFY_ZEFIR_WAIT','GET_TO','REGION_START','ROUTE_HOLD']:
- w=World([item(10)]);w.dead=True;s=Sim(w,phase);s.tick()
- check(s.state=='DEATH_HOLD' and not w.moves,'death takes priority in '+phase)
- w.dead=False;s.tick();check(s.state=='HOLD' and '/ra stop' in w.messages,'death/failure hold stops the macro after '+phase)
-# A native immediate stop can prevent meta cleanup: Default must restore a persisted option hold first.
+ w=World([item(10)]);w.v.update(pt_region=3,pt_npc_end=1,tm_cache_pending=10,tm_map_id=123);w.dead=True;s=Sim(w,phase);s.tick()
+ check(s.state=='DEATH_RECOVER' and not w.moves,'death takes recovery priority in '+phase)
+ w.dead=False;s.tick();check(s.state=='RESPAWN_WAIT' and '/ra stop' not in w.messages and not w.used,'death cleanup leaves the macro running and does not recall after '+phase)
+ check(w.v['tm_cache_pending']==0 and w.v['tm_map_id']==0 and w.p.get('tm_stat_success_search',0)==0,'interrupted pickup/map is cleared without recording success after '+phase)
+for region,dest in [(1,'CAMP_EAST'),(2,'CAMP_NORTHEAST'),(3,'CAMP_WEST')]:
+ w=World([]);w.v.update(pt_region=region,pt_npc_end=1);s=Sim(w,'DEATH_RECOVER');s.tick();s.until(dest)
+ check('/ls' not in w.messages and '/ra stop' not in w.messages,'natural camp respawn returns to the prior region '+str(region))
+ s.tick();check(s.state=='TRAVEL_WAIT',"recovery starts that region's existing nav")
+ w.v['pt_travel_end']=1;s.until('HUNT');check(all(w.options.get(x)==1 for x in ['EnableNav','EnableCombat','EnableLooting','EnableBuffing']),'normal hunting/buffing/looting resumes after returning to region '+str(region))
+w=World([]);w.v.update(pt_region=2,pt_npc_end=1);s=Sim(w,'DEATH_RECOVER');s.tick();w.portaling=True
+for _ in range(12):s.tick()
+check(s.state=='RESPAWN_WAIT' and not w.used,'no movement or route selection while still in portal space')
+w.portaling=False;w.health=0
+for _ in range(8):s.tick()
+check(s.state=='RESPAWN_WAIT','a stale/dead zero-health sample cannot resume the route')
+w.health=100;s.until('CAMP_NORTHEAST');check('/ls' not in w.messages,'resuming after portal/health readiness does not cast another recall')
+w=World([]);w.cell=(0x14b5<<16)|0x28;w.v.update(pt_region=3,pt_npc_end=1);s=Sim(w,'DEATH_RECOVER');s.tick();s.until('GET_TO_WAIT')
+check('/ra nav load 275 - From Lifestone' in w.messages and '/ls' not in w.messages,'recorded town respawn uses only the approach route, without /ls')
+w.cell=565641256;s.until('CAMP_WEST');check(s.state=='CAMP_WEST','actual camp location confirms portal arrival even if portal chat/event was missed')
+w=World([]);w.v.update(pt_region=0,pt_npc_end=0);s=Sim(w,'DEATH_RECOVER');s.tick();s.until('NPC_TALK')
+check('/ls' not in w.messages,'an interrupted initial NPC sequence is verified before hunting')
+w=World([]);w.cell=0x12340001;w.v.update(pt_region=1,pt_npc_end=1);s=Sim(w,'DEATH_RECOVER');s.tick();s.tick(91)
+check(s.state=='ERROR_HOLD' and not w.used and '/ls' not in w.messages,'unknown respawn locations do not trigger blind walking or repeated recalls')
+w=World([]);w.v.update(pt_region=1,pt_npc_end=1);s=Sim(w,'DEATH_RECOVER');s.tick();w.dead=True;s.tick();w.dead=False;s.tick();s.until('CAMP_EAST')
+check(w.p['tm_stat_death']==2,'a second death during recovery restarts the same recovery path')
+# Default also restores an interrupted cache hold after a manual stop or reload.
 w=World([]);w.p={'pt_cache_pickup_held':1,'pt_cache_old_pickup':1};w.options['LootChestsMacroOff']=0
 sim=Sim(w,'Default');first=next(r for r in rules if r['State']=='Default' and r['Condition']==1)
 for a in first['ActionChildren'][:2]:sim.act(a)
 check(w.options['LootChestsMacroOff']==1 and w.p['pt_cache_pickup_held']==0,'Default restores a cache-only setting left held by death or an interrupted macro')
+w=World([]);w.cell=0x12340001;s=Sim(w,'GET_TO');s.tick();w.cell=565641256;s.until('NPC_TALK')
+check(w.messages.count('/ls')==1,'startup recall is issued once when needed')
+check('/ra nav load 275 - From Lifestone' not in w.messages and '/ra nav load 275 - Get to' not in w.messages,'startup recall landing at camp does not walk the recorded town approach')
 print(f'{checks} cache/death-state simulations passed. No game or network actions executed.')

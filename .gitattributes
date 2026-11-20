@@ -3,3 +3,5 @@ metas/plateau-treasure-verified-v1/*.nav -text whitespace=cr-at-eol
 metas/plateau-treasure-verified-v1/*.met -text whitespace=cr-at-eol
 metas/plateau-treasure-verified-v2/*.nav -text whitespace=cr-at-eol
 metas/plateau-treasure-verified-v2/*.met -text whitespace=cr-at-eol
+metas/plateau-treasure-verified-v3/*.nav -text whitespace=cr-at-eol
+metas/plateau-treasure-verified-v3/*.met -text whitespace=cr-at-eol

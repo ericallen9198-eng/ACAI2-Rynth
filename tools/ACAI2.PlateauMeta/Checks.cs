@@ -29,7 +29,7 @@ static class Checks
   {var s=new Sim(meta.Rules);s.ToWait();s.Tick(0,names[0]+" tells you, \""+body+"\"");Check(s.State=="VERIFY_URSUIN"&&s.Get("pt_unavailable_zefir")=="1","cooldown/reward advances without inventing a new task: "+body);}
   var retry=new Sim(meta.Rules);retry.ToWait();
   for(int i=0;i<3;i++){retry.Tick(21);retry.Tick(0);if(i<2)retry.ToWait();}
-  Check(retry.State=="DEATH_HOLD"&&retry.Get("pt_npc_attempt")=="3"&&!retry.Commands.Any(c=>c.Contains("PT Verify - Ursuin")),"three unanswered attempts hold at the same NPC, never skip ahead");
+  Check(retry.State=="ERROR_HOLD"&&retry.Get("pt_npc_attempt")=="3"&&!retry.Commands.Any(c=>c.Contains("PT Verify - Ursuin")),"three unanswered attempts hold at the same NPC, never skip ahead");
   var hunt=meta.Rules.Where(r=>r.State=="HUNT").ToList();
   Check(!Flatten(hunt).Any(r=>r.Action==MetaActionType.SetMetaState&&r.ActionData is "HUNT_INIT" or "TURNIN_START"),"task completion cannot transfer region or stop treasure hunting");
   Check(!Flatten(hunt).Any(r=>r.ConditionData.Contains("pt_last_progress")||r.ConditionData.Contains("pt_done_")),"empty, partial, full and cooldown task flags never gate the treasure loop");
@@ -39,16 +39,24 @@ static class Checks
   var completion=meta.Rules.First(r=>r.State=="HUNT"&&r.Condition==MetaConditionType.All).Children[0];
   var m=Regex.Match("You have killed 20 Olthoi Hive Guardians! Your task is complete!",completion.ConditionData);
   Check(m.Success&&m.Groups["kills"].Value=="20"&&m.Groups["killed"].Value==tasks[7]+"s","actual Guardian completion can match the captured assignment");
-  foreach(var group in meta.Rules.GroupBy(r=>r.State).Where(g=>g.Key is not ("HOLD" or "DEATH_HOLD")))
+  foreach(var group in meta.Rules.GroupBy(r=>r.State).Where(g=>g.Key is not ("HOLD" or "ERROR_HOLD")))
    Check(group.First().Condition==MetaConditionType.CharacterDeath,"death guard precedes actions in "+group.Key);
   var targets=Flatten(meta.Rules).Where(r=>r.Action==MetaActionType.SetMetaState).Select(r=>r.ActionData).Distinct();
   Check(targets.All(t=>meta.Rules.Any(r=>r.State==t)),"all state transitions have a declared destination");
-  Check(Flatten(meta.Rules.Where(r=>r.State=="Default")).Any(r=>r.Action==MetaActionType.SetRAOption&&r.ActionData=="StopMacroOnDeath;True"),"native immediate stop on death remains enabled");
-  Check(Flatten(meta.Rules.Where(r=>r.State=="DEATH_HOLD")).Any(r=>r.Action==MetaActionType.ChatCommand&&r.ActionData=="/ra stop"),"failure/death hold explicitly stops the macro");
+  Check(Flatten(meta.Rules.Where(r=>r.State=="Default")).Any(r=>r.Action==MetaActionType.SetRAOption&&r.ActionData=="StopMacroOnDeath;False"),"native death-stop is disabled so the meta can continue");
+  Check(Flatten(meta.Rules.Where(r=>r.State=="ERROR_HOLD")).Any(r=>r.Action==MetaActionType.ChatCommand&&r.ActionData=="/ra stop"),"non-death error hold explicitly stops the macro");
   var getTo=NavRouteParser.Load(Path.Combine(folder,"275 - Get to.nav"));
   Check(getTo.Points[0].Type==NavPointType.Chat&&getTo.Points[0].ChatCommand=="/ls"&&getTo.Points[1].Type==NavPointType.Pause&&getTo.Points[1].PauseTimeMs==10000,"startup travel uses /ls and retains its ten-second wait");
   Check(Directory.GetFiles(folder,"*.nav").SelectMany(f=>NavRouteParser.Load(f).Points).All(p=>p.Type!=NavPointType.Recall||p.SpellId!=1636),"no Lifestone Sending recall step remains in any nav");
-  Check(!Flatten(meta.Rules).Any(r=>r.Action==MetaActionType.ChatCommand&&r.ActionData=="/ra start"),"there is no automatic macro restart after a death/failure hold");
+  Check(!Flatten(meta.Rules).Any(r=>r.Action==MetaActionType.ChatCommand&&r.ActionData=="/ra start"),"recovery keeps the macro running instead of issuing a blind macro-start command");
+  var recovery=meta.Rules.Where(r=>r.State=="DEATH_RECOVER").ToArray();
+  Check(!Flatten(recovery).Any(r=>r.Action==MetaActionType.ChatCommand&&r.ActionData is "/ra stop" or "/ls"),"death cleanup neither stops the macro nor issues an extra recall");
+  Check(Flatten(recovery).Any(r=>r.Action==MetaActionType.ExpressionAction&&r.ActionData=="setvar[tm_cache_pending,0]")&&Flatten(recovery).Any(r=>r.Action==MetaActionType.ExpressionAction&&r.ActionData=="setpvar[tm_dig_active,0]"),"death cleanup discards interrupted pickup/map state without marking a reward collected");
+  foreach(string option in new[]{"DeathRecallMode;0","TravelToOwnCorpse;False","KeepHuntingAfterDeath;False"})
+   Check(Flatten(meta.Rules.Where(r=>r.State=="Default")).Any(r=>r.Action==MetaActionType.SetRAOption&&r.ActionData==option),"startup disables competing recovery: "+option);
+  var approach=NavRouteParser.Load(Path.Combine(folder,"275 - From Lifestone.nav"));
+  Check(approach.RouteType==NavRouteType.Once&&approach.Points.Count==4&&approach.Points.All(p=>p.Type!=NavPointType.Recall&&p.ChatCommand!="/ls"),"natural-respawn approach route contains no recall step");
+  Check(meta.Rules.Any(r=>r.State=="RECOVER_ROUTE"&&r.ConditionData.Contains("pt_death_region")==true),"death return chooses the previous hunting region");
   var encounterXp=meta.Rules.Where(r=>r.State=="ENCOUNTER"&&Flatten([r]).Any(c=>c.ConditionData.Contains("You've earned"))).ToArray();
   Check(encounterXp.Length==1&&encounterXp[0].Condition==MetaConditionType.All&&encounterXp[0].Children.Any(c=>c.ConditionData.Contains("Unearthed Cache")),"ordinary XP cannot trigger cache pickup without a visible cache");
   Console.WriteLine($"{n} offline checks passed. Native/game commands were recorded only, never executed. Simulator is not a live Rynth frame.");
