@@ -1,3 +1,3 @@
 # Preserve the exact reviewed nav and VTank meta bytes in the downloadable package.
-metas/plateau-treasure-verified-v1/*.nav -text
-metas/plateau-treasure-verified-v1/*.met -text
+metas/plateau-treasure-verified-v1/*.nav -text whitespace=cr-at-eol
+metas/plateau-treasure-verified-v1/*.met -text whitespace=cr-at-eol
