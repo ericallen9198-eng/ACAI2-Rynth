@@ -1,0 +1,23 @@
+4ea3de8dab0acc080a0d33c3a18aaa58b86c63d789192e8e7044eabc4ba54a4d  275 - Get to.nav
+d224196d4224280efba6c811c0fff6bec03bda019b911cde0ad2ea351887fb3b  275 - Hunt East.nav
+7f870b9c68a59829a7bc4564dc37bbfaf5b1b4403e29e4f742cac3bab7be6732  275 - Hunt Northeast.nav
+6e0efb72dfec1b27e02755c154bb9af995ebc2c5fa5e0a06a1cda488999c3d27  275 - Hunt West.nav
+805c7d6eb335f6825aa393fd72027c1e0622f759c746dae5fbc1b85304190af5  275 - Talk NPCs.nav
+5a661e06b233116280ec1f148f045d3ebd5789735b4f2d6b9dfc9b030ed84bae  275 - Travel Camp East.nav
+385eaf328d48f6e791a98b8a745cb53d6a00037e8626e7a7c6d5fcbed060ea1d  275 - Travel Camp Northeast.nav
+dcc6fa2748574b14f115f75dec5a7794b8d82d1f8c3c62a96d99a7dce2e458d7  275 - Travel Camp West.nav
+fc33f4b23b5672cfbf2552d9b30b9b40f7d06018a9c371d8af1a36d73ead96fc  275 - Travel East Northeast.nav
+0a2bce96c9fb67be67670115ef140f1e908700b55e0d99e28473d37411070d3d  275 - Travel Landing West.nav
+029bbbd5f096cbc6057de0a8362f86574401d990264be160a8d9362e03e6b205  275 Plateau Treasure - Verified.af
+df2f2bcbf7db33bf238e807c515b523a333b4d844c9dbcb581664bfb5d727a9e  275 Plateau Treasure - Verified.met
+77cc9f4ee825c94c45e156b912e7f29dc452d08a647de573192fc67352f76d3f  DW_Farm_Peas_Rares_Custom-Currency.utl
+cd650127dae3179c57972af8dc6bae449787b0da09cedaf4483ca1f797c17c2a  OFFLINE-CHECKS.txt
+ba2471a8c400385bb6b523ebc3454a68db1087808ced4b915e907e7ab06d5cc9  PT Verify - Carenzi.nav
+837df141f2547f33e79edf23a8e1883848a494de18a51348b0ec75bc9b9facc0  PT Verify - Golem.nav
+4d3d4b353e8da2de1f0db3695ef72d6e9c967c060e2755ccc0acf8cbf5cbc726  PT Verify - Gromnie.nav
+96d446e1cff4c4caa5cdf17e6d5a75102d5c4fa6a6c2036afd6bafc2adf63ec0  PT Verify - Olthoi.nav
+9a474da85634533191dbca3dde5e0fed1a7d47e4c0d07fa4fb71d735c27d86d4  PT Verify - Siraluun.nav
+cb38660942816adcc8952281a8527412d2a01fb6ae818800b160552fec400b57  PT Verify - Ursuin.nav
+48f30446bec3ee6d79eaf9a9327ce0f7fde28cb0c7bcd72f115b0b4fe2d281d4  PT Verify - Virindi.nav
+1d371f757c9437b185c44fc5636cc735cae451684cb220671c1b2ee33dad3ace  PT Verify - Zefir.nav
+95384b8d364e5f140b70d94528d1b939e28fdd7cb612bff355e03843f09e2876  README.md

@@ -1,0 +1,10 @@
+Plateau Treasure Verified v2
+RynthSuite parser/LootSdk source: 5e70799b1c83d3cc1f2b06e06a274dd3f7449c82
+350 AF/MET rules parsed without warnings and have identical executable trees.
+159 meta/nav checks: NPC acknowledgement and alternate assignments, state graph destinations, death-first guards on every active state, immediate native death stop, explicit macro stop in holds, /ls with retained wait, absence of Lifestone Sending nav actions, and no task-triggered hunting stop.
+37 emitted-rule cache/death simulations: doubloons without notes, optional notes, note-only cache, late-arriving notes, partial stacks, rejected dispatch, unconfirmed moves, bound cache identity, interrupted settings cleanup, and corpse payout completing without a cache.
+52 loot rules: genuine LootSdk confirms only the two currency free-slot conditions removed. All other conditions, actions, order, metadata and enabled states unchanged. Currency rules are enabled Keep; note denomination patterns and doubloon template checked.
+No production game, Bridge, AI or native action calls were executed. The simulation is an independent offline interpreter, not a live Rynth engine. Live collection/death validation remains.
+
+Working treasure meta SHA256: bd9458faf4088113dffa1353ec19798e8ece0741c6315f26b947105d7c634e46
+Original loot profile SHA256: a05bbb2d8712a3f9b3ca7189f40433bbe0916ba937efb6295ac937deab19525f

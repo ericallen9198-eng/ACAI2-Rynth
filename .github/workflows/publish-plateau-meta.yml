@@ -1,6 +1,10 @@
 name: Verify and publish Plateau treasure meta
 on:
   workflow_dispatch:
+    inputs:
+      original_loot_gzip_base64:
+        description: Supplied loot profile, gzip and base64 encoded (data only)
+        required: true
 permissions:
   contents: write
 jobs:
@@ -16,27 +20,45 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
-      - name: Check AF, MET, NPC handshakes and nav files without a game
-        run: dotnet run --project tools/ACAI2.PlateauMeta -p:RynthSuiteRoot="$GITHUB_WORKSPACE/reviewed-rynth-suite" -- metas/plateau-treasure-verified-v1
-      - name: Package and publish meta files only
+      - name: Decode supplied loot profile as data
+        env:
+          LOOT_DATA: ${{ inputs.original_loot_gzip_base64 }}
+        run: |
+          python - <<'PY'
+          import os,base64,gzip,io,pathlib
+          with gzip.GzipFile(fileobj=io.BytesIO(base64.b64decode(os.environ['LOOT_DATA'],validate=True))) as f:
+              data=f.read(1024*1024+1)
+          assert len(data)<=1024*1024 and data.replace(b'\r\n',b'\n').startswith(b'UTL\n1\n')
+          pathlib.Path(os.environ['RUNNER_TEMP'],'original-loot.utl').write_bytes(data)
+          PY
+      - name: Prepare currency profile with genuine LootSdk
+        run: dotnet run --project tools/ACAI2.PlateauMeta -p:RynthSuiteRoot="$GITHUB_WORKSPACE/reviewed-rynth-suite" -- --prepare-loot "$RUNNER_TEMP/original-loot.utl" metas/plateau-treasure-verified-v2/DW_Farm_Peas_Rares_Custom-Currency.utl
+      - name: Check AF, MET, NPC handshakes, navs and currency rules
+        run: dotnet run --project tools/ACAI2.PlateauMeta -p:RynthSuiteRoot="$GITHUB_WORKSPACE/reviewed-rynth-suite" -- metas/plateau-treasure-verified-v2 "$RUNNER_TEMP/original-loot.utl" "$RUNNER_TEMP/plateau-rules.json"
+      - name: Simulate cache pickup, optional notes, corpse payout and death branches
+        run: python tools/ACAI2.PlateauMeta/test_cache.py "$RUNNER_TEMP/plateau-rules.json"
+      - name: Package and publish meta and loot files only
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          cd metas/plateau-treasure-verified-v1
+          cd metas/plateau-treasure-verified-v2
           sha256sum -c SHA256SUMS.txt
-          zip -qr "$RUNNER_TEMP/Plateau-Treasure-Verified-v1.zip" .
+          zip -qr "$RUNNER_TEMP/Plateau-Treasure-Verified-v2.zip" . -x .gitignore
           cd "$RUNNER_TEMP"
-          sha256sum Plateau-Treasure-Verified-v1.zip > Plateau-Treasure-Verified-v1.zip.sha256
+          sha256sum Plateau-Treasure-Verified-v2.zip > Plateau-Treasure-Verified-v2.zip.sha256
           cat > notes.md <<NOTES
-          Soot's supplied Plateau Treasure Beta adapted with sequential NPC acknowledgement and task-independent treasure hunting. Includes AF, MET, all original navs and eight one-NPC navs. Captures actual assignment names/counts, including Hive Guardians and Virindi Sentries; bounded retries identify the failed hunter. NPC routes use explicit /ra usel commands after approaching, avoiding the type-7 NPC nav dispatch gap. Task completion/cooldown no longer stops hunting or triggers region transfers. Original travel/treasure workflow retained; read README before starting. No plugin or Bridge update.
+          Plateau Treasure Verified v2: explicit doubloon/trade-note pickup adapted from the supplied working treasure meta; notes are optional and the corpse payout path remains. Each pickup waits for inventory/source confirmation, and cache hunting resumes only after observed currencies are drained. Unconfirmed sends hold without blind resend. The supplied 52-rule loot profile keeps all rules intact except removal of the six-free-slot gate on its two enabled currency Keep rules. All Lifestone Sending nav steps are replaced by /ls. Sequential NPC acknowledgement and continued treasure hunting from v1 remain.
 
-          Verified 331 equivalent AF/MET rules using genuine pinned RynthSuite parsers and 44 offline checks. No live validation. Source: $GITHUB_SHA. Original Get-to spell 1636/Lifestone Sending and the encounter magic-mode request remain unchanged.
+          Death/logic review: immediate stop on death retained, every active state guarded, failure holds explicitly stop the macro, restart cleanup in Default, ordinary XP alone cannot trigger the cache phase, and encounter timeouts hold for review. See README for the temporary cache-only pickup-setting restoration and independent Rynth death-recovery settings.
+
+          Genuine pinned RynthSuite parsers, AF/MET rule-tree equivalence, 159 meta/nav checks, 37 cache/death simulations and 52-rule LootSdk comparison passed. No live game validation or game commands executed during checks. No plugin or Bridge update. Source: $GITHUB_SHA.
           NOTES
-          tag=plateau-treasure-verified-v1.0.1
+          tag=plateau-treasure-verified-v2.0.0
           if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag" Plateau-Treasure-Verified-v1.zip Plateau-Treasure-Verified-v1.zip.sha256 --clobber
+            gh release upload "$tag" Plateau-Treasure-Verified-v2.zip Plateau-Treasure-Verified-v2.zip.sha256 --clobber
+            gh release edit "$tag" --notes-file notes.md
           else
-            gh release create "$tag" Plateau-Treasure-Verified-v1.zip Plateau-Treasure-Verified-v1.zip.sha256 --target "$GITHUB_SHA" --title "Plateau Treasure - verified NPC sequence v1" --notes-file notes.md --latest=false
+            gh release create "$tag" Plateau-Treasure-Verified-v2.zip Plateau-Treasure-Verified-v2.zip.sha256 --target "$GITHUB_SHA" --title "Plateau Treasure v2 - explicit currency pickup and /ls" --notes-file notes.md --latest=false
           fi

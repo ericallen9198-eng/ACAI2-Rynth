@@ -12,6 +12,7 @@
     <Compile Include="$(RynthSuiteRoot)/Plugins/RynthCore.Plugin.RynthAi/Meta/EmbedNavName.cs" Link="EmbedNavName.cs" />
     <Compile Include="$(RynthSuiteRoot)/Plugins/RynthCore.Plugin.RynthAi/LegacyUi/NavRouteParser.cs" Link="NavRouteParser.cs" />
     <Compile Include="$(IntermediateOutputPath)ParserTypes.g.cs" />
+    <ProjectReference Include="$(RynthSuiteRoot)/Shared/RynthCore.LootSdk/RynthCore.LootSdk.csproj" />
   </ItemGroup>
   <Target Name="ExtractUnmodifiedParserTypes" BeforeTargets="CoreCompile">
     <Exec Command="python &quot;$(MSBuildProjectDirectory)/generate_types.py&quot; &quot;$(RynthSuiteRoot)&quot; &quot;$(IntermediateOutputPath)ParserTypes.g.cs&quot;" />

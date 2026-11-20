@@ -39,6 +39,18 @@ static class Checks
   var completion=meta.Rules.First(r=>r.State=="HUNT"&&r.Condition==MetaConditionType.All).Children[0];
   var m=Regex.Match("You have killed 20 Olthoi Hive Guardians! Your task is complete!",completion.ConditionData);
   Check(m.Success&&m.Groups["kills"].Value=="20"&&m.Groups["killed"].Value==tasks[7]+"s","actual Guardian completion can match the captured assignment");
+  foreach(var group in meta.Rules.GroupBy(r=>r.State).Where(g=>g.Key is not ("HOLD" or "DEATH_HOLD")))
+   Check(group.First().Condition==MetaConditionType.CharacterDeath,"death guard precedes actions in "+group.Key);
+  var targets=Flatten(meta.Rules).Where(r=>r.Action==MetaActionType.SetMetaState).Select(r=>r.ActionData).Distinct();
+  Check(targets.All(t=>meta.Rules.Any(r=>r.State==t)),"all state transitions have a declared destination");
+  Check(Flatten(meta.Rules.Where(r=>r.State=="Default")).Any(r=>r.Action==MetaActionType.SetRAOption&&r.ActionData=="StopMacroOnDeath;True"),"native immediate stop on death remains enabled");
+  Check(Flatten(meta.Rules.Where(r=>r.State=="DEATH_HOLD")).Any(r=>r.Action==MetaActionType.ChatCommand&&r.ActionData=="/ra stop"),"failure/death hold explicitly stops the macro");
+  var getTo=NavRouteParser.Load(Path.Combine(folder,"275 - Get to.nav"));
+  Check(getTo.Points[0].Type==NavPointType.Chat&&getTo.Points[0].ChatCommand=="/ls"&&getTo.Points[1].Type==NavPointType.Pause&&getTo.Points[1].PauseTimeMs==10000,"startup travel uses /ls and retains its ten-second wait");
+  Check(Directory.GetFiles(folder,"*.nav").SelectMany(f=>NavRouteParser.Load(f).Points).All(p=>p.Type!=NavPointType.Recall||p.SpellId!=1636),"no Lifestone Sending recall step remains in any nav");
+  Check(!Flatten(meta.Rules).Any(r=>r.Action==MetaActionType.ChatCommand&&r.ActionData=="/ra start"),"there is no automatic macro restart after a death/failure hold");
+  var encounterXp=meta.Rules.Where(r=>r.State=="ENCOUNTER"&&Flatten([r]).Any(c=>c.ConditionData.Contains("You've earned"))).ToArray();
+  Check(encounterXp.Length==1&&encounterXp[0].Condition==MetaConditionType.All&&encounterXp[0].Children.Any(c=>c.ConditionData.Contains("Unearthed Cache")),"ordinary XP cannot trigger cache pickup without a visible cache");
   Console.WriteLine($"{n} offline checks passed. Native/game commands were recorded only, never executed. Simulator is not a live Rynth frame.");
  }
  static IEnumerable<MetaRule> Flatten(IEnumerable<MetaRule> rules){foreach(var r in rules){yield return r;foreach(var c in Flatten(r.Children.Concat(r.ActionChildren)))yield return c;}}
