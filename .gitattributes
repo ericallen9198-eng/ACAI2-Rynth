@@ -14,3 +14,4 @@ patches/**/*.patch -text whitespace=-blank-at-eol
 
 # Double-click Windows installer launcher.
 patches/marae-npc-2026.11.19.1/*.cmd text eol=crlf
+patches/marae-mission-2026.11.19.1/*.cmd text eol=crlf
