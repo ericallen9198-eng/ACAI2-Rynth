@@ -53,6 +53,8 @@ try {
     Check ((Hash $target) -eq $oldHash) 'damaged patch cannot change target'
     Check (@(Get-ChildItem -LiteralPath $env:LOCALAPPDATA -Filter 'restore-info.json' -Recurse).Count -eq 1) 'refused installs create no additional backups'
     Write-Host "PASS: $checks installer checks using temporary dummy bytes and Windows PowerShell 5.1."
+    # Expected rejection tests leave a native exit code of 1; report suite success explicitly.
+    $global:LASTEXITCODE = 0
 } finally {
     $env:LOCALAPPDATA = $originalLocal
     Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
