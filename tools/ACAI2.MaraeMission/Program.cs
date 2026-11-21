@@ -1,6 +1,19 @@
 using System.Text.Json;
 using RynthCore.Plugin.RynthAi.Meta;
 using RynthCore.Plugin.RynthAi.LegacyUi;
+if(args[0]=="--map-goal-test") {
+ int checks=0;
+ foreach(double heading in new[]{0d,45,90,135,180,225,270,315}) {
+  if(!MaraeMapWalkMath.TryGoal(45,-75,heading,12,out double ns,out double ew))throw new Exception("Goal refused");
+  double dn=(ns-45)*240,de=(ew+75)*240;
+  if(Math.Abs(dn-12*Math.Cos(heading*Math.PI/180))>1e-8 || Math.Abs(de-12*Math.Sin(heading*Math.PI/180))>1e-8)throw new Exception("Clue bearing inverted");
+  checks++;
+ }
+ if(MaraeMapWalkMath.TryGoal(double.NaN,0,0,10,out _,out _) || MaraeMapWalkMath.TryGoal(0,0,0,-1,out _,out _))throw new Exception("Invalid goal accepted");checks+=2;
+ if(!MaraeMapWalkMath.TryGoal(0,0,0,1000,out double limited,out _) || Math.Abs(limited*240-24)>1e-9)throw new Exception("Unbounded clue step");checks++;
+ if(MaraeMapWalkMath.TryGoal(102.85,0,0,24,out _,out _))throw new Exception("Out-of-world goal accepted");checks++;
+ Console.WriteLine($"PASS: {checks} map-clue geometry checks using the native helper source.");return;
+}
 if(args[0]=="--lua-test") {
  var vm=new MoonSharp.Interpreter.Script(MoonSharp.Interpreter.CoreModules.Preset_Complete);
  vm.DoString(File.ReadAllText(args[1]));vm.DoString(File.ReadAllText(args[2]));
@@ -18,7 +31,7 @@ if(args[0]=="--lua-test") {
 }
 var meta=AfFileParser.Load(args[0]);
 if(meta.Warnings.Count>0)throw new Exception(string.Join(";",meta.Warnings));
-if(meta.EmbeddedNavs.Count!=18)throw new Exception("Expected 18 embedded routes");
+if(meta.EmbeddedNavs.Count!=20)throw new Exception("Expected 20 embedded routes");
 var states=meta.Rules.Select(r=>r.State).ToHashSet();int refs=0,marks=0;
 void Walk(MetaRule r){
  if(r.Action==MetaActionType.SetMetaState&&!states.Contains(r.ActionData))throw new Exception("Missing state "+r.ActionData);

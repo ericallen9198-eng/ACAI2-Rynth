@@ -1,0 +1,64 @@
+--- a/Plugins/RynthCore.Plugin.RynthAi/Meta/ExpressionEngine.cs
++++ b/Plugins/RynthCore.Plugin.RynthAi/Meta/ExpressionEngine.cs
+@@ -594,7 +594,8 @@
+             "rasetmetastate" or "vtsetmetastate" or "setmetastate" => EvalVtSetMetaState(Text(0)),
+             "ragetmetastate" or "vtgetmetastate" or "getmetastate" => _settings?.CurrentState ?? "",
+             // UB vtgetmeta[]: the loaded meta's name (file name without extension).
+-            "maraemissionapi" => "2",
++            "maraemissionapi" => "3",
++            "maraemapwalk" => EvalMaraeMapWalk(A(0), A(1)),
+             "maraenavsave" => EvalMaraeNavSave(),
+             "maraenavrestore" => EvalMaraeNavRestore(),
+             "maraenavmark" => EvalMaraeNavMark(),
+@@ -1066,6 +1067,51 @@
+     private float _maraeSavedReach;
+     private uint _maraeSavedPlayer;
+     private bool _maraeHasSavedNav;
++    private string EvalMaraeMapWalk(string headingArg, string stepArg)
++    {
++        string Fail(string reason) { _variables["tm_mesh_error"]=reason; return "0"; }
++        if (_settings == null || !_settings.IsMacroRunning || _settings.CurrentState != "MAP_MESH_WAIT"
++            || MaraeRecoveryBusy?.Invoke() == true) return Fail("movement not owned by map search");
++        if (!_host.HasGetPlayerPose || !_host.TryGetPlayerPose(out uint cell,out float x,out float y,out float z,out _,out _,out _,out _)
++            || (cell & 0xFFFF)>=0x100 || !NavCoordinateHelper.TryConvertPoseToCoords(cell,x,y,out double ns,out double ew))
++            return Fail("no outdoor player position");
++        if (!MaraeMapWalkMath.TryGoal(ns,ew,ToDouble(headingArg),ToDouble(stepArg),out double goalNs,out double goalEw))
++            return Fail("invalid clue direction or step");
++        if (!_host.HasGetPluginInterface) return Fail("RynthNav path interface unavailable");
++        const int Max=128;
++        double[] corners=new double[Max*3];
++        double[] info=new double[RynthNavPathApiV1.InfoLength];
++        int count=0,result;
++        unsafe
++        {
++            var api=(RynthNavPathApiV1*)_host.GetPluginInterface(RynthNavPathApiV1.PluginName,RynthNavPathApiV1.InterfaceName,2);
++            if (api==null || api->Version<2 || api->StructSize<(uint)sizeof(RynthNavPathApiV1) || api->FindPathEx==null)
++                return Fail("RynthNav.Path v2 is not loaded");
++            int flags=RynthNavPathApiV1.PathAvoidPortals | RynthNavPathApiV1.PathWallClearance | RynthNavPathApiV1.PathQuiet;
++            fixed(double* pts=corners) fixed(double* inf=info)
++                result=api->FindPathEx(((cell>>24)&255)*192.0+x,((cell>>16)&255)*192.0+y,z,
++                    (goalEw*10+1019.5)*24,(goalNs*10+1019.5)*24,z,flags,0,pts,Max,&count,inf);
++        }
++        if (result!=RynthNavPathApiV1.ResultOk || count<2 || count>Max)
++            return Fail(result==RynthNavPathApiV1.ResultNoMesh ? "no navmesh at the map clue" : "no complete walkable path to clue step");
++        var route=new NavRouteParser { RouteType=NavRouteType.Once };
++        for(int i=1;i<count;i++)
++        {
++            double wx=corners[i*3],wy=corners[i*3+1],wz=corners[i*3+2];
++            if(!double.IsFinite(wx)||!double.IsFinite(wy)||!double.IsFinite(wz)) return Fail("invalid navmesh corner");
++            route.Points.Add(new NavPoint { Type=NavPointType.Point,NS=(wy/24-1019.5)/10,
++                EW=(wx/24-1019.5)/10,Z=wz/240,Doorway=true });
++        }
++        if(EvalMaraeNavSave()!="1") return Fail("could not save the hunt route");
++        _settings.CurrentRoute=route;_settings.CurrentNavPath=string.Empty;_settings.ActiveNavIndex=0;
++        EvalMaraeNavMark();_settings.EnableNavigation=true;
++        var last=route.Points[route.Points.Count-1];
++        _variables["tm_walk_target"]=MakeCoordObject(last.NS,last.EW,last.Z);
++        _variables["tm_mesh_error"]="";
++        _variables["ml_status"]="Following the map clue on a RynthNav mesh path";
++        return "1";
++    }
++
+     private string EvalMaraeNavSave()
+     {
+         uint player = _host.GetPlayerId();

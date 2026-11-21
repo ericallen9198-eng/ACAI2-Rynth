@@ -97,6 +97,10 @@ apply_walk_policy(states,state,action,expr)
 # Retry/partial-work policy is applied before completion watchers are shared.
 from npc_policy import apply
 hunters=apply(states,keys,state,action,expr)
+from hunt_policy import apply as apply_hunt_policy
+apply_hunt_policy(states,navs,state,action,expr)
+from mesh_policy import apply as apply_mesh_policy
+apply_mesh_policy(states,state,action,expr)
 # Task completions can arrive during a treasure fight, not just the hunting state.
 completion_rules=[]
 for zone in (180,225,275):

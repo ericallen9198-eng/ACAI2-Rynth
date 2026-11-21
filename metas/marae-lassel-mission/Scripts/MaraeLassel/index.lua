@@ -44,10 +44,13 @@ local function saveSettings() storage.Character.Set('mission_options_v1',setting
 local function selected() return settings.areas[1] or settings.areas[2] or settings.areas[3] end
 local function preferences()
  expr('setpvar[ml_run_mode,1]')
+ expr('setpvar[ml_mesh_maps,'..(settings.meshMaps and 1 or 0)..']')
+ expr('setpvar[mm_hunt_cursor,'..(journal.huntCursor or 0)..']')
  expr('setpvar[mm_fallback_180,'..(settings.fallback180~=false and 1 or 0)..']')
  for i,z in ipairs(zones) do
   expr('setpvar[ml_area_'..z.level..','..(settings.areas[i] and 1 or 0)..']')
   expr('setpvar[ml_maps_'..z.level..','..(settings.maps[i] and 1 or 0)..']')
+  expr('setpvar[ml_hunt_only_'..z.level..','..(settings.huntOnly[i] and 1 or 0)..']')
  end
  for _,k in ipairs(keys) do expr('setpvar['..k..','..((journal.progress or {})[k] == 1 and 1 or 0)..']') end
 end
@@ -59,6 +62,8 @@ local function checkpoint()
   local v=number(checkpointReads[i])==1 and 1 or 0
   if journal.progress[k]~=v then journal.progress[k]=v;changed=true end
  end
+ local cursor=number('getpvar[mm_hunt_cursor]')
+ if journal.huntCursor~=cursor then journal.huntCursor=cursor;changed=true end
  journal.zone=number('getvar[ml_zone]')
  if changed then save() end
 end
@@ -76,6 +81,7 @@ end
 local function begin(fresh,automatic)
  if not selected() then feedback='Select at least one area.';return end
  if number('maraemissionapi[]')<2 then feedback='Install the mission-compatible RynthAi DLL from this package first.';return end
+ if settings.meshMaps and number('maraemissionapi[]')<3 then feedback='Install the new mission DLL before enabling Mesh map steps.';return end
  if automatic and ai.MacroRunning and not owns() then
   feedback='Saved mission waiting: another macro is running. Stop it, then press Resume run.';return
  end
@@ -203,6 +209,7 @@ game.OnTick.Add(function()
    inGame=true; sampled=-1
    local old=storage.Get('options_v2',{areas={true,true,true},maps={false,false,false}})
    settings=storage.Character.Get('mission_options_v1',{areas=old.areas,maps=old.maps})
+   settings.huntOnly=settings.huntOnly or {false,false,false}
    journal=storage.Character.Get('mission_v1',{progress={},active=false,resumable=false})
    if journal.active then begin(false,true) end
   end
@@ -236,15 +243,20 @@ game.OnTick.Add(function()
   local ours=owns()
   local state=ours and value('vtgetmetastate[]') or ''
   if ours and journal.active and ai.MacroRunning and not startup and
-    (state=='CACHE_RETURN_WAIT' or state=='CACHE_APPROACH_WAIT') then
+    (state=='CACHE_RETURN_WAIT' or state=='CACHE_APPROACH_WAIT' or state=='MAP_MESH_WAIT') then
    local generation=number('getvar[tm_walk_generation]')
    if generation~=walkGeneration and number('getcharvital_current[1]')>0 and number('maraerecoverybusy[]')==0 then
     walkGeneration=generation
+    if state=='MAP_MESH_WAIT' then
+     local accepted=number('maraemapwalk['..number('getvar[tm_mesh_heading]')..','..number('getvar[tm_mesh_step]')..']')==1
+     expr('setvar[tm_walk_ack,'..(accepted and 1 or -1)..']')
+    else
     local coords=value('getvar[tm_walk_target]')
     local ns,ew=coords:match('^([^|]+)|([^|]+)|')
     ns,ew=tonumber(ns),tonumber(ew)
     local accepted=ns and ew and number('maraenavsave[]')==1 and ai.GoTo(ns,ew) and number('maraenavmark[]')==1
     expr('setvar[tm_walk_ack,'..(accepted and 1 or -1)..']')
+    end
    end
   else walkGeneration=-1 end
   if ours and journal.active and not startup and not ai.MacroRunning and state~='HOLD' then
@@ -280,7 +292,7 @@ end)
 
 hud.OnRender.Add(function()
  if not snapshot or not settings then ImGui.TextWrapped('Waiting for character login and RynthAi.');return end
- ImGui.TextWrapped('Marae Lassel: hunter tasks + optional treasure maps')
+ ImGui.TextWrapped('Marae Lassel: tasks or continuous hunting')
  ImGui.TextDisabled('Loaded: '..snapshot.loaded)
  if snapshot.running or startup then
   ImGui.Text('Area: '..tostring(snapshot.zone~=0 and snapshot.zone or 'choosing'))
@@ -288,13 +300,18 @@ hud.OnRender.Add(function()
   if snapshot.detail~='0' then ImGui.TextWrapped(snapshot.detail) end
   if ImGui.Button('Stop run') then request='stop' end
  else
-  ImGui.TextDisabled('Area                         Use maps')
+  ImGui.TextDisabled('Area                  Maps      Hunt only')
   for i,z in ipairs(zones) do
    local changed
    changed,settings.areas[i]=ImGui.Checkbox(z.level..' '..z.name,settings.areas[i]);if changed then saveSettings() end
-   ImGui.SameLine(240,8)
+   ImGui.SameLine(220,8)
    changed,settings.maps[i]=ImGui.Checkbox('##maps'..z.level,settings.maps[i]);if changed then saveSettings() end
+   ImGui.SameLine(305,8)
+   changed,settings.huntOnly[i]=ImGui.Checkbox('##huntOnly'..z.level,settings.huntOnly[i]);if changed then saveSettings() end
   end
+  ImGui.TextWrapped('Hunt only skips tasks and repeats the nav. Maps remain optional. Task areas run first; hunt-only areas then rotate each circuit.')
+  local meshChanged,meshValue=ImGui.Checkbox('Mesh map steps (needs RynthNav)',settings.meshMaps==true)
+  if meshChanged then settings.meshMaps=meshValue;saveSettings() end
   local fallbackChanged,fallbackValue=ImGui.Checkbox('Fallback to 180 treasure hunting',settings.fallback180~=false)
   if fallbackChanged then settings.fallback180=fallbackValue;saveSettings() end
   if snapshot.other then ImGui.TextWrapped('Start will stop the current RynthAi macro before loading this mission.') end

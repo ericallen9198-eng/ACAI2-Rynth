@@ -21,6 +21,7 @@ class World(BaseWorld):
     raise AssertionError('cache discovery must not require template metadata')
    if f=='maraenavrestore':return 1
    if f=='getplayercoordinates':return 'player'
+   if f=='getitemcountininventorybyname':return getattr(self,'mapCount',0)
    if f=='strlen':return len(str(self.ev(t[2][0],scope)))
    if f=='listcontains':
     values=self.ev(t[2][0],scope);return isinstance(values,list) and self.ev(t[2][1],scope) in values
@@ -224,3 +225,53 @@ check(s.state=='MAP_DEATH' and not w.used and not w.moves,'death during approach
 print(f"PASS: {ns['checks']} mission simulations including chase return, 24-yard single-cache approach, timeout and death.")
 
 check(any('maraenavrestore[]' in action_text(r) for r in rules if r['State']=='MAP_DEATH'),'death delegates to recovery only after releasing mission navigation')
+
+# Explicit hunt-only mode ignores finished tasks, cooldowns and the map fallback toggle.
+for z,cell in ((180,0x14B5002F),(225,0x1BC2002B),(275,0x21B70028)):
+ w=World(cell);w.p.update(mm_area_180=1,mm_area_225=1,mm_area_275=1,mm_attempted_180=1,mm_attempted_225=1,mm_attempted_275=1,mm_fallback_180=1)
+ for area in (180,225,275):w.p['ml_area_'+str(area)]=int(area==z);w.p['ml_maps_'+str(area)]=0
+ w.p['ml_hunt_only_'+str(z)]=1
+ s=Sim(w,'Default');s.until(f'T{z}_FARM_RUN',150)
+ check(w.v['ml_use_maps']==0 and w.options['EnableLooting']==1 and w.options['EnableCombat']==1,'hunt-only maps-off starts despite all cooldown/completion flags '+str(z))
+ check('Talk_NPC' not in (w.route or '') and '/ra quests refresh' not in w.messages,'hunt-only never visits hunters or refreshes quests '+str(z))
+ for lap in range(3):
+  w.v['pt_travel_end']=1;s.until('CONTINUOUS_LAP_DONE');s.until(f'T{z}_FARM_RUN',80)
+ check(w.v['ml_zone']==z and w.v['ml_use_maps']==0,'single hunt-only area repeats its own circuit '+str(z))
+ # Hours without KT progress must not trip the old 45-minute quest timeout.
+ for _ in range(4):s.tick(3600)
+ check(s.state==f'T{z}_FARM_RUN','hours without quest progress do not stop pure hunting '+str(z))
+ # A map in inventory, including stale active-map IDs, must not override Maps OFF.
+ w.mapCount=10;w.v['tm_map_id']=1234;s.tick()
+ check(s.state==f'T{z}_FARM_RUN','maps off never opens or searches even with maps in pack '+str(z))
+# Multiple continuous areas rotate each completed nav, preserving each area's map toggle.
+w=World();w.p.update(ml_hunt_only_180=1,ml_hunt_only_225=1,ml_area_275=0,ml_maps_180=0,ml_maps_225=1,mm_hunt_cursor=180)
+s=Sim(w,'Default');s.until('T225_START_LOCATION',100)
+check(w.v['ml_zone']==225 and w.v['ml_use_maps']==1,'continuous cursor chooses next area and its independent map preference')
+s.state='CONTINUOUS_LAP_DONE';s.fired.clear();s.until('T180_START_LOCATION',100)
+check(w.p['mm_hunt_cursor']==225 and w.v['ml_use_maps']==0,'last continuous area wraps to Lowlands with maps still off')
+# Task areas retain ordinary NPC handling; no checkboxes changed means old task behavior.
+w=World(0x1BC2002B);w.p.update(ml_area_180=0,ml_area_275=0);s=Sim(w,'Default');s.until('T225_NPC_TALK_WAIT',100)
+check(w.route.endswith('Talk_NPCs'),'task mode still talks to hunters')
+# Native death recovery returns a hunt-only character directly to hunting after respawn.
+w=World();w.p.update(ml_hunt_only_180=1,ml_maps_180=0);w.v.update(ml_zone=180,ml_hunt_only=1,ml_use_maps=0)
+s=Sim(w,'T180_DEATH_RECOVERY');s.until('T180_GET_TO_WAIT',100);w.cell=0x14B5002F;s.until('T180_FARM_RUN',100)
+check(w.v['ml_use_maps']==0 and 'Talk_NPC' not in w.route,'hunt-only recovery resumes without a quest check or enabling maps')
+print(f"PASS: {ns['checks']} simulations including independent per-area continuous hunting and overnight loops.")
+
+# Optional mesh steps use clue bearings; raw movement is not issued when enabled.
+for clue,heading,step in (('FAR_NORTH',0,24),('FAR_EAST',90,24),('CLOSE_SOUTHWEST',225,8)):
+ w=World();w.p['ml_mesh_maps']=1;s=Sim(w,clue);s.until('MAP_MESH_WAIT')
+ check(w.v['tm_mesh_heading']==heading and w.v['tm_mesh_step']==step,'clue selects bounded mesh step '+clue)
+ check(not any('setmotion' in m for m in w.messages),'enabled mesh clue never issues raw forward motion '+clue)
+ w.v.update(tm_walk_ack=1,tm_walk_target='player');s.until('MAP_RESUME')
+ check(s.state=='MAP_RESUME','mesh arrival re-reads the map rather than running on a timer')
+w=World();s=Sim(w,'FAR_EAST');s.until('RUN_WAIT')
+check(any('setmotion Forward 1' in m for m in w.messages),'mesh option off preserves the original map movement')
+w=World();w.v.update(tm_mesh_step=24,tm_mesh_failures=0);s=Sim(w,'MAP_MESH_FAILED');s.until('MAP_MESH_WAIT');w.v['tm_walk_ack']=-1;s.until('MAP_MESH_FAILED');s.until('MAP_MESH_WAIT');w.v['tm_walk_ack']=-1;s.until('MISSION_ERROR')
+check(w.v['tm_mesh_failures']==3 and w.v['tm_mesh_step']==6,'missing mesh/path retries shorter steps then stops explicitly')
+w=World();w.v['tm_walk_ack']=1;w.health=50;s=Sim(w,'MAP_MESH_WAIT');s.tick()
+check(s.state=='MAP_COMBAT_RESUME','low HP interrupts mesh movement for normal combat/recovery')
+print(f"PASS: {ns['checks']} total mission simulations, including continuous hunting and optional mesh clue movement.")
+
+w=World();w.p['ml_mesh_maps']=1;s=Sim(w,'STUCK');s.until('MISSION_ERROR')
+check(not any('setmotion' in m for m in w.messages),'mesh search never falls back to a blind backward setmotion')
