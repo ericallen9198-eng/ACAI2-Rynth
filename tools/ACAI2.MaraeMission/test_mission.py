@@ -351,3 +351,15 @@ w=World(0x14B5002F);w.v.update(ml_area_180=1,ml_area_225=0,ml_area_275=0,ml_hunt
 w.p.update(mm_camp_limit=1,mm_fallback_180=1,ml_hunt_only_180=0,ml_maps_180=1,mm_area_180=0,mm_attempted_180=0,mm_timed_180=0)
 s=Sim(w,'DISPATCH');s.until('T180_NPC_TALK_WAIT')
 check(w.v.get('mm_budget_fallback',0)!=1 and w.v['ml_hunt_only']==0 and w.v['ml_use_maps']==1,'reported live flags start NPC tasks plus maps, not continuous fallback')
+
+# Opening an empty neighbouring cache must not bind the run forever.
+w=World(items=[item(10,container=2)]);w.open=0
+s=Sim(w,'CACHE_PREP');s.until('CACHE_CONFIRM',100)
+check(w.v['tm_cache_id']==2 and w.used[:2]==[1,2], 'empty first cache advances to another candidate before any pickup')
+
+# Exact live failure: bound and probe are the same ID, no container open, four visible.
+w=World(items=[item(10,container=4)]);w.open=0
+w.caches={i:{'distance':0,'openable':i==4} for i in range(1,5)}
+w.v.update(tm_cache_id=1,tm_cache_probe_id=1,tm_cache_tried=[1],tm_cache_rejected=[],tm_cache_pending=0,tm_cache_pickups=0,tm_cache_bound_at=0,tm_cache_probe_until=0,tm_cache_deadline=300)
+s=Sim(w,'CACHE_SEARCH');s.until('CACHE_CONFIRM',150)
+check(w.v['tm_cache_id']==4 and 4 in w.used,'stale bound cache releases and four visible candidates are considered')
