@@ -20,6 +20,7 @@ class World(BaseWorld):
    if getattr(self,'denyCacheMetadata',False) and f in ('wobjectgettemplatetype','wobjectfindalllandscapebytemplatetype'):
     raise AssertionError('cache discovery must not require template metadata')
    if f=='maraenavrestore':return 1
+   if f=='min':return min(self.ev(x,scope) for x in t[2])
    if f=='getplayercoordinates':return 'player'
    if f=='getitemcountininventorybyname':return getattr(self,'mapCount',0)
    if f=='getfellowshipcount':return 0
@@ -320,3 +321,18 @@ w=World();w.p.update(mm_camp_limit=1,mm_timed_180=1,mm_deadline_180=7200);w.now=
 s=Sim(w,'Default');s.until('T225_START_LOCATION',100);s.state='T225_HUNT_RESUME';s.fired.clear();s.tick()
 check(w.p['mm_deadline_225']==w.now+7200 and w.p['mm_deadline_180']==7200,'next camp receives its own quota without rewriting the previous deadline')
 print(f"PASS: {ns['checks']} total mission simulations with optional camp budgets and bounded partial turn-in.")
+
+# Live stride preferences are read at each new clue; active retry legs keep their own step.
+for configured,expected in ((30,30),(72,72),(1000,120),(-1,24)):
+ w=World();w.p.update(ml_mesh_maps=1,mm_mesh_far=configured);s=Sim(w,'FAR_EAST');s.until('MAP_MESH_WAIT')
+ check(w.v['tm_mesh_step']==expected,'far stride preference is bounded and used by the next clue '+str(configured))
+w=World();w.p.update(ml_mesh_maps=1,mm_mesh_far=80,mm_mesh_close=20);s=Sim(w,'CLOSE_NORTH');s.until('MAP_MESH_WAIT')
+check(w.v['tm_mesh_step']==20,'close clue has its own live stride preference')
+w.p['mm_mesh_close']=12;s.tick()
+check(w.v['tm_mesh_step']==20,'changing preference does not change a leg already planned')
+s.state='CLOSE_NORTH';s.fired.clear();s.until('MAP_MESH_WAIT')
+check(w.v['tm_mesh_step']==12,'next close clue reads the updated preference')
+print(f"PASS: {ns['checks']} simulations including live far/close stride preferences.")
+
+w=World();w.p.update(ml_mesh_maps=1,mm_mesh_far=80,mm_mesh_close=60);s=Sim(w,'CLOSE_EAST');s.until('MAP_MESH_WAIT')
+check(w.v['tm_mesh_step']==60,'close stride can also be tuned beyond the original short-distance range')

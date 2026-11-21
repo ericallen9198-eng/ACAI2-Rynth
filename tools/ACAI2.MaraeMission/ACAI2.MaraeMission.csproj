@@ -5,7 +5,7 @@
     <RynthSuiteRoot Condition="'$(RynthSuiteRoot)' == ''">../../../RynthSuite</RynthSuiteRoot>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="../../patches/marae-mission-v1.6/MaraeMapWalkMath.cs" Link="MaraeMapWalkMath.cs" />
+    <Compile Include="../../patches/marae-mission-v1.8/MaraeMapWalkMath.cs" Link="MaraeMapWalkMath.cs" />
     <PackageReference Include="MoonSharp" Version="2.0.0" />
     <Compile Include="$(RynthSuiteRoot)/Plugins/RynthCore.Plugin.RynthAi/Meta/AfFileParser.cs" Link="AfFileParser.cs" />
     <Compile Include="$(RynthSuiteRoot)/Plugins/RynthCore.Plugin.RynthAi/Meta/MetFileParser.cs" Link="MetFileParser.cs" />

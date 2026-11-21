@@ -37,14 +37,26 @@ end
 local settings, journal, request, startup, snapshot
 local logCursor=0;local recentReplies={}
 local walkGeneration=-1
+local strideDirty=false
 local feedback=''; local inGame=false; local sampled=-1; local stopSince=nil
 local nextPoll=0
 local checkpointReads={}
 for i,k in ipairs(keys) do checkpointReads[i]='getpvar['..k..']' end
 local function save() storage.Character.Set('mission_v1',journal) end
 local function saveSettings() storage.Character.Set('mission_options_v1',settings) end
+local function normalizeStride()
+ settings.meshFar=math.max(8,math.min(120,math.floor(tonumber(settings.meshFar) or 24)))
+ settings.meshClose=math.max(4,math.min(120,settings.meshFar,math.floor(tonumber(settings.meshClose) or 8)))
+end
+local function applyStride()
+ normalizeStride()
+ expr('setpvar[mm_mesh_far,'..settings.meshFar..']')
+ expr('setpvar[mm_mesh_close,'..settings.meshClose..']')
+ strideDirty=false
+end
 local function selected() return settings.areas[1] or settings.areas[2] or settings.areas[3] end
 local function preferences()
+ applyStride()
  expr('setpvar[ml_run_mode,1]')
  expr('setpvar[mm_camp_limit,'..(settings.campLimit and 1 or 0)..']')
  expr('setpvar[ml_mesh_maps,'..(settings.meshMaps and 1 or 0)..']')
@@ -90,7 +102,7 @@ end
 local function begin(fresh,automatic)
  if not selected() then feedback='Select at least one area.';return end
  if number('maraemissionapi[]')<2 then feedback='Install the mission-compatible RynthAi DLL from this package first.';return end
- if settings.meshMaps and number('maraemissionapi[]')<3 then feedback='Install the new mission DLL before enabling Mesh map steps.';return end
+ if settings.meshMaps and number('maraemissionapi[]')<4 then feedback='Install the new mission DLL before enabling Mesh map steps.';return end
  if automatic and ai.MacroRunning and not owns() then
   feedback='Saved mission waiting: another macro is running. Stop it, then press Resume run.';return
  end
@@ -211,7 +223,7 @@ game.OnTick.Add(function()
  end
  -- clock() is RynthLua's monotonic millisecond clock; no expression allocation.
  local ms=clock()
- if inGame and not request and ms<nextPoll then return end
+ if inGame and not request and not (strideDirty and snapshot and snapshot.running) and ms<nextPoll then return end
  nextPoll=ms+(startup and 200 or 1000)
  local ok,err=pcall(function()
   if not inGame then
@@ -219,9 +231,11 @@ game.OnTick.Add(function()
    local old=storage.Get('options_v2',{areas={true,true,true},maps={false,false,false}})
    settings=storage.Character.Get('mission_options_v1',{areas=old.areas,maps=old.maps})
    settings.huntOnly=settings.huntOnly or {false,false,false}
+   normalizeStride()
    journal=storage.Character.Get('mission_v1',{progress={},active=false,resumable=false})
    if journal.active then begin(false,true) end
   end
+  if strideDirty and owns() then applyStride() end
   local t=now()
   local r=request;request=nil
   if r=='stop' then
@@ -340,6 +354,15 @@ hud.OnRender.Add(function()
   if journal.resumable and not journal.finished then
    ImGui.SameLine();if ImGui.Button('New run') then request='new' end
   end
+ end
+ if settings.meshMaps then
+  local farChanged,farValue=ImGui.SliderInt('Far clue travel',settings.meshFar,8,120,'%d yd')
+  local closeChanged,closeValue=ImGui.SliderInt('Close clue travel',settings.meshClose,4,math.min(120,settings.meshFar),'%d yd')
+  if farChanged or closeChanged then
+   settings.meshFar=farValue;settings.meshClose=closeValue;normalizeStride()
+   saveSettings();strideDirty=true
+  end
+  ImGui.TextDisabled('Live tuning: applies to the next clue, not the current leg.')
  end
  if feedback~='' then ImGui.TextWrapped(feedback) end
  if logWarning~='' then ImGui.TextWrapped(logWarning) end

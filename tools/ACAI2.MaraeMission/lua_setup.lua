@@ -3,7 +3,7 @@ ai={Available=true,MacroRunning=false,GoTo=function(ns,ew)sim.walks=(sim.walks o
 local function charstore() sim.stores[sim.character]=sim.stores[sim.character] or {};return sim.stores[sim.character] end
 local storage={Get=function(k,d)return sim.global[k] or d end,Set=function(k,v)sim.global[k]=v end,Character={Get=function(k,d)return charstore()[k] or d end,Set=function(k,v)charstore()[k]=v end}}
 hud={OnRender={Add=function(f)sim.render=f end}}
-local imgui={Button=function(label)if sim.click==label then sim.click=nil;return true end return false end,Checkbox=function(l,v)if sim.toggle==l then sim.toggle=nil;return true,not v end return false,v end,Text=function(s)sim.texts[#sim.texts+1]=s end,TextWrapped=function(s)sim.texts[#sim.texts+1]=s end,TextDisabled=function(s)sim.texts[#sim.texts+1]=s end,SameLine=function()end}
+local imgui={SliderInt=function(label,value,lo,hi)if sim.slider==label then sim.slider=nil;return true,sim.sliderValue end return false,value end,Button=function(label)if sim.click==label then sim.click=nil;return true end return false end,Checkbox=function(l,v)if sim.toggle==l then sim.toggle=nil;return true,not v end return false,v end,Text=function(s)sim.texts[#sim.texts+1]=s end,TextWrapped=function(s)sim.texts[#sim.texts+1]=s end,TextDisabled=function(s)sim.texts[#sim.texts+1]=s end,SameLine=function()end}
 local modules={filesystem={GetData=function() return {WriteText=function(path,text)sim.logPath=path;sim.logText=text;return not sim.failLog end} end},json={encode=function(v)sim.logReport=v;return 'fake-json' end},views={Huds={CreateHud=function()return hud end}},imgui=imgui,['rynth.ai']=ai,storage=storage}
 function require(k)return assert(modules[k],k)end
 game={World={OnChatText={Add=function(f)sim.chat=f end}},State='InGame',OnTick={Add=function(f)sim.tick=f end},RegisterCommand=function()end}
@@ -11,7 +11,7 @@ function clock() return sim.time*1000 end
 function expr(s)
  sim.exprCalls=(sim.exprCalls or 0)+1
  if s=='getunixtime[]' then return math.floor(sim.time) end
- if s=='maraemissionapi[]' then return 3 end
+ if s=='maraemissionapi[]' then return 4 end
  if s:match('^maraemapwalk%[') then sim.meshWalks=(sim.meshWalks or 0)+1;return sim.meshFailure and 0 or 1 end
  if s=='maraenavsave[]' then sim.savedRoute=sim.savedRoute or sim.route;return 1 end
  if s=='maraenavmark[]' then return 1 end

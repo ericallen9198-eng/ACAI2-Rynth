@@ -118,4 +118,20 @@ click('Stop run');step(25);click('New run');step(40)
 check(sim.pvars.mm_deadline_180==0 and sim.pvars.mm_cap_pending_180==0 and sim.pvars.mm_timed_180==0,'New run clears quotas and pending camp flags')
 check(sim.pvars.mm_camp_limit==1,'New run preserves the chosen optional policy')
 click('Stop run');step(25)
+-- Both sliders remain usable during a run; writes are on tick, not inside rendering.
+click('Resume run');step(40)
+local commandsBefore=#sim.commands
+sim.vars.tm_mesh_step=24;sim.vars.tm_walk_target='51.2|-84|0.2'
+sim.slider='Far clue travel';sim.sliderValue=60;sim.render()
+check(sim.pvars.mm_mesh_far==24,'render callback does not dispatch native stride writes')
+sim.tick()
+check(sim.pvars.mm_mesh_far==60 and sim.pvars.mm_mesh_close==8,'far slider applies live on the next pump tick')
+check(ai.MacroRunning and sim.vars.tm_mesh_step==24 and sim.vars.tm_walk_target=='51.2|-84|0.2','live tuning neither stops nor retargets the active leg')
+sim.slider='Close clue travel';sim.sliderValue=40;sim.render();sim.tick()
+check(sim.pvars.mm_mesh_close==40 and sim.pvars.mm_mesh_far==60,'near slider is independent of far distance')
+click('Stop run');step(25)
+sim.state='CharacterSelect';step();sim.pvars={};sim.vars={};sim.meta=nil;sim.state='InGame';step(30)
+click('Resume run');step(40)
+check(sim.pvars.mm_mesh_far==60 and sim.pvars.mm_mesh_close==40,'both travel distances persist per character through reconnect')
+click('Stop run');step(25)
 return checks

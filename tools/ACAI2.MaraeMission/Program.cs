@@ -10,8 +10,11 @@ if(args[0]=="--map-goal-test") {
   checks++;
  }
  if(MaraeMapWalkMath.TryGoal(double.NaN,0,0,10,out _,out _) || MaraeMapWalkMath.TryGoal(0,0,0,-1,out _,out _))throw new Exception("Invalid goal accepted");checks+=2;
- if(!MaraeMapWalkMath.TryGoal(0,0,0,1000,out double limited,out _) || Math.Abs(limited*240-24)>1e-9)throw new Exception("Unbounded clue step");checks++;
+ if(!MaraeMapWalkMath.TryGoal(0,0,0,1000,out double limited,out _) || Math.Abs(limited*240-120)>1e-9)throw new Exception("Unbounded clue step");checks++;
  if(MaraeMapWalkMath.TryGoal(102.85,0,0,24,out _,out _))throw new Exception("Out-of-world goal accepted");checks++;
+ foreach(double stride in new[]{8d,30d,60d,120d}) {
+  if(!MaraeMapWalkMath.TryGoal(0,0,90,stride,out _,out double east) || Math.Abs(east*240-stride)>1e-8)throw new Exception("Configured stride was silently shortened");checks++;
+ }
  Console.WriteLine($"PASS: {checks} map-clue geometry checks using the native helper source.");return;
 }
 if(args[0]=="--lua-test") {

@@ -1,12 +1,14 @@
 """Opt-in replacement of timed forward clue runs with bounded mesh-planned steps."""
 import re
 def apply(states,state,action,expr):
+ far='iif[getpvar[mm_mesh_far]>0,max[8,min[120,getpvar[mm_mesh_far]]],24]'
+ close='iif[getpvar[mm_mesh_close]>0,max[4,min[120,getpvar[mm_mesh_close],'+far+']],8]'
  for n,b in list(states.items()):
   if not n.startswith(('FAR_','CLOSE_')):continue
   heading=re.search(r'Chat \{/ub face (\d+)\}',b);length=re.search(r'setvar\[tm_run_length,(\d+)\]',b)
   assert heading and length,n
   pos=b.index('\tIF:\tAlways')
-  states[n]=b[:pos]+'\tIF: Expr {getpvar[ml_mesh_maps]==1}\n\t\tDO: DoAll\n'+''.join('\t\t\t\t'+v+'\n' for v in [expr('setvar[tm_mesh_heading,'+heading[1]+']'),expr('setvar[tm_mesh_step,'+('24' if length[1]=='6' else '8')+']'),'SetState {MAP_MESH_PREP}'])+b[pos:]
+  states[n]=b[:pos]+'\tIF: Expr {getpvar[ml_mesh_maps]==1}\n\t\tDO: DoAll\n'+''.join('\t\t\t\t'+v+'\n' for v in [expr('setvar[tm_mesh_heading,'+heading[1]+']'),expr('setvar[tm_mesh_step,'+(far if length[1]=='6' else close)+']'),'SetState {MAP_MESH_PREP}'])+b[pos:]
  b=states['STUCK'];pos=re.search(r'\tIF:\s*Always',b).start()
  states['STUCK']=b[:pos]+'\tIF: Expr {getpvar[ml_mesh_maps]==1}\n\t\tDO: DoAll\n\t\t\t\t'+expr('echo[`Mesh map search could not make progress; no raw backward motion was issued.`]')+'\n\t\t\t\tSetState {MISSION_ERROR}\n'+b[pos:]
  states['MAP_LOCK']=states['MAP_LOCK'].replace('DoExpr {setpvar[tm_dig_active,0]}',expr('setvar[tm_mesh_failures,0]')+'\n\t\t\t\tDoExpr {setpvar[tm_dig_active,0]}',1)
