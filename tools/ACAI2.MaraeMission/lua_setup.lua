@@ -16,6 +16,7 @@ function expr(s)
  local k=s:match('^getvar%[(.-)%]$');if k then return sim.vars[k] or 0 end
  k=s:match('^getpvar%[(.-)%]$');if k then return sim.pvars[k] or 0 end
  local name,v=s:match('^setpvar%[([^,]+),([^%]]+)%]$');if name then sim.pvars[name]=tonumber(v) or v;return 1 end
+ if s=='rasetsetting[`LootChestsMacroOff`,getpvar[pt_cache_old_pickup]]' then sim.restoredPickup=sim.pvars.pt_cache_old_pickup;return 1 end
  if s=='vtsetmetastate[Default]' then sim.metaState='Default';return 1 end
  if s=='vtsetsetting[EnableMeta,1]' then sim.metaEnabled=true;return 1 end
  error('Unexpected expression '..s)

@@ -59,11 +59,15 @@ check(w.options['LootOwnCorpse']==1 and w.options['TravelToOwnCorpse']==1 and w.
 w=World(0x1BC2002B);w.health=1;w.maxhealth=0;s=Sim(w,'T225_START_LOCATION');s.until('T225_NPC_TALK_WAIT')
 check(s.state=='T225_NPC_TALK_WAIT','positive HP alone is sufficient; buff maximum never gates startup')
 # Completion messages are observed while travelling and inside a map encounter too.
-for state in ('T275_TRAVEL_WAIT','ENCOUNTER','CACHE_SEARCH'):
+for state in ('T275_TRAVEL_WAIT','ENCOUNTER','CACHE_SEARCH','TURN_SETTLE'):
  w=World();w.v['ml_zone']=275;w.chat='You have killed 20 Olthoi Hive Guardian! Your task is complete!'
  s=Sim(w,state);s.tick()
  check(w.p.get('mm_275_done_olthoi')==1,'actual Guardian completion retained in '+state)
 # Currency collection is explicit, serial and acknowledged. Notes remain optional.
+for zone,monster,key in ((180,'Drumtaken Carenzi Stalkers','0'),(225,'Drumtaken Woodland Ursuins','0')):
+ for phase in (f'T{zone}_TRAVEL_WAIT','ENCOUNTER','CACHE_SEARCH','TURN_SETTLE'):
+  w=World();w.v['ml_zone']=zone;w.chat=f'You have killed 50 {monster}! Your task is complete!';s=Sim(w,phase);s.tick()
+  check(w.p.get(f'mm_{zone}_done_{key}')==1,'task completion retained in '+str(zone)+' '+phase)
 w=World(items=[item(10)]);w.v['ml_zone']=180;s=Sim(w,'CACHE_PREP');s.until('CACHE_CONFIRM')
 check(len(w.moves)==1 and w.inv.get(1004101,0)==0,'cache dispatch is not credited as a pickup')
 w.ack(10);s.until('CACHE_FINISH');s.tick();check(s.state=='MAP_RETURN' and w.inv[1004101]==7,'doubloon-only cache finishes without requiring notes')

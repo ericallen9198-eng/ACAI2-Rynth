@@ -47,8 +47,14 @@ local function checkpoint()
  journal.zone=number('getvar[ml_zone]')
  if changed then save() end
 end
+local function restorePickup()
+ if owns() and number('getpvar[pt_cache_pickup_held]')==1 then
+  expr('rasetsetting[\x60LootChestsMacroOff\x60,getpvar[pt_cache_old_pickup]]')
+  expr('setpvar[pt_cache_pickup_held,0]')
+ end
+end
 local function fail(message)
- if owns() then command('/ra stop') end
+ if owns() then restorePickup();command('/ra stop') end
  startup=nil; journal.active=false; journal.resumable=true; save();feedback=message
 end
 local function begin(fresh,automatic)
@@ -80,7 +86,7 @@ game.OnTick.Add(function()
   local r=request;request=nil
   if r=='stop' then
    checkpoint();journal.active=false;journal.resumable=true;save();startup=nil
-   if owns() then command('/ra stop');command('/ub clearmotion') end
+   if owns() then restorePickup();command('/ra stop');command('/ub clearmotion') end
    feedback='Stopped. Progress saved; Resume run continues this mission.'
   elseif r=='start' or r=='new' then
    command('/lua autostart MaraeLassel character')
@@ -108,7 +114,7 @@ game.OnTick.Add(function()
   if ours and journal.active and not startup and not ai.MacroRunning and state~='HOLD' then
    stopSince=stopSince or t
    if t-stopSince>=3 then
-    checkpoint();journal.active=false;journal.resumable=true;save()
+    checkpoint();restorePickup();journal.active=false;journal.resumable=true;save()
     feedback='Macro stopped. Progress saved; press Resume run to continue.'
    end
   else stopSince=nil end
@@ -128,7 +134,7 @@ game.OnTick.Add(function()
  if not ok then
   startup=nil;feedback='Controller error: '..tostring(err)
   if journal then journal.active=false;journal.resumable=true;save() end
-  if owns() then command('/ra stop') end
+  if owns() then restorePickup();command('/ra stop') end
  end
 end)
 
