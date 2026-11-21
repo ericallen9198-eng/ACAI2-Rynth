@@ -101,6 +101,8 @@ from hunt_policy import apply as apply_hunt_policy
 apply_hunt_policy(states,navs,state,action,expr)
 from mesh_policy import apply as apply_mesh_policy
 apply_mesh_policy(states,state,action,expr)
+from budget_policy import apply as apply_budget_policy
+apply_budget_policy(states,state,action,expr)
 # Task completions can arrive during a treasure fight, not just the hunting state.
 completion_rules=[]
 for zone in (180,225,275):
@@ -135,7 +137,7 @@ text=text.replace('!isportaling[]','maraerecoverybusy[]==0').replace('isportalin
 assert '/ra nav load' not in text
 for name,lines in navs.items():text+='NAVDATA: '+name+' '+str(len(lines))+' ~~ {\n'+'\n'.join(lines)+'\n~~ }\n\n'
 (out/'MetaFiles/Marae Lassel - Embedded.af').write_text(text.rstrip()+'\n')
-(out/'checkpoint-keys.json').write_text(json.dumps([f'mm_area_{z}' for z in (180,225,275)]+[f'mm_attempted_{z}' for z in (180,225,275)]+[f'mm_{z}_done_{k}' for z in keys for k in keys[z]],indent=2)+'\n')
+(out/'checkpoint-keys.json').write_text(json.dumps([f'mm_area_{z}' for z in (180,225,275)]+[f'mm_attempted_{z}' for z in (180,225,275)]+[f'mm_timed_{z}' for z in (180,225,275)]+[f'mm_cap_pending_{z}' for z in (180,225,275)]+[f'mm_{z}_done_{k}' for z in keys for k in keys[z]],indent=2)+'\n')
 print(f'Built mission with {len(states)} states, {len(navs)} embedded routes and {sum(map(len,keys.values()))} durable task flags.')
 
 # Generate the fixed NPC identity table for status parsing and bounded mismatch logs.

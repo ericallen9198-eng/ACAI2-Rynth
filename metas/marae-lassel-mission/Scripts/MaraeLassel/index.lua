@@ -22,6 +22,8 @@ local keys = {}
 for _,z in ipairs(zones) do
  keys[#keys+1] = 'mm_area_'..z.level
  keys[#keys+1] = 'mm_attempted_'..z.level
+ keys[#keys+1] = 'mm_timed_'..z.level
+ keys[#keys+1] = 'mm_cap_pending_'..z.level
  for _,k in ipairs(z.keys) do keys[#keys+1] = 'mm_'..z.level..'_done_'..k end
 end
 local function value(code) return tostring(expr(code) or '') end
@@ -44,10 +46,12 @@ local function saveSettings() storage.Character.Set('mission_options_v1',setting
 local function selected() return settings.areas[1] or settings.areas[2] or settings.areas[3] end
 local function preferences()
  expr('setpvar[ml_run_mode,1]')
+ expr('setpvar[mm_camp_limit,'..(settings.campLimit and 1 or 0)..']')
  expr('setpvar[ml_mesh_maps,'..(settings.meshMaps and 1 or 0)..']')
  expr('setpvar[mm_hunt_cursor,'..(journal.huntCursor or 0)..']')
  expr('setpvar[mm_fallback_180,'..(settings.fallback180~=false and 1 or 0)..']')
  for i,z in ipairs(zones) do
+  expr('setpvar[mm_deadline_'..z.level..','..((journal.deadlines or {})[tostring(z.level)] or 0)..']')
   expr('setpvar[ml_area_'..z.level..','..(settings.areas[i] and 1 or 0)..']')
   expr('setpvar[ml_maps_'..z.level..','..(settings.maps[i] and 1 or 0)..']')
   expr('setpvar[ml_hunt_only_'..z.level..','..(settings.huntOnly[i] and 1 or 0)..']')
@@ -61,6 +65,11 @@ local function checkpoint()
  for i,k in ipairs(keys) do
   local v=number(checkpointReads[i])==1 and 1 or 0
   if journal.progress[k]~=v then journal.progress[k]=v;changed=true end
+ end
+ journal.deadlines=journal.deadlines or {}
+ for _,z in ipairs(zones) do
+  local k=tostring(z.level);local v=number('getpvar[mm_deadline_'..z.level..']')
+  if journal.deadlines[k]~=v then journal.deadlines[k]=v;changed=true end
  end
  local cursor=number('getpvar[mm_hunt_cursor]')
  if journal.huntCursor~=cursor then journal.huntCursor=cursor;changed=true end
@@ -280,6 +289,11 @@ game.OnTick.Add(function()
   snapshot.running=ours and ai.MacroRunning; snapshot.other=not ours and ai.MacroRunning; snapshot.state=state
   snapshot.zone=ours and number('getvar[ml_zone]') or 0
   snapshot.detail=ours and value('getvar[ml_status]') or ''
+  snapshot.budgetMinutes=nil
+  if settings.campLimit and ours and number('getvar[mm_budget_active]')==1 then
+   local deadline=number('getpvar[mm_deadline_'..snapshot.zone..']')
+   if deadline>0 then snapshot.budgetMinutes=math.max(0,math.ceil((deadline-t)/60)) end
+  end
   snapshot.loaded=value('vtgetmeta[]');snapshot.recovery=ours and number('maraerecoverybusy[]')==1
   if startup then nextPoll=math.min(nextPoll,ms+200) end
  end)
@@ -297,6 +311,7 @@ hud.OnRender.Add(function()
  if snapshot.running or startup then
   ImGui.Text('Area: '..tostring(snapshot.zone~=0 and snapshot.zone or 'choosing'))
   ImGui.TextWrapped(snapshot.recovery and 'Waiting for respawn / corpse recovery' or snapshot.state)
+  if snapshot.budgetMinutes then ImGui.Text('Camp hunt limit: '..snapshot.budgetMinutes..' min remaining') end
   if snapshot.detail~='0' then ImGui.TextWrapped(snapshot.detail) end
   if ImGui.Button('Stop run') then request='stop' end
  else
@@ -312,8 +327,14 @@ hud.OnRender.Add(function()
   ImGui.TextWrapped('Hunt only skips tasks and repeats the nav. Maps remain optional. Task areas run first; hunt-only areas then rotate each circuit.')
   local meshChanged,meshValue=ImGui.Checkbox('Mesh map steps (needs RynthNav)',settings.meshMaps==true)
   if meshChanged then settings.meshMaps=meshValue;saveSettings() end
+  local limitChanged,limitValue=ImGui.Checkbox('Limit task hunting to 2 hours per camp',settings.campLimit==true)
+  if limitChanged then settings.campLimit=limitValue;saveSettings() end
+  if settings.campLimit then
+   ImGui.TextWrapped('Timed task mode: turn in completed tasks, move on, then hunt Lowlands with maps off. Timers survive reconnect. Hunt only is not timed.')
+  else
   local fallbackChanged,fallbackValue=ImGui.Checkbox('Fallback to 180 treasure hunting',settings.fallback180~=false)
   if fallbackChanged then settings.fallback180=fallbackValue;saveSettings() end
+  end
   if snapshot.other then ImGui.TextWrapped('Start will stop the current RynthAi macro before loading this mission.') end
   if selected() and ImGui.Button(journal.resumable and not journal.finished and 'Resume run' or 'Start run') then request='start' end
   if journal.resumable and not journal.finished then

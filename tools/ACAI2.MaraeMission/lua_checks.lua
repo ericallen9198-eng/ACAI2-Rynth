@@ -100,4 +100,22 @@ check(sim.pvars.ml_mesh_maps==1 and sim.pvars.ml_hunt_only_180==1 and sim.pvars.
 click('Stop run');step(25)
 sim.state='CharacterSelect';step();sim.state='InGame';step(30)
 check(sim.stores.A.mission_options_v1.huntOnly[1] and sim.stores.A.mission_options_v1.meshMaps,'new character preferences survive reconnect')
+-- Camp limits are opt-in; deadlines and pending partial turn-ins are not booleanized.
+check(sim.pvars.mm_camp_limit==0,'camp time limit defaults off')
+step(25);sim.toggle='Limit task hunting to 2 hours per camp';sim.render()
+check(sim.stores.A.mission_options_v1.campLimit==true,'optional two-hour policy is saved per character')
+click('Resume run');step(40)
+check(sim.pvars.mm_camp_limit==1,'two-hour preference is applied only when enabled')
+local originalDeadline=math.floor(sim.time)+7200
+sim.pvars.mm_deadline_180=originalDeadline;sim.pvars.mm_cap_pending_180=1
+step(120)
+check(sim.stores.A.mission_v1.deadlines['180']==originalDeadline,'deadline checkpoint preserves the full Unix timestamp')
+click('Stop run');step(25)
+sim.state='CharacterSelect';step();sim.pvars={};sim.vars={};sim.meta=nil;sim.state='InGame';step(30)
+click('Resume run');step(40)
+check(sim.pvars.mm_deadline_180==originalDeadline and sim.pvars.mm_cap_pending_180==1,'resume restores deadline and outstanding partial turn-in')
+click('Stop run');step(25);click('New run');step(40)
+check(sim.pvars.mm_deadline_180==0 and sim.pvars.mm_cap_pending_180==0 and sim.pvars.mm_timed_180==0,'New run clears quotas and pending camp flags')
+check(sim.pvars.mm_camp_limit==1,'New run preserves the chosen optional policy')
+click('Stop run');step(25)
 return checks

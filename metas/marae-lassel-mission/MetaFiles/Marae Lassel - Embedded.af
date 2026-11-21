@@ -4,6 +4,9 @@ STATE: {Default} ~~ {
 				DoExpr {if[getpvar[pt_cache_pickup_held]==1,rasetsetting[`LootChestsMacroOff`,getpvar[pt_cache_old_pickup]]]}
 				DoExpr {setpvar[pt_cache_pickup_held,0]}
 				DoExpr {setvar[mm_npc_log_generation,0]}
+				DoExpr {setvar[mm_budget_active,0]}
+				DoExpr {setvar[mm_cap_return,0]}
+				DoExpr {setvar[mm_budget_fallback,0]}
 				DoExpr {setvar[mm_schema,1]}
 				SetOpt {EnableNav} {False}
 				SetOpt {AutoCram} {False}
@@ -42,21 +45,36 @@ STATE: {DISPATCH} ~~ {
 				DoExpr {setvar[ml_outcome,`Setup required`]}
 				DoExpr {setvar[ml_status,`Select at least one area.`]}
 				SetState {STOP_CLEANUP}
-	IF: Expr {getvar[ml_hunt_only_180]!=1 && getpvar[mm_area_180]!=1 && getpvar[mm_attempted_180]!=1 && getvar[ml_area_180]==1}
+	IF: Expr {getvar[ml_area_180]==1 && getpvar[mm_cap_pending_180]==1}
+		DO: DoAll
+				DoExpr {setvar[ml_zone,180]}
+				DoExpr {setvar[ml_use_maps,0]}
+				SetState {T180_Default}
+	IF: Expr {getvar[ml_area_225]==1 && getpvar[mm_cap_pending_225]==1}
+		DO: DoAll
+				DoExpr {setvar[ml_zone,225]}
+				DoExpr {setvar[ml_use_maps,0]}
+				SetState {T225_Default}
+	IF: Expr {getvar[ml_area_275]==1 && getpvar[mm_cap_pending_275]==1}
+		DO: DoAll
+				DoExpr {setvar[ml_zone,275]}
+				DoExpr {setvar[ml_use_maps,0]}
+				SetState {T275_Default}
+	IF: Expr {getvar[ml_hunt_only_180]!=1 && !(getpvar[mm_camp_limit]==1 && getpvar[mm_timed_180]==1) && getpvar[mm_area_180]!=1 && getpvar[mm_attempted_180]!=1 && getvar[ml_area_180]==1}
 		DO: DoAll
 				DoExpr {setvar[ml_zone,180]}
 				DoExpr {setvar[ml_fship_attempted,0]}
 				DoExpr {setvar[ml_use_maps,getvar[ml_run_mode]==2 || getvar[ml_maps_180]==1]}
 				DoExpr {setvar[ml_status,`Traveling to camp`]}
 				SetState {T180_Default}
-	IF: Expr {getvar[ml_hunt_only_225]!=1 && getpvar[mm_area_225]!=1 && getpvar[mm_attempted_225]!=1 && getvar[ml_area_225]==1}
+	IF: Expr {getvar[ml_hunt_only_225]!=1 && !(getpvar[mm_camp_limit]==1 && getpvar[mm_timed_225]==1) && getpvar[mm_area_225]!=1 && getpvar[mm_attempted_225]!=1 && getvar[ml_area_225]==1}
 		DO: DoAll
 				DoExpr {setvar[ml_zone,225]}
 				DoExpr {setvar[ml_fship_attempted,0]}
 				DoExpr {setvar[ml_use_maps,getvar[ml_run_mode]==2 || getvar[ml_maps_225]==1]}
 				DoExpr {setvar[ml_status,`Traveling to camp`]}
 				SetState {T225_Default}
-	IF: Expr {getvar[ml_hunt_only_275]!=1 && getpvar[mm_area_275]!=1 && getpvar[mm_attempted_275]!=1 && getvar[ml_area_275]==1}
+	IF: Expr {getvar[ml_hunt_only_275]!=1 && !(getpvar[mm_camp_limit]==1 && getpvar[mm_timed_275]==1) && getpvar[mm_area_275]!=1 && getpvar[mm_attempted_275]!=1 && getvar[ml_area_275]==1}
 		DO: DoAll
 				DoExpr {setvar[ml_zone,275]}
 				DoExpr {setvar[ml_fship_attempted,0]}
@@ -99,6 +117,8 @@ STATE: {DISPATCH} ~~ {
 				DoExpr {setvar[ml_use_maps,getvar[ml_maps_275]]}
 				DoExpr {setvar[ml_status,`Traveling to the next continuous hunting area`]}
 				SetState {T275_Default}
+	IF: Expr {getpvar[mm_camp_limit]==1}
+		DO: SetState {BUDGET_LOWLANDS}
 	IF: Expr {getpvar[mm_fallback_180]!=0}
 		DO: SetState {MAP_FALLBACK_180}
 	IF: Always
@@ -111,6 +131,7 @@ STATE: {DISPATCH} ~~ {
 STATE: {AREA_DONE} ~~ {
 	IF: Always
 		DO: DoAll
+				DoExpr {setvar[mm_budget_active,0]}
 				DoExpr {setpvar[`mm_area_`+getvar[ml_zone],1]}
 				DoExpr {setvar[ml_done,getvar[ml_done]+1]}
 				SetState {DISPATCH}
@@ -119,6 +140,7 @@ STATE: {AREA_DONE} ~~ {
 STATE: {AREA_COOLDOWN} ~~ {
 	IF: Always
 		DO: DoAll
+				DoExpr {setvar[mm_budget_active,0]}
 				DoExpr {setpvar[`mm_area_`+getvar[ml_zone],1]}
 				DoExpr {setvar[ml_cooldown,getvar[ml_cooldown]+1]}
 				SetState {DISPATCH}
@@ -503,6 +525,10 @@ STATE: {MAP_RETURN} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Expr {getvar[ml_zone]==180}
 		DO: DoAll
 				DoExpr {maraenavrestore[]}
@@ -575,6 +601,9 @@ STATE: {T180_Default} ~~ {
 	IF:	Always
 		DO:	DoAll
 				DoExpr {setvar[ml_hunt_only,getpvar[ml_hunt_only_180]]}
+				DoExpr {setvar[mm_budget_active,0]}
+				DoExpr {setvar[mm_cap_return,0]}
+				DoExpr {if[getvar[mm_budget_fallback]==1,setvar[ml_hunt_only,1]]}
 				SetOpt {StopMacroOnDeath} {False}
 				SetOpt {DeathRecallMode} {0}
 				SetOpt {LootOwnCorpse} {True}
@@ -620,6 +649,9 @@ STATE: {T180_Default} ~~ {
 				DoExpr {setvar[pt_unavailable_7,0]}
 				DoExpr {setpvar[mm_180_done_8,getpvar[mm_180_done_8]]}
 				DoExpr {setvar[pt_unavailable_8,0]}
+				DoExpr {if[getpvar[mm_cap_pending_180]==1,setvar[ml_hunt_only,0]]}
+				DoExpr {if[getpvar[mm_cap_pending_180]==1,setvar[pt_turnin,1]]}
+				DoExpr {if[getpvar[mm_cap_pending_180]==1,setvar[mm_cap_return,1]]}
 				SetState {T180_START_LOCATION}
 ~~ }
 
@@ -678,6 +710,10 @@ STATE: {T180_START_LOCATION} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_180_done_8,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Death
 		DO: SetState {T180_DEATH_RECOVERY}
 	IF: All
@@ -743,6 +779,10 @@ STATE: {T180_GET_TO} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_180_done_8,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Death
 		DO: SetState {T180_DEATH_RECOVERY}
 	IF: Always
@@ -814,6 +854,10 @@ STATE: {T180_GET_TO_WAIT} ~~ {
 				DoExpr {setpvar[mm_180_done_8,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
 	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
+	IF: Death
 		DO: SetState {T180_DEATH_RECOVERY}
 	IF: All
 			BlockE 14B50000
@@ -880,6 +924,10 @@ STATE: {T180_CAMP_SETTLE} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_180_done_8,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Death
 		DO: SetState {T180_DEATH_RECOVERY}
 	IF: All
@@ -955,6 +1003,10 @@ STATE: {T180_NPC_TALK} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_180_done_8,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Death
 		DO: SetState {T180_DEATH_RECOVERY}
 	IF: Expr {getvar[ml_run_mode]==2}
@@ -1038,6 +1090,10 @@ STATE: {T180_NPC_TALK_WAIT} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_180_done_8,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Death
 		DO: SetState {T180_DEATH_RECOVERY}
 	IF: ChatMatch {^Hea\ Tarekeh\ the\ Carenzi\ Hunter tells you, "(?:Slay \d+ [^"]+\. Return when the work is done\.|You have defeated \d+ of \d+ [^"]+\. The hunt is not yet finished\.)"$}
@@ -1177,6 +1233,10 @@ STATE: {T180_HUNT_LOAD} ~~ {
 				DoExpr {setpvar[mm_180_done_8,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
 	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
+	IF: Death
 		DO: SetState {T180_DEATH_RECOVERY}
 	IF: Always
 		DO: DoAll
@@ -1243,9 +1303,15 @@ STATE: {T180_HUNT_RESUME} ~~ {
 				DoExpr {setpvar[mm_180_done_8,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
 	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
+	IF: Death
 		DO: SetState {T180_DEATH_RECOVERY}
 	IF: Always
 		DO: DoAll
+				DoExpr {if[getpvar[mm_camp_limit]==1 && getvar[ml_hunt_only]!=1 && getvar[ml_run_mode]==1,if[getpvar[mm_deadline_180]==0,setpvar[mm_deadline_180,getunixtime[]+7200]]]}
+				DoExpr {setvar[mm_budget_active,getpvar[mm_camp_limit]==1 && getvar[ml_hunt_only]!=1 && getvar[ml_run_mode]==1]}
 				Chat {/ub clearmotion}
 				SetOpt {EnableCombat} {True}
 				SetOpt {EnableBuffing} {True}
@@ -1311,6 +1377,10 @@ STATE: {T180_HUNT} ~~ {
 				DoExpr {setpvar[mm_180_done_8,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
 	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
+	IF: Death
 		DO: SetState {T180_DEATH_RECOVERY}
 	IF: Expr {getvar[ml_run_mode]==2 || getvar[ml_hunt_only]==1}
 		DO: SetState {T180_FARM_RUN}
@@ -1347,7 +1417,7 @@ STATE: {T180_HUNT} ~~ {
 		DO: DoAll
 				DoExpr {setvar[pt_turnin,1]}
 				SetState {T180_GET_TO}
-	IF: Expr {getunixtime[]-getvar[pt_last_progress]>=2700}
+	IF: Expr {getpvar[mm_camp_limit]!=1 && getunixtime[]-getvar[pt_last_progress]>=2700}
 		DO: DoAll
 				DoExpr {echo[`180 Lowlands KT: no KT progress for 45 minutes. Check the current hunt route.`]}
 				SetState {T180_DEATH_HOLD}
@@ -1365,7 +1435,7 @@ STATE: {T180_HUNT} ~~ {
 		DO: DoAll
 				SetOpt {AttackDistance} {0.0416666666666667}
 				SetState {MAP_MISSING}
-	IF: Expr {getvar[ml_use_maps]==1 && getcharvital_current[1]*100>=getcharvital_buffedmax[1]*85 && getvar[tm_map_id]==0 && getunixtime[]>=getvar[tm_map_gate_until] && getitemcountininventorybyname[Treasure Map]>0}
+	IF: Expr {getvar[ml_use_maps]==1 && getcharvital_current[1]*100>=getcharvital_buffedmax[1]*85 && getvar[tm_map_id]==0 && getunixtime[]>=getvar[tm_map_gate_until] && getitemcountininventorybyname[`Treasure Map`]>0}
 		DO: DoAll
 				SetOpt {AttackDistance} {0.0416666666666667}
 				SetState {MAP_LOCK}
@@ -1426,6 +1496,10 @@ STATE: {T180_TURNIN_TALK} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_180_done_8,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Death
 		DO: SetState {T180_DEATH_RECOVERY}
 	IF: Always
@@ -1499,6 +1573,10 @@ STATE: {T180_TURNIN_WAIT} ~~ {
 				DoExpr {setpvar[mm_180_done_8,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
 	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
+	IF: Death
 		DO: SetState {T180_DEATH_RECOVERY}
 	IF: ChatMatch {^Hea Tarekeh the Carenzi Hunter tells you, "(?:Your hunt for today is done\. You may take another hunt in [^"]+|Return in [^"]+ for another hunt\.|You have served the Hea well\. Accept this reward for your efforts\.)"}
 		DO: DoExpr {setvar[pt_unavailable_0,1]}
@@ -1518,6 +1596,8 @@ STATE: {T180_TURNIN_WAIT} ~~ {
 		DO: DoExpr {setvar[pt_unavailable_7,1]}
 	IF: ChatMatch {^Hea Wairena the Aun Hunter tells you, "(?:Your hunt for today is done\. You may take another hunt in [^"]+|Return in [^"]+ for another hunt\.|You have served the Hea well\. Accept this reward for your efforts\.)"}
 		DO: DoExpr {setvar[pt_unavailable_8,1]}
+	IF: Expr {getvar[mm_cap_return]==1 && getvar[pt_npc_end]==1}
+		DO: SetState {T180_BUDGET_SETTLE}
 	IF: Expr {getvar[pt_npc_end]==1 && getvar[pt_unavailable_0]==1 && getvar[pt_unavailable_1]==1 && getvar[pt_unavailable_2]==1 && getvar[pt_unavailable_3]==1 && getvar[pt_unavailable_4]==1 && getvar[pt_unavailable_5]==1 && getvar[pt_unavailable_6]==1 && getvar[pt_unavailable_7]==1 && getvar[pt_unavailable_8]==1}
 		DO: DoAll
 				DoExpr {echo[`All active hunt rewards confirmed.`]}
@@ -1728,6 +1808,10 @@ STATE: {T180_ROUTE_HOLD} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_180_done_8,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Always
 		DO: DoAll
 				DoExpr {setvar[ml_outcome,`Needs attention`]}
@@ -1853,6 +1937,10 @@ STATE: {T180_FARM_LOAD} ~~ {
 				DoExpr {setpvar[mm_180_done_8,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
 	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
+	IF: Death
 		DO: SetState {T180_DEATH_RECOVERY}
 	IF: Expr {getvar[ml_hunt_only]==1 && getvar[ml_use_maps]!=1}
 		DO: SetState {T180_CONTINUOUS_LOAD}
@@ -1921,6 +2009,10 @@ STATE: {T180_FARM_RUN} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_180_done_8,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Death
 		DO: SetState {T180_DEATH_RECOVERY}
 	IF: Expr {getvar[pt_travel_end]==1 && getvar[ml_hunt_only]==1}
@@ -2007,6 +2099,9 @@ STATE: {T225_Default} ~~ {
 	IF:	Always
 		DO:	DoAll
 				DoExpr {setvar[ml_hunt_only,getpvar[ml_hunt_only_225]]}
+				DoExpr {setvar[mm_budget_active,0]}
+				DoExpr {setvar[mm_cap_return,0]}
+				DoExpr {if[getvar[mm_budget_fallback]==1,setvar[ml_hunt_only,1]]}
 				SetOpt {StopMacroOnDeath} {False}
 				SetOpt {DeathRecallMode} {0}
 				SetOpt {LootOwnCorpse} {True}
@@ -2054,6 +2149,9 @@ STATE: {T225_Default} ~~ {
 				DoExpr {setvar[pt_unavailable_8,0]}
 				DoExpr {setpvar[mm_225_done_9,getpvar[mm_225_done_9]]}
 				DoExpr {setvar[pt_unavailable_9,0]}
+				DoExpr {if[getpvar[mm_cap_pending_225]==1,setvar[ml_hunt_only,0]]}
+				DoExpr {if[getpvar[mm_cap_pending_225]==1,setvar[pt_turnin,1]]}
+				DoExpr {if[getpvar[mm_cap_pending_225]==1,setvar[mm_cap_return,1]]}
 				SetState {T225_START_LOCATION}
 ~~ }
 
@@ -2118,6 +2216,10 @@ STATE: {T225_START_LOCATION} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_225_done_9,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Death
 		DO: SetState {T225_DEATH_RECOVERY}
 	IF: All
@@ -2189,6 +2291,10 @@ STATE: {T225_GET_TO} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_225_done_9,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Death
 		DO: SetState {T225_DEATH_RECOVERY}
 	IF: Always
@@ -2266,6 +2372,10 @@ STATE: {T225_CAMP_PORTAL_WAIT} ~~ {
 				DoExpr {setpvar[mm_225_done_9,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
 	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
+	IF: Death
 		DO: SetState {T225_DEATH_RECOVERY}
 	IF: ExitPortal
 		DO: DoAll
@@ -2336,6 +2446,10 @@ STATE: {T225_GET_TO_WAIT} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_225_done_9,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Death
 		DO: SetState {T225_DEATH_RECOVERY}
 	IF: All
@@ -2409,6 +2523,10 @@ STATE: {T225_CAMP_SETTLE} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_225_done_9,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Death
 		DO: SetState {T225_DEATH_RECOVERY}
 	IF: All
@@ -2490,6 +2608,10 @@ STATE: {T225_NPC_TALK} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_225_done_9,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Death
 		DO: SetState {T225_DEATH_RECOVERY}
 	IF: Expr {getvar[ml_run_mode]==2}
@@ -2580,6 +2702,10 @@ STATE: {T225_NPC_TALK_WAIT} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_225_done_9,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Death
 		DO: SetState {T225_DEATH_RECOVERY}
 	IF: ChatMatch {^Hea\ Narekua\ the\ Ursuin\ Hunter tells you, "(?:Slay \d+ [^"]+\. Return when the work is done\.|You have defeated \d+ of \d+ [^"]+\. The hunt is not yet finished\.)"$}
@@ -2732,6 +2858,10 @@ STATE: {T225_HUNT_LOAD} ~~ {
 				DoExpr {setpvar[mm_225_done_9,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
 	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
+	IF: Death
 		DO: SetState {T225_DEATH_RECOVERY}
 	IF: Always
 		DO: DoAll
@@ -2804,9 +2934,15 @@ STATE: {T225_HUNT_RESUME} ~~ {
 				DoExpr {setpvar[mm_225_done_9,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
 	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
+	IF: Death
 		DO: SetState {T225_DEATH_RECOVERY}
 	IF: Always
 		DO: DoAll
+				DoExpr {if[getpvar[mm_camp_limit]==1 && getvar[ml_hunt_only]!=1 && getvar[ml_run_mode]==1,if[getpvar[mm_deadline_225]==0,setpvar[mm_deadline_225,getunixtime[]+7200]]]}
+				DoExpr {setvar[mm_budget_active,getpvar[mm_camp_limit]==1 && getvar[ml_hunt_only]!=1 && getvar[ml_run_mode]==1]}
 				Chat {/ub clearmotion}
 				SetOpt {EnableCombat} {True}
 				SetOpt {EnableBuffing} {True}
@@ -2878,6 +3014,10 @@ STATE: {T225_HUNT} ~~ {
 				DoExpr {setpvar[mm_225_done_9,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
 	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
+	IF: Death
 		DO: SetState {T225_DEATH_RECOVERY}
 	IF: Expr {getvar[ml_run_mode]==2 || getvar[ml_hunt_only]==1}
 		DO: SetState {T225_FARM_RUN}
@@ -2916,7 +3056,7 @@ STATE: {T225_HUNT} ~~ {
 		DO: DoAll
 				DoExpr {setvar[pt_turnin,1]}
 				SetState {T225_GET_TO}
-	IF: Expr {getunixtime[]-getvar[pt_last_progress]>=2700}
+	IF: Expr {getpvar[mm_camp_limit]!=1 && getunixtime[]-getvar[pt_last_progress]>=2700}
 		DO: DoAll
 				DoExpr {echo[`225 High Country KT: no KT progress for 45 minutes. Check the current hunt route.`]}
 				SetState {T225_DEATH_HOLD}
@@ -2934,7 +3074,7 @@ STATE: {T225_HUNT} ~~ {
 		DO: DoAll
 				SetOpt {AttackDistance} {0.0416666666666667}
 				SetState {MAP_MISSING}
-	IF: Expr {getvar[ml_use_maps]==1 && getcharvital_current[1]*100>=getcharvital_buffedmax[1]*85 && getvar[tm_map_id]==0 && getunixtime[]>=getvar[tm_map_gate_until] && getitemcountininventorybyname[Treasure Map]>0}
+	IF: Expr {getvar[ml_use_maps]==1 && getcharvital_current[1]*100>=getcharvital_buffedmax[1]*85 && getvar[tm_map_id]==0 && getunixtime[]>=getvar[tm_map_gate_until] && getitemcountininventorybyname[`Treasure Map`]>0}
 		DO: DoAll
 				SetOpt {AttackDistance} {0.0416666666666667}
 				SetState {MAP_LOCK}
@@ -3001,6 +3141,10 @@ STATE: {T225_TURNIN_TALK} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_225_done_9,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Death
 		DO: SetState {T225_DEATH_RECOVERY}
 	IF: Always
@@ -3080,6 +3224,10 @@ STATE: {T225_TURNIN_WAIT} ~~ {
 				DoExpr {setpvar[mm_225_done_9,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
 	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
+	IF: Death
 		DO: SetState {T225_DEATH_RECOVERY}
 	IF: ChatMatch {^Hea Narekua the Ursuin Hunter tells you, "(?:Your hunt for today is done\. You may take another hunt in [^"]+|Return in [^"]+ for another hunt\.|You have served the Hea well\. Accept this reward for your efforts\.)"}
 		DO: DoExpr {setvar[pt_unavailable_0,1]}
@@ -3101,6 +3249,8 @@ STATE: {T225_TURNIN_WAIT} ~~ {
 		DO: DoExpr {setvar[pt_unavailable_8,1]}
 	IF: ChatMatch {^Hea Hakerea the Olthoi Hunter tells you, "(?:Your hunt for today is done\. You may take another hunt in [^"]+|Return in [^"]+ for another hunt\.|You have served the Hea well\. Accept this reward for your efforts\.)"}
 		DO: DoExpr {setvar[pt_unavailable_9,1]}
+	IF: Expr {getvar[mm_cap_return]==1 && getvar[pt_npc_end]==1}
+		DO: SetState {T225_BUDGET_SETTLE}
 	IF: Expr {getvar[pt_npc_end]==1 && getvar[pt_unavailable_0]==1 && getvar[pt_unavailable_1]==1 && getvar[pt_unavailable_2]==1 && getvar[pt_unavailable_3]==1 && getvar[pt_unavailable_4]==1 && getvar[pt_unavailable_5]==1 && getvar[pt_unavailable_6]==1 && getvar[pt_unavailable_7]==1 && getvar[pt_unavailable_8]==1 && getvar[pt_unavailable_9]==1}
 		DO: DoAll
 				DoExpr {echo[`All active hunt rewards confirmed.`]}
@@ -3329,6 +3479,10 @@ STATE: {T225_ROUTE_HOLD} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_225_done_9,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Always
 		DO: DoAll
 				DoExpr {setvar[ml_outcome,`Needs attention`]}
@@ -3466,6 +3620,10 @@ STATE: {T225_FARM_LOAD} ~~ {
 				DoExpr {setpvar[mm_225_done_9,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
 	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
+	IF: Death
 		DO: SetState {T225_DEATH_RECOVERY}
 	IF: Expr {getvar[ml_hunt_only]==1 && getvar[ml_use_maps]!=1}
 		DO: SetState {T225_CONTINUOUS_LOAD}
@@ -3540,6 +3698,10 @@ STATE: {T225_FARM_RUN} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_225_done_9,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Death
 		DO: SetState {T225_DEATH_RECOVERY}
 	IF: Expr {getvar[pt_travel_end]==1 && getvar[ml_hunt_only]==1}
@@ -3622,6 +3784,9 @@ STATE: {T275_Default} ~~ {
 	IF:	Always
 		DO:	DoAll
 				DoExpr {setvar[ml_hunt_only,getpvar[ml_hunt_only_275]]}
+				DoExpr {setvar[mm_budget_active,0]}
+				DoExpr {setvar[mm_cap_return,0]}
+				DoExpr {if[getvar[mm_budget_fallback]==1,setvar[ml_hunt_only,1]]}
 				SetOpt {StopMacroOnDeath} {False}
 				SetOpt {DeathRecallMode} {0}
 				SetOpt {LootOwnCorpse} {True}
@@ -3665,6 +3830,9 @@ STATE: {T275_Default} ~~ {
 				DoExpr {setvar[pt_recallwest,0]}
 				DoExpr {setvar[pt_death_recovered,0]}
 				DoExpr {setvar[pt_recover_hunt,0]}
+				DoExpr {if[getpvar[mm_cap_pending_275]==1,setvar[ml_hunt_only,0]]}
+				DoExpr {if[getpvar[mm_cap_pending_275]==1,setvar[pt_turnin,1]]}
+				DoExpr {if[getpvar[mm_cap_pending_275]==1,setvar[mm_cap_return,1]]}
 				SetState {T275_START_LOCATION}
 ~~ }
 
@@ -3725,6 +3893,10 @@ STATE: {T275_START_LOCATION} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Death
 		DO: SetState {T275_DEATH_RECOVERY}
 	IF: All
@@ -3792,6 +3964,10 @@ STATE: {T275_GET_TO} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Death
 		DO: SetState {T275_DEATH_RECOVERY}
 	IF: Always
@@ -3865,6 +4041,10 @@ STATE: {T275_GET_TO_WAIT} ~~ {
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
 	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
+	IF: Death
 		DO: SetState {T275_DEATH_RECOVERY}
 	IF: All
 			BlockE 21B70000
@@ -3934,6 +4114,10 @@ STATE: {T275_CAMP_PORTAL_WAIT} ~~ {
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
 	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
+	IF: Death
 		DO: SetState {T275_DEATH_RECOVERY}
 	IF: ExitPortal
 		DO: SetState {T275_CAMP_SETTLE}
@@ -3998,6 +4182,10 @@ STATE: {T275_CAMP_SETTLE} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Death
 		DO: SetState {T275_DEATH_RECOVERY}
 	IF: All
@@ -4080,6 +4268,10 @@ STATE: {T275_NPC_TALK} ~~ {
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
 	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
+	IF: Death
 		DO: SetState {T275_DEATH_RECOVERY}
 	IF: Expr {getvar[ml_run_mode]==2}
 		DO: SetState {T275_FARM_LOAD}
@@ -4159,6 +4351,10 @@ STATE: {T275_NPC_TALK_WAIT} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Death
 		DO: SetState {T275_DEATH_RECOVERY}
 	IF: ChatMatch {^Hea\ Rukenua\ the\ Zefir\ Hunter tells you, "(?:Slay \d+ [^"]+\. Return when the work is done\.|You have defeated \d+ of \d+ [^"]+\. The hunt is not yet finished\.)"$}
@@ -4301,6 +4497,10 @@ STATE: {T275_HUNT_INIT} ~~ {
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
 	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
+	IF: Death
 		DO: SetState {T275_DEATH_RECOVERY}
 	IF: Expr {!(getvar[pt_pickup_golem]==1 && getvar[pt_unavailable_golem]!=1 && getpvar[mm_275_done_golem]!=1) && !(getvar[pt_pickup_siraluun]==1 && getvar[pt_unavailable_siraluun]!=1 && getpvar[mm_275_done_siraluun]!=1) && !(getvar[pt_pickup_virindi]==1 && getvar[pt_unavailable_virindi]!=1 && getpvar[mm_275_done_virindi]!=1) && !(getvar[pt_pickup_olthoi]==1 && getvar[pt_unavailable_olthoi]!=1 && getpvar[mm_275_done_olthoi]!=1) && !(getvar[pt_pickup_gromnie]==1 && getvar[pt_unavailable_gromnie]!=1 && getpvar[mm_275_done_gromnie]!=1) && !(getvar[pt_pickup_zefir]==1 && getvar[pt_unavailable_zefir]!=1 && getpvar[mm_275_done_zefir]!=1) && !(getvar[pt_pickup_ursuin]==1 && getvar[pt_unavailable_ursuin]!=1 && getpvar[mm_275_done_ursuin]!=1) && !(getvar[pt_pickup_carenzi]==1 && getvar[pt_unavailable_carenzi]!=1 && getpvar[mm_275_done_carenzi]!=1)}
 		DO: SetState {T275_TURNIN_START}
@@ -4378,6 +4578,10 @@ STATE: {T275_CAMP_EAST} ~~ {
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
 	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
+	IF: Death
 		DO: SetState {T275_DEATH_RECOVERY}
 	IF: Always
 		DO: DoAll
@@ -4450,6 +4654,10 @@ STATE: {T275_CAMP_NORTHEAST} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Death
 		DO: SetState {T275_DEATH_RECOVERY}
 	IF: Always
@@ -4524,6 +4732,10 @@ STATE: {T275_CAMP_WEST} ~~ {
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
 	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
+	IF: Death
 		DO: SetState {T275_DEATH_RECOVERY}
 	IF: Always
 		DO: DoAll
@@ -4596,6 +4808,10 @@ STATE: {T275_EAST_NORTHEAST} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Death
 		DO: SetState {T275_DEATH_RECOVERY}
 	IF: Always
@@ -4670,6 +4886,10 @@ STATE: {T275_RECALL_WEST} ~~ {
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
 	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
+	IF: Death
 		DO: SetState {T275_DEATH_RECOVERY}
 	IF: Always
 		DO: DoAll
@@ -4734,6 +4954,10 @@ STATE: {T275_LANDING_WEST} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Death
 		DO: SetState {T275_DEATH_RECOVERY}
 	IF: Always
@@ -4808,6 +5032,10 @@ STATE: {T275_TRAVEL_WAIT} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Death
 		DO: SetState {T275_DEATH_RECOVERY}
 	IF: Expr {getvar[pt_travel_end]==1 && getvar[pt_region]==1}
@@ -4884,6 +5112,10 @@ STATE: {T275_REGION_START} ~~ {
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
 	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
+	IF: Death
 		DO: SetState {T275_DEATH_RECOVERY}
 	IF: Always
 		DO: DoAll
@@ -4949,6 +5181,10 @@ STATE: {T275_TURNIN_START} ~~ {
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
 	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
+	IF: Death
 		DO: SetState {T275_DEATH_RECOVERY}
 	IF: Always
 		DO: DoAll
@@ -5013,6 +5249,10 @@ STATE: {T275_TURNIN_TALK} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Death
 		DO: SetState {T275_DEATH_RECOVERY}
 	IF: Always
@@ -5084,6 +5324,10 @@ STATE: {T275_TURNIN_WAIT} ~~ {
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
 	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
+	IF: Death
 		DO: SetState {T275_DEATH_RECOVERY}
 	IF: ChatMatch {^Hea Rukenua the Zefir Hunter tells you, "You have served the Hea well\. Accept this reward for your efforts\."}
 		DO: DoExpr {setvar[pt_unavailable_zefir,1]}
@@ -5101,6 +5345,8 @@ STATE: {T275_TURNIN_WAIT} ~~ {
 		DO: DoExpr {setvar[pt_unavailable_virindi,1]}
 	IF: ChatMatch {^Hea Varenkeh the Olthoi Hunter tells you, "You have served the Hea well\. Accept this reward for your efforts\."}
 		DO: DoExpr {setvar[pt_unavailable_olthoi,1]}
+	IF: Expr {getvar[mm_cap_return]==1 && getvar[pt_npc_end]==1}
+		DO: SetState {T275_BUDGET_SETTLE}
 	IF: Expr {getvar[pt_npc_end]==1 && getvar[pt_unavailable_zefir]==1 && getvar[pt_unavailable_ursuin]==1 && getvar[pt_unavailable_golem]==1 && getvar[pt_unavailable_gromnie]==1 && getvar[pt_unavailable_siraluun]==1 && getvar[pt_unavailable_carenzi]==1 && getvar[pt_unavailable_virindi]==1 && getvar[pt_unavailable_olthoi]==1}
 		DO: DoAll
 				DoExpr {echo[Plateau Treasure: all active hunt rewards confirmed.]}
@@ -5175,9 +5421,15 @@ STATE: {T275_HUNT_RESUME} ~~ {
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
 	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
+	IF: Death
 		DO: SetState {T275_DEATH_RECOVERY}
 	IF: Always
 		DO: DoAll
+				DoExpr {if[getpvar[mm_camp_limit]==1 && getvar[ml_hunt_only]!=1 && getvar[ml_run_mode]==1,if[getpvar[mm_deadline_275]==0,setpvar[mm_deadline_275,getunixtime[]+7200]]]}
+				DoExpr {setvar[mm_budget_active,getpvar[mm_camp_limit]==1 && getvar[ml_hunt_only]!=1 && getvar[ml_run_mode]==1]}
 				Chat {/ub clearmotion}
 				SetOpt {EnableCombat} {True}
 				SetOpt {EnableBuffing} {True}
@@ -5245,6 +5497,10 @@ STATE: {T275_HUNT} ~~ {
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
 	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
+	IF: Death
 		DO: SetState {T275_DEATH_RECOVERY}
 	IF: Expr {getvar[ml_run_mode]==2 || getvar[ml_hunt_only]==1}
 		DO: SetState {T275_FARM_RUN}
@@ -5291,7 +5547,7 @@ STATE: {T275_HUNT} ~~ {
 		DO: DoAll
 				SetOpt {AttackDistance} {0.0416666666666667}
 				SetState {T275_HUNT_INIT}
-	IF: Expr {getunixtime[]-getvar[pt_last_progress]>=2700}
+	IF: Expr {getpvar[mm_camp_limit]!=1 && getunixtime[]-getvar[pt_last_progress]>=2700}
 		DO: DoAll
 				DoExpr {echo[`Plateau Treasure: no KT progress for 45 minutes. Check the current hunt route.`]}
 				SetState {T275_DEATH_HOLD}
@@ -5309,7 +5565,7 @@ STATE: {T275_HUNT} ~~ {
 		DO: DoAll
 				SetOpt {AttackDistance} {0.0416666666666667}
 				SetState {MAP_MISSING}
-	IF: Expr {getvar[ml_use_maps]==1 && getcharvital_current[1]*100>=getcharvital_buffedmax[1]*85 && getvar[tm_map_id]==0 && getunixtime[]>=getvar[tm_map_gate_until] && getitemcountininventorybyname[Treasure Map]>0}
+	IF: Expr {getvar[ml_use_maps]==1 && getcharvital_current[1]*100>=getcharvital_buffedmax[1]*85 && getvar[tm_map_id]==0 && getunixtime[]>=getvar[tm_map_gate_until] && getitemcountininventorybyname[`Treasure Map`]>0}
 		DO: DoAll
 				SetOpt {AttackDistance} {0.0416666666666667}
 				SetState {MAP_LOCK}
@@ -5515,6 +5771,10 @@ STATE: {T275_ROUTE_HOLD} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Always
 		DO: DoAll
 				DoExpr {setvar[ml_outcome,`Needs attention`]}
@@ -5644,6 +5904,10 @@ STATE: {T275_FARM_LOAD} ~~ {
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
 	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
+	IF: Death
 		DO: SetState {T275_DEATH_RECOVERY}
 	IF: Expr {getvar[ml_hunt_only]==1 && getvar[ml_use_maps]!=1}
 		DO: SetState {T275_CONTINUOUS_LOAD}
@@ -5714,6 +5978,10 @@ STATE: {T275_FARM_RUN} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Death
 		DO: SetState {T275_DEATH_RECOVERY}
 	IF: Expr {getvar[pt_travel_end]==1 && getvar[ml_hunt_only]==1}
@@ -5907,6 +6175,10 @@ STATE: {MAP_LOCK} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF:	Death
 		DO:	SetState {MAP_DEATH}
 	IF:	Always
@@ -6095,6 +6367,10 @@ STATE: {MAP_LOCK_CHECK} ~~ {
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
 	IF: Death
 		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
+	IF: Death
+		DO: SetState {MAP_DEATH}
 	IF: Expr {getvar[tm_map_id]!=0 && isfalse[listcontains[getvar[pt_skipped],getvar[tm_map_id]]]}
 		DO: SetState {MAP_RESUME}
 	IF: Always
@@ -6276,6 +6552,10 @@ STATE: {MAP_LOCK_FALLBACK} ~~ {
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
 	IF: Death
 		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
+	IF: Death
+		DO: SetState {MAP_DEATH}
 	IF: Expr {getvar[tm_map_id]!=0}
 		DO: SetState {MAP_RESUME}
 	IF: Always
@@ -6455,6 +6735,10 @@ STATE: {MAP_RESUME} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF:	Death
 		DO:	SetState {MAP_DEATH}
 	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
@@ -6643,6 +6927,10 @@ STATE: {MAP_USE} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF:	Death
 		DO:	SetState {MAP_DEATH}
 	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
@@ -6827,6 +7115,10 @@ STATE: {MAP_CLUE} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF:	Death
 		DO:	SetState {MAP_DEATH}
 	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
@@ -7046,6 +7338,10 @@ STATE: {MAP_CLUE_RETRY} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF:	Death
 		DO:	SetState {MAP_DEATH}
 	IF:	Expr {(listcount[listfilter[wobjectfindallbycontainer[wobjectgetplayer[]],wobjectgetid[$1]==getvar[tm_map_id]]]+listcount[listfilter[wobjectfindallinventorybyobjectclass[10],listcount[listfilter[wobjectfindallbycontainer[$1],wobjectgetid[$1]==getvar[tm_map_id]]]>0]])==0}
@@ -7228,6 +7524,10 @@ STATE: {FAR_NORTH} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF:	Death
 		DO:	SetState {MAP_DEATH}
 	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
@@ -7416,6 +7716,10 @@ STATE: {FAR_NORTHEAST} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF:	Death
 		DO:	SetState {MAP_DEATH}
 	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
@@ -7604,6 +7908,10 @@ STATE: {FAR_EAST} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF:	Death
 		DO:	SetState {MAP_DEATH}
 	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
@@ -7792,6 +8100,10 @@ STATE: {FAR_SOUTHEAST} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF:	Death
 		DO:	SetState {MAP_DEATH}
 	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
@@ -7980,6 +8292,10 @@ STATE: {FAR_SOUTH} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF:	Death
 		DO:	SetState {MAP_DEATH}
 	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
@@ -8168,6 +8484,10 @@ STATE: {FAR_SOUTHWEST} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF:	Death
 		DO:	SetState {MAP_DEATH}
 	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
@@ -8356,6 +8676,10 @@ STATE: {FAR_WEST} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF:	Death
 		DO:	SetState {MAP_DEATH}
 	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
@@ -8544,6 +8868,10 @@ STATE: {FAR_NORTHWEST} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF:	Death
 		DO:	SetState {MAP_DEATH}
 	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
@@ -8732,6 +9060,10 @@ STATE: {CLOSE_NORTH} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF:	Death
 		DO:	SetState {MAP_DEATH}
 	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
@@ -8920,6 +9252,10 @@ STATE: {CLOSE_NORTHEAST} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF:	Death
 		DO:	SetState {MAP_DEATH}
 	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
@@ -9108,6 +9444,10 @@ STATE: {CLOSE_EAST} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF:	Death
 		DO:	SetState {MAP_DEATH}
 	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
@@ -9296,6 +9636,10 @@ STATE: {CLOSE_SOUTHEAST} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF:	Death
 		DO:	SetState {MAP_DEATH}
 	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
@@ -9484,6 +9828,10 @@ STATE: {CLOSE_SOUTH} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF:	Death
 		DO:	SetState {MAP_DEATH}
 	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
@@ -9672,6 +10020,10 @@ STATE: {CLOSE_SOUTHWEST} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF:	Death
 		DO:	SetState {MAP_DEATH}
 	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
@@ -9860,6 +10212,10 @@ STATE: {CLOSE_WEST} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF:	Death
 		DO:	SetState {MAP_DEATH}
 	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
@@ -10048,6 +10404,10 @@ STATE: {CLOSE_NORTHWEST} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF:	Death
 		DO:	SetState {MAP_DEATH}
 	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
@@ -10236,6 +10596,10 @@ STATE: {TURN_SETTLE} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF:	Death
 		DO:	SetState {MAP_DEATH}
 	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
@@ -10415,6 +10779,10 @@ STATE: {RUN_START} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF:	Death
 		DO:	SetState {MAP_DEATH}
 	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
@@ -10597,6 +10965,10 @@ STATE: {RUN_WAIT} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF:	Death
 		DO:	SetState {MAP_DEATH}
 	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
@@ -10782,6 +11154,10 @@ STATE: {RUN_ACCOUNT} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF:	Death
 		DO:	SetState {MAP_DEATH}
 	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
@@ -10963,6 +11339,10 @@ STATE: {RUN_ASSESS} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF:	Death
 		DO:	SetState {MAP_DEATH}
 	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
@@ -11149,6 +11529,10 @@ STATE: {STUCK} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Death
 		DO: SetState {MAP_DEATH}
 	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
@@ -11338,6 +11722,10 @@ STATE: {RETREAT_WAIT} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Death
 		DO: SetState {MAP_DEATH}
 	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
@@ -11530,6 +11918,10 @@ STATE: {REROLL_WAIT} ~~ {
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
 	IF: Death
 		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
+	IF: Death
+		DO: SetState {MAP_DEATH}
 	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
 		DO: SetState {MAP_COMBAT_RESUME}
 	IF: SecsInStateGE 3
@@ -11710,6 +12102,10 @@ STATE: {MAP_COMBAT_RESUME} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Death
 		DO: SetState {MAP_DEATH}
 	IF: Always
@@ -11897,6 +12293,10 @@ STATE: {SKIP_MAP} ~~ {
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
 	IF: Death
 		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
+	IF: Death
+		DO: SetState {MAP_DEATH}
 	IF: Always
 		DO: DoAll
 				Chat {/ub clearmotion}
@@ -12079,6 +12479,10 @@ STATE: {TEMP_HUNT} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF:	Death
 		DO:	SetState {MAP_DEATH}
 	IF:	Always
@@ -12260,6 +12664,10 @@ STATE: {DIG_FIRST} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF:	Death
 		DO:	SetState {MAP_DEATH}
 	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
@@ -12445,6 +12853,10 @@ STATE: {DIG_1_WAIT} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF:	Death
 		DO:	SetState {MAP_DEATH}
 	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
@@ -12624,6 +13036,10 @@ STATE: {DIG_CLICK_2} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF:	Death
 		DO:	SetState {MAP_DEATH}
 	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
@@ -12807,6 +13223,10 @@ STATE: {DIG_2_RESPONSE} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF:	Death
 		DO:	SetState {MAP_DEATH}
 	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
@@ -12990,6 +13410,10 @@ STATE: {DIG_SECOND} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF:	Death
 		DO:	SetState {MAP_DEATH}
 	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
@@ -13173,6 +13597,10 @@ STATE: {DIG_2_WAIT} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF:	Death
 		DO:	SetState {MAP_DEATH}
 	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
@@ -13352,6 +13780,10 @@ STATE: {DIG_CLICK_3} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF:	Death
 		DO:	SetState {MAP_DEATH}
 	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
@@ -13536,6 +13968,10 @@ STATE: {DIG_3_RESPONSE} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF:	Death
 		DO:	SetState {MAP_DEATH}
 	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
@@ -13719,6 +14155,10 @@ STATE: {DIG_UNCERTAIN} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF:	Death
 		DO:	SetState {MAP_DEATH}
 	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
@@ -13902,6 +14342,10 @@ STATE: {ENCOUNTER_INIT} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF:	Death
 		DO:	SetState {MAP_DEATH}
 	IF:	Always
@@ -14091,6 +14535,10 @@ STATE: {ENCOUNTER} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF:	Death
 		DO:	SetState {MAP_DEATH}
 	IF:	Expr {getvar[tm_aun_loot_active]==0 && listcount[wobjectfindalllandscapebynamerx[`(?i)Corpse of .*Aun Relaria.*`]]>0}
@@ -14297,6 +14745,10 @@ STATE: {CACHE_SEARCH} ~~ {
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
 	IF: Death
 		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
+	IF: Death
+		DO: SetState {MAP_DEATH}
 	IF: Expr {getunixtime[]>=getvar[tm_cache_deadline]}
 		DO: DoAll
 				DoExpr {echo[`Plateau Treasure: cache collection timed out; currency pickup is not confirmed. Holding for review.`]}
@@ -14501,6 +14953,10 @@ STATE: {CACHE_FINISH} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF:	Death
 		DO:	SetState {MAP_DEATH}
 	IF:	Always
@@ -14690,6 +15146,10 @@ STATE: {ENCOUNTER_TIMEOUT} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF:	Death
 		DO:	SetState {MAP_DEATH}
 	IF:	Always
@@ -14870,6 +15330,10 @@ STATE: {MAP_MISSING} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF:	Death
 		DO:	SetState {MAP_DEATH}
 	IF:	ChatMatch {(?i)(The earth splits|The ground splits wide|The dig collapses inward|The dig breaks into something hollow|\[Digsite\])}
@@ -14937,6 +15401,10 @@ STATE: {T180_LS_DISPATCH} ~~ {
 				DoExpr {setpvar[mm_180_done_8,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
 	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
+	IF: Death
 		DO: SetState {T180_DEATH_RECOVERY}
 	IF: All
 			BlockE 21B70000
@@ -15003,6 +15471,10 @@ STATE: {T180_LS_WAIT} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_180_done_8,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Death
 		DO: SetState {T180_DEATH_RECOVERY}
 	IF: IntoPortal
@@ -15073,6 +15545,10 @@ STATE: {T180_HUB_READY} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_180_done_8,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Always
 		DO: DoAll
 				DoExpr {setvar[ml_status,`Taking the 180 camp portal`]}
@@ -15142,6 +15618,10 @@ STATE: {T225_LS_DISPATCH} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_225_done_9,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Death
 		DO: SetState {T225_DEATH_RECOVERY}
 	IF: All
@@ -15215,6 +15695,10 @@ STATE: {T225_LS_WAIT} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_225_done_9,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Death
 		DO: SetState {T225_DEATH_RECOVERY}
 	IF: IntoPortal
@@ -15291,6 +15775,10 @@ STATE: {T225_HUB_READY} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_225_done_9,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Always
 		DO: DoAll
 				DoExpr {setvar[ml_status,`Taking the 225 camp portal`]}
@@ -15356,6 +15844,10 @@ STATE: {T275_LS_DISPATCH} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Death
 		DO: SetState {T275_DEATH_RECOVERY}
 	IF: All
@@ -15425,6 +15917,10 @@ STATE: {T275_LS_WAIT} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Death
 		DO: SetState {T275_DEATH_RECOVERY}
 	IF: IntoPortal
@@ -15497,6 +15993,10 @@ STATE: {T275_HUB_READY} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Always
 		DO: DoAll
 				SetState {T275_CAMP_SETTLE}
@@ -15673,6 +16173,10 @@ STATE: {CACHE_PREP} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Death
 		DO: SetState {MAP_DEATH}
 	IF: Always
@@ -15874,6 +16378,10 @@ STATE: {CACHE_PICKUP} ~~ {
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
 	IF: Death
 		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
+	IF: Death
+		DO: SetState {MAP_DEATH}
 	IF: Expr {getvar[tm_cache_pending_template]<=0 || getvar[tm_cache_pending]<=0}
 		DO: DoAll
 				DoExpr {echo[`Plateau Treasure: missing cache item identity; holding without moving it.`]}
@@ -16059,6 +16567,10 @@ STATE: {CACHE_CONFIRM} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Death
 		DO: SetState {MAP_DEATH}
 	IF: Expr {getvar[tm_cache_sent]==1 && getinventorycountbytemplatetype[getvar[tm_cache_pending_template]]>getvar[tm_cache_before_count] && (listcount[listfilter[wobjectfindallbycontainer[wobjectgetopencontainer[]], `wobjectgetid[$1]==getvar[tm_cache_pending]`]]==0 || wobjectgetintprop[wobjectfindbyid[getvar[tm_cache_pending]],12]<getvar[tm_cache_pending_amount])}
@@ -16251,6 +16763,10 @@ STATE: {CACHE_SETTLE} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Death
 		DO: SetState {MAP_DEATH}
 	IF: Expr {!(wobjectgetname[wobjectgetopencontainer[]]==`Unearthed Cache` && getvar[tm_cache_id]!=0 && wobjectgetid[wobjectgetopencontainer[]]==getvar[tm_cache_id]) || listcount[listfilter[wobjectfindallbycontainer[wobjectgetopencontainer[]], `wobjectgetintprop[$1,218103808]==1004101 || wobjectgetobjectclass[$1]==15`]]>0}
@@ -16447,6 +16963,10 @@ STATE: {CACHE_SCAN} ~~ {
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
 	IF: Death
 		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
+	IF: Death
+		DO: SetState {MAP_DEATH}
 	IF: Expr {getunixtime[]>=getvar[tm_cache_deadline]}
 		DO: SetState {MISSION_ERROR}
 	IF: Always
@@ -16626,6 +17146,10 @@ STATE: {CACHE_CHOOSE} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Death
 		DO: SetState {MAP_DEATH}
 	IF: Expr {getunixtime[]>=getvar[tm_cache_deadline]}
@@ -16813,6 +17337,10 @@ STATE: {CACHE_TRY_NEXT} ~~ {
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
 	IF: Death
 		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
+	IF: Death
+		DO: SetState {MAP_DEATH}
 	IF: Expr {getunixtime[]>=getvar[tm_cache_deadline]}
 		DO: SetState {MISSION_ERROR}
 	IF: Always
@@ -16993,6 +17521,10 @@ STATE: {CACHE_REOPEN_BOUND} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Always
 		DO: DoAll
 				DoExpr {setvar[tm_cache_probe_id,getvar[tm_cache_id]]}
@@ -17170,6 +17702,10 @@ STATE: {CACHE_RETURN_CHECK} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Death
 		DO: SetState {MAP_DEATH}
 	IF: Expr {getunixtime[]>=getvar[tm_cache_deadline]}
@@ -17354,6 +17890,10 @@ STATE: {CACHE_RETURN} ~~ {
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
 	IF: Death
 		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
+	IF: Death
+		DO: SetState {MAP_DEATH}
 	IF: Expr {getunixtime[]>=getvar[tm_cache_deadline]}
 		DO: SetState {MISSION_ERROR}
 	IF: Always
@@ -17536,6 +18076,10 @@ STATE: {CACHE_RETURN_WAIT} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Death
 		DO: SetState {MAP_DEATH}
 	IF: Expr {getunixtime[]>=getvar[tm_cache_deadline]}
@@ -17727,6 +18271,10 @@ STATE: {CACHE_APPROACH_CHECK} ~~ {
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
 	IF: Death
 		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
+	IF: Death
+		DO: SetState {MAP_DEATH}
 	IF: Expr {getunixtime[]>=getvar[tm_cache_deadline]}
 		DO: SetState {MISSION_ERROR}
 	IF: Expr {strlen[wobjectgetphysicscoordinates[wobjectfindbyid[getvar[tm_cache_probe_id]]]]>0 && coordinatedistanceflat[getplayercoordinates[],wobjectgetphysicscoordinates[wobjectfindbyid[getvar[tm_cache_probe_id]]]]>0.9}
@@ -17907,6 +18455,10 @@ STATE: {CACHE_APPROACH} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Death
 		DO: SetState {MAP_DEATH}
 	IF: Expr {getunixtime[]>=getvar[tm_cache_deadline]}
@@ -18091,6 +18643,10 @@ STATE: {CACHE_APPROACH_WAIT} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Death
 		DO: SetState {MAP_DEATH}
 	IF: Expr {getunixtime[]>=getvar[tm_cache_deadline]}
@@ -18282,6 +18838,10 @@ STATE: {CACHE_SKIP_SELECTED} ~~ {
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
 	IF: Death
 		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
+	IF: Death
+		DO: SetState {MAP_DEATH}
 	IF: Expr {getunixtime[]>=getvar[tm_cache_deadline]}
 		DO: SetState {MISSION_ERROR}
 	IF: Always
@@ -18465,6 +19025,10 @@ STATE: {CACHE_OPEN_SELECTED} ~~ {
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
 	IF: Death
 		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
+	IF: Death
+		DO: SetState {MAP_DEATH}
 	IF: Expr {getunixtime[]>=getvar[tm_cache_deadline]}
 		DO: SetState {MISSION_ERROR}
 	IF: Always
@@ -18532,6 +19096,10 @@ STATE: {T180_NPC_RETRY} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_180_done_8,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Always
 		DO: DoAll
 				DoExpr {setvar[mm_npc_log_zone,180]}
@@ -18603,6 +19171,10 @@ STATE: {T180_NPC_DECIDE} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_180_done_8,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Expr {(getvar[pt_pickup_0]==1 && getvar[pt_unavailable_0]!=1 && getpvar[mm_180_done_0]!=1) || (getvar[pt_pickup_1]==1 && getvar[pt_unavailable_1]!=1 && getpvar[mm_180_done_1]!=1) || (getvar[pt_pickup_2]==1 && getvar[pt_unavailable_2]!=1 && getpvar[mm_180_done_2]!=1) || (getvar[pt_pickup_3]==1 && getvar[pt_unavailable_3]!=1 && getpvar[mm_180_done_3]!=1) || (getvar[pt_pickup_4]==1 && getvar[pt_unavailable_4]!=1 && getpvar[mm_180_done_4]!=1) || (getvar[pt_pickup_5]==1 && getvar[pt_unavailable_5]!=1 && getpvar[mm_180_done_5]!=1) || (getvar[pt_pickup_6]==1 && getvar[pt_unavailable_6]!=1 && getpvar[mm_180_done_6]!=1) || (getvar[pt_pickup_7]==1 && getvar[pt_unavailable_7]!=1 && getpvar[mm_180_done_7]!=1) || (getvar[pt_pickup_8]==1 && getvar[pt_unavailable_8]!=1 && getpvar[mm_180_done_8]!=1)}
 		DO: DoAll
 				DoExpr {setvar[mm_npc_log_zone,180]}
@@ -18675,6 +19247,10 @@ STATE: {T180_TURNIN_RETRY} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_180_done_8,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Always
 		DO: DoAll
 				DoExpr {setvar[mm_npc_log_zone,180]}
@@ -18746,6 +19322,10 @@ STATE: {T180_TURNIN_DECIDE} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_180_done_8,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Always
 		DO: DoAll
 				DoExpr {setvar[mm_npc_log_zone,180]}
@@ -18817,6 +19397,10 @@ STATE: {T225_NPC_RETRY} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_225_done_9,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Always
 		DO: DoAll
 				DoExpr {setvar[mm_npc_log_zone,225]}
@@ -18894,6 +19478,10 @@ STATE: {T225_NPC_DECIDE} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_225_done_9,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Expr {(getvar[pt_pickup_0]==1 && getvar[pt_unavailable_0]!=1 && getpvar[mm_225_done_0]!=1) || (getvar[pt_pickup_1]==1 && getvar[pt_unavailable_1]!=1 && getpvar[mm_225_done_1]!=1) || (getvar[pt_pickup_2]==1 && getvar[pt_unavailable_2]!=1 && getpvar[mm_225_done_2]!=1) || (getvar[pt_pickup_3]==1 && getvar[pt_unavailable_3]!=1 && getpvar[mm_225_done_3]!=1) || (getvar[pt_pickup_4]==1 && getvar[pt_unavailable_4]!=1 && getpvar[mm_225_done_4]!=1) || (getvar[pt_pickup_5]==1 && getvar[pt_unavailable_5]!=1 && getpvar[mm_225_done_5]!=1) || (getvar[pt_pickup_6]==1 && getvar[pt_unavailable_6]!=1 && getpvar[mm_225_done_6]!=1) || (getvar[pt_pickup_7]==1 && getvar[pt_unavailable_7]!=1 && getpvar[mm_225_done_7]!=1) || (getvar[pt_pickup_8]==1 && getvar[pt_unavailable_8]!=1 && getpvar[mm_225_done_8]!=1) || (getvar[pt_pickup_9]==1 && getvar[pt_unavailable_9]!=1 && getpvar[mm_225_done_9]!=1)}
 		DO: DoAll
 				DoExpr {setvar[mm_npc_log_zone,225]}
@@ -18972,6 +19560,10 @@ STATE: {T225_TURNIN_RETRY} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_225_done_9,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Always
 		DO: DoAll
 				DoExpr {setvar[mm_npc_log_zone,225]}
@@ -19049,6 +19641,10 @@ STATE: {T225_TURNIN_DECIDE} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_225_done_9,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Always
 		DO: DoAll
 				DoExpr {setvar[mm_npc_log_zone,225]}
@@ -19116,6 +19712,10 @@ STATE: {T275_NPC_RETRY} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Always
 		DO: DoAll
 				DoExpr {setvar[mm_npc_log_zone,275]}
@@ -19189,6 +19789,10 @@ STATE: {T275_NPC_DECIDE} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Expr {(getvar[pt_pickup_carenzi]==1 && getvar[pt_unavailable_carenzi]!=1 && getpvar[mm_275_done_carenzi]!=1) || (getvar[pt_pickup_golem]==1 && getvar[pt_unavailable_golem]!=1 && getpvar[mm_275_done_golem]!=1) || (getvar[pt_pickup_gromnie]==1 && getvar[pt_unavailable_gromnie]!=1 && getpvar[mm_275_done_gromnie]!=1) || (getvar[pt_pickup_olthoi]==1 && getvar[pt_unavailable_olthoi]!=1 && getpvar[mm_275_done_olthoi]!=1) || (getvar[pt_pickup_siraluun]==1 && getvar[pt_unavailable_siraluun]!=1 && getpvar[mm_275_done_siraluun]!=1) || (getvar[pt_pickup_ursuin]==1 && getvar[pt_unavailable_ursuin]!=1 && getpvar[mm_275_done_ursuin]!=1) || (getvar[pt_pickup_virindi]==1 && getvar[pt_unavailable_virindi]!=1 && getpvar[mm_275_done_virindi]!=1) || (getvar[pt_pickup_zefir]==1 && getvar[pt_unavailable_zefir]!=1 && getpvar[mm_275_done_zefir]!=1)}
 		DO: DoAll
 				DoExpr {setvar[mm_npc_log_zone,275]}
@@ -19263,6 +19867,10 @@ STATE: {T275_TURNIN_RETRY} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Always
 		DO: DoAll
 				DoExpr {setvar[mm_npc_log_zone,275]}
@@ -19336,6 +19944,10 @@ STATE: {T275_TURNIN_DECIDE} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Always
 		DO: DoAll
 				DoExpr {setvar[mm_npc_log_zone,275]}
@@ -19517,8 +20129,11 @@ STATE: {AREA_DEFERRED} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Expr {getvar[mm_cap_return]==1}
+		DO: SetState {BUDGET_AREA_DONE}
 	IF: Always
 		DO: DoAll
+				DoExpr {setvar[mm_budget_active,0]}
 				DoExpr {setpvar[`mm_attempted_`+getvar[ml_zone],1]}
 				DoExpr {setvar[ml_status,`Hunter checks unresolved; trying remaining areas before 180 treasures`]}
 				SetState {DISPATCH}
@@ -19760,6 +20375,10 @@ STATE: {T180_CONTINUOUS_LOAD} ~~ {
 				DoExpr {setpvar[mm_180_done_8,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
 	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
+	IF: Death
 		DO: SetState {T180_DEATH_RECOVERY}
 	IF: Always
 		DO: DoAll
@@ -19834,6 +20453,10 @@ STATE: {T225_CONTINUOUS_LOAD} ~~ {
 				DoExpr {setpvar[mm_225_done_9,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
 	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
+	IF: Death
 		DO: SetState {T225_DEATH_RECOVERY}
 	IF: Always
 		DO: DoAll
@@ -19903,6 +20526,10 @@ STATE: {T275_CONTINUOUS_LOAD} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Death
 		DO: SetState {T275_DEATH_RECOVERY}
 	IF: Always
@@ -20274,6 +20901,10 @@ STATE: {MAP_MESH_PREP} ~~ {
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
 	IF: Death
 		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
+	IF: Death
+		DO: SetState {MAP_DEATH}
 	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
 		DO: SetState {MAP_COMBAT_RESUME}
 	IF: Always
@@ -20460,6 +21091,10 @@ STATE: {MAP_MESH_WAIT} ~~ {
 		DO: DoAll
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
 	IF: Death
 		DO: SetState {MAP_DEATH}
 	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
@@ -20649,6 +21284,10 @@ STATE: {MAP_MESH_FAILED} ~~ {
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
 	IF: Death
 		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
+	IF: Death
+		DO: SetState {MAP_DEATH}
 	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
 		DO: SetState {MAP_COMBAT_RESUME}
 	IF: Always
@@ -20834,6 +21473,10 @@ STATE: {MAP_MESH_RETRY} ~~ {
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
 	IF: Death
 		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[mm_camp_limit]==1 && getvar[mm_budget_active]==1 && getvar[mm_cap_return]!=1 && getvar[pt_turnin]!=1 && getvar[ml_hunt_only]!=1 && getpvar[`mm_deadline_`+getvar[ml_zone]]>0 && getunixtime[]>=getpvar[`mm_deadline_`+getvar[ml_zone]] && getvar[tm_cache_pending]==0 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {BUDGET_EXPIRED}
+	IF: Death
+		DO: SetState {MAP_DEATH}
 	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
 		DO: SetState {MAP_COMBAT_RESUME}
 	IF: Expr {getvar[tm_mesh_failures]>=3}
@@ -20844,6 +21487,982 @@ STATE: {MAP_MESH_RETRY} ~~ {
 		DO: DoAll
 				DoExpr {setvar[tm_mesh_step,max[4,getvar[tm_mesh_step]/2]]}
 				SetState {MAP_MESH_PREP}
+~~ }
+
+STATE: {T180_BUDGET_RETURN} ~~ {
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Carenzi Stalker(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_0,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Lesser Littoral Siraluun(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_1,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Sable Gromnies! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_2,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Marae Ursuin(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_3,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Sand Golem(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_4,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Olthoi Drone(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_5,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Siberite Fragment(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_6,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Kirit Zefir(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_7,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Aun Runner(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_8,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Always
+		DO: DoAll
+				DoExpr {setvar[mm_budget_active,0]}
+				DoExpr {setvar[mm_cap_return,1]}
+				DoExpr {setpvar[mm_timed_180,1]}
+				DoExpr {setpvar[mm_cap_pending_180,1]}
+				DoExpr {maraenavrestore[]}
+				DoExpr {if[getpvar[pt_cache_pickup_held]==1,rasetsetting[`LootChestsMacroOff`,getpvar[pt_cache_old_pickup]]]}
+				DoExpr {setpvar[pt_cache_pickup_held,0]}
+				Chat {/ub clearmotion}
+				SetOpt {EnableNav} {False}
+				SetOpt {EnableCombat} {True}
+				SetOpt {EnableBuffing} {True}
+				SetOpt {EnableLooting} {True}
+				DoExpr {setvar[tm_map_id,0]}
+				DoExpr {setpvar[tm_dig_active,0]}
+				DoExpr {setvar[pt_turnin,1]}
+				DoExpr {setvar[ml_status,`Two-hour camp limit reached; returning for completed rewards`]}
+				SetState {T180_GET_TO}
+~~ }
+
+STATE: {T180_BUDGET_SETTLE} ~~ {
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Carenzi Stalker(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_0,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Lesser Littoral Siraluun(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_1,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Sable Gromnies! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_2,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Marae Ursuin(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_3,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Sand Golem(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_4,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Olthoi Drone(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_5,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Siberite Fragment(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_6,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Kirit Zefir(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_7,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Aun Runner(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_8,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: SecsInStateGE 3
+		DO: SetState {BUDGET_AREA_DONE}
+~~ }
+
+STATE: {T225_BUDGET_RETURN} ~~ {
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Woodland Ursuin(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_0,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Ironstone Golem(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_1,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Azael Zefir(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_2,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Copper Gromnies! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_3,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Timber Siraluun(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_4,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Rabid Carenzi(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_5,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Siberite Shard(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_6,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Aun Elder Shaman(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_7,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Greater Canescent Mattekar(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_8,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Olthoi Soldier(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_9,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Always
+		DO: DoAll
+				DoExpr {setvar[mm_budget_active,0]}
+				DoExpr {setvar[mm_cap_return,1]}
+				DoExpr {setpvar[mm_timed_225,1]}
+				DoExpr {setpvar[mm_cap_pending_225,1]}
+				DoExpr {maraenavrestore[]}
+				DoExpr {if[getpvar[pt_cache_pickup_held]==1,rasetsetting[`LootChestsMacroOff`,getpvar[pt_cache_old_pickup]]]}
+				DoExpr {setpvar[pt_cache_pickup_held,0]}
+				Chat {/ub clearmotion}
+				SetOpt {EnableNav} {False}
+				SetOpt {EnableCombat} {True}
+				SetOpt {EnableBuffing} {True}
+				SetOpt {EnableLooting} {True}
+				DoExpr {setvar[tm_map_id,0]}
+				DoExpr {setpvar[tm_dig_active,0]}
+				DoExpr {setvar[pt_turnin,1]}
+				DoExpr {setvar[ml_status,`Two-hour camp limit reached; returning for completed rewards`]}
+				SetState {T225_GET_TO}
+~~ }
+
+STATE: {T225_BUDGET_SETTLE} ~~ {
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Woodland Ursuin(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_0,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Ironstone Golem(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_1,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Azael Zefir(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_2,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Copper Gromnies! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_3,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Timber Siraluun(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_4,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Rabid Carenzi(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_5,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Siberite Shard(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_6,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Aun Elder Shaman(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_7,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Greater Canescent Mattekar(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_8,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Olthoi Soldier(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_9,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: SecsInStateGE 3
+		DO: SetState {BUDGET_AREA_DONE}
+~~ }
+
+STATE: {T275_BUDGET_RETURN} ~~ {
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_zefir]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Enku\ Zefirs! Your task is complete!|^huntcount_plateauzefirenkuzefir - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_zefir,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_ursuin]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Ursuin\ Slicers! Your task is complete!|^huntcount_plateauursuinursuinslicer - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_ursuin,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_golem]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Verdigris\ Golems! Your task is complete!|^huntcount_plateaugolemverdigrisgolem - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_golem,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_gromnie]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Brass\ Gromnies! Your task is complete!|^huntcount_plateaugromniebrassgromnie - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_gromnie,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_siraluun]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Untamed\ Siraluuns! Your task is complete!|^huntcount_plateausiraluununtamedsiraluun - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_siraluun,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_carenzi]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Savage\ Carenzis! Your task is complete!|^huntcount_plateaucarenzisavagecarenzi - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_carenzi,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_virindi]==0}
+			ChatMatch {(?:^You have killed \d+ Virindi\ Sentr(?:y|ies)! Your task is complete!|^huntcount_plateauvirindivirindi(?:observer|sentry) - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_virindi,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_olthoi]==0}
+			ChatMatch {(?:^You have killed \d+ Olthoi\ Hive\ Guardians?! Your task is complete!|^huntcount_plateauolthoiolthoihive(?:mutilator|guardian) - 20 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_olthoi,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Always
+		DO: DoAll
+				DoExpr {setvar[mm_budget_active,0]}
+				DoExpr {setvar[mm_cap_return,1]}
+				DoExpr {setpvar[mm_timed_275,1]}
+				DoExpr {setpvar[mm_cap_pending_275,1]}
+				DoExpr {maraenavrestore[]}
+				DoExpr {if[getpvar[pt_cache_pickup_held]==1,rasetsetting[`LootChestsMacroOff`,getpvar[pt_cache_old_pickup]]]}
+				DoExpr {setpvar[pt_cache_pickup_held,0]}
+				Chat {/ub clearmotion}
+				SetOpt {EnableNav} {False}
+				SetOpt {EnableCombat} {True}
+				SetOpt {EnableBuffing} {True}
+				SetOpt {EnableLooting} {True}
+				DoExpr {setvar[tm_map_id,0]}
+				DoExpr {setpvar[tm_dig_active,0]}
+				DoExpr {setvar[pt_turnin,1]}
+				DoExpr {setvar[ml_status,`Two-hour camp limit reached; returning for completed rewards`]}
+				SetState {T275_GET_TO}
+~~ }
+
+STATE: {T275_BUDGET_SETTLE} ~~ {
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_zefir]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Enku\ Zefirs! Your task is complete!|^huntcount_plateauzefirenkuzefir - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_zefir,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_ursuin]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Ursuin\ Slicers! Your task is complete!|^huntcount_plateauursuinursuinslicer - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_ursuin,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_golem]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Verdigris\ Golems! Your task is complete!|^huntcount_plateaugolemverdigrisgolem - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_golem,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_gromnie]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Brass\ Gromnies! Your task is complete!|^huntcount_plateaugromniebrassgromnie - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_gromnie,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_siraluun]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Untamed\ Siraluuns! Your task is complete!|^huntcount_plateausiraluununtamedsiraluun - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_siraluun,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_carenzi]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Savage\ Carenzis! Your task is complete!|^huntcount_plateaucarenzisavagecarenzi - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_carenzi,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_virindi]==0}
+			ChatMatch {(?:^You have killed \d+ Virindi\ Sentr(?:y|ies)! Your task is complete!|^huntcount_plateauvirindivirindi(?:observer|sentry) - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_virindi,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_olthoi]==0}
+			ChatMatch {(?:^You have killed \d+ Olthoi\ Hive\ Guardians?! Your task is complete!|^huntcount_plateauolthoiolthoihive(?:mutilator|guardian) - 20 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_olthoi,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: SecsInStateGE 3
+		DO: SetState {BUDGET_AREA_DONE}
+~~ }
+
+STATE: {BUDGET_AREA_DONE} ~~ {
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Carenzi Stalker(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_0,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Lesser Littoral Siraluun(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_1,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Sable Gromnies! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_2,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Marae Ursuin(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_3,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Sand Golem(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_4,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Olthoi Drone(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_5,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Siberite Fragment(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_6,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Kirit Zefir(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_7,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Aun Runner(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_8,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Woodland Ursuin(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_0,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Ironstone Golem(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_1,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Azael Zefir(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_2,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Copper Gromnies! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_3,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Timber Siraluun(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_4,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Rabid Carenzi(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_5,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Siberite Shard(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_6,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Aun Elder Shaman(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_7,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Greater Canescent Mattekar(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_8,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Olthoi Soldier(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_9,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_zefir]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Enku\ Zefirs! Your task is complete!|^huntcount_plateauzefirenkuzefir - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_zefir,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_ursuin]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Ursuin\ Slicers! Your task is complete!|^huntcount_plateauursuinursuinslicer - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_ursuin,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_golem]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Verdigris\ Golems! Your task is complete!|^huntcount_plateaugolemverdigrisgolem - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_golem,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_gromnie]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Brass\ Gromnies! Your task is complete!|^huntcount_plateaugromniebrassgromnie - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_gromnie,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_siraluun]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Untamed\ Siraluuns! Your task is complete!|^huntcount_plateausiraluununtamedsiraluun - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_siraluun,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_carenzi]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Savage\ Carenzis! Your task is complete!|^huntcount_plateaucarenzisavagecarenzi - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_carenzi,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_virindi]==0}
+			ChatMatch {(?:^You have killed \d+ Virindi\ Sentr(?:y|ies)! Your task is complete!|^huntcount_plateauvirindivirindi(?:observer|sentry) - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_virindi,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_olthoi]==0}
+			ChatMatch {(?:^You have killed \d+ Olthoi\ Hive\ Guardians?! Your task is complete!|^huntcount_plateauolthoiolthoihive(?:mutilator|guardian) - 20 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_olthoi,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Always
+		DO: DoAll
+				DoExpr {setpvar[`mm_cap_pending_`+getvar[ml_zone],0]}
+				SetOpt {EnableNav} {False}
+				Chat {/ub clearmotion}
+				DoExpr {setvar[mm_budget_active,0]}
+				DoExpr {setvar[mm_cap_return,0]}
+				DoExpr {setvar[ml_status,`Partial camp turn-in finished; trying the next selected task area`]}
+				SetState {DISPATCH}
+~~ }
+
+STATE: {BUDGET_EXPIRED} ~~ {
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Carenzi Stalker(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_0,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Lesser Littoral Siraluun(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_1,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Sable Gromnies! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_2,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Marae Ursuin(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_3,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Sand Golem(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_4,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Olthoi Drone(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_5,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Siberite Fragment(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_6,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Kirit Zefir(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_7,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Aun Runner(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_8,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Woodland Ursuin(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_0,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Ironstone Golem(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_1,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Azael Zefir(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_2,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Copper Gromnies! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_3,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Timber Siraluun(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_4,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Rabid Carenzi(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_5,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Siberite Shard(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_6,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Aun Elder Shaman(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_7,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Greater Canescent Mattekar(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_8,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Olthoi Soldier(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_9,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_zefir]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Enku\ Zefirs! Your task is complete!|^huntcount_plateauzefirenkuzefir - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_zefir,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_ursuin]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Ursuin\ Slicers! Your task is complete!|^huntcount_plateauursuinursuinslicer - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_ursuin,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_golem]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Verdigris\ Golems! Your task is complete!|^huntcount_plateaugolemverdigrisgolem - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_golem,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_gromnie]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Brass\ Gromnies! Your task is complete!|^huntcount_plateaugromniebrassgromnie - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_gromnie,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_siraluun]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Untamed\ Siraluuns! Your task is complete!|^huntcount_plateausiraluununtamedsiraluun - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_siraluun,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_carenzi]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Savage\ Carenzis! Your task is complete!|^huntcount_plateaucarenzisavagecarenzi - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_carenzi,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_virindi]==0}
+			ChatMatch {(?:^You have killed \d+ Virindi\ Sentr(?:y|ies)! Your task is complete!|^huntcount_plateauvirindivirindi(?:observer|sentry) - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_virindi,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_olthoi]==0}
+			ChatMatch {(?:^You have killed \d+ Olthoi\ Hive\ Guardians?! Your task is complete!|^huntcount_plateauolthoiolthoihive(?:mutilator|guardian) - 20 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_olthoi,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Expr {getvar[ml_zone]==180}
+		DO: SetState {T180_BUDGET_RETURN}
+	IF: Expr {getvar[ml_zone]==225}
+		DO: SetState {T225_BUDGET_RETURN}
+	IF: Expr {getvar[ml_zone]==275}
+		DO: SetState {T275_BUDGET_RETURN}
+~~ }
+
+STATE: {BUDGET_LOWLANDS} ~~ {
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Carenzi Stalker(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_0,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Lesser Littoral Siraluun(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_1,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Sable Gromnies! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_2,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Marae Ursuin(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_3,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Sand Golem(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_4,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Olthoi Drone(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_5,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Siberite Fragment(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_6,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Kirit Zefir(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_7,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Aun Runner(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_8,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Woodland Ursuin(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_0,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Ironstone Golem(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_1,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Azael Zefir(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_2,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Copper Gromnies! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_3,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Timber Siraluun(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_4,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Rabid Carenzi(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_5,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Siberite Shard(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_6,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Aun Elder Shaman(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_7,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Greater Canescent Mattekar(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_8,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Olthoi Soldier(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_9,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_zefir]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Enku\ Zefirs! Your task is complete!|^huntcount_plateauzefirenkuzefir - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_zefir,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_ursuin]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Ursuin\ Slicers! Your task is complete!|^huntcount_plateauursuinursuinslicer - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_ursuin,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_golem]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Verdigris\ Golems! Your task is complete!|^huntcount_plateaugolemverdigrisgolem - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_golem,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_gromnie]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Brass\ Gromnies! Your task is complete!|^huntcount_plateaugromniebrassgromnie - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_gromnie,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_siraluun]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Untamed\ Siraluuns! Your task is complete!|^huntcount_plateausiraluununtamedsiraluun - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_siraluun,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_carenzi]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Savage\ Carenzis! Your task is complete!|^huntcount_plateaucarenzisavagecarenzi - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_carenzi,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_virindi]==0}
+			ChatMatch {(?:^You have killed \d+ Virindi\ Sentr(?:y|ies)! Your task is complete!|^huntcount_plateauvirindivirindi(?:observer|sentry) - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_virindi,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_olthoi]==0}
+			ChatMatch {(?:^You have killed \d+ Olthoi\ Hive\ Guardians?! Your task is complete!|^huntcount_plateauolthoiolthoihive(?:mutilator|guardian) - 20 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_olthoi,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Always
+		DO: DoAll
+				DoExpr {setvar[mm_budget_active,0]}
+				DoExpr {setvar[mm_budget_fallback,1]}
+				DoExpr {setvar[ml_run_mode,1]}
+				DoExpr {setvar[ml_zone,180]}
+				DoExpr {setvar[ml_use_maps,0]}
+				DoExpr {setvar[ml_status,`Task camps finished; continuous Lowlands hunting, maps off`]}
+				SetState {T180_Default}
 ~~ }
 
 NAVDATA: 180_-_Hunt_Loop 2238 ~~ {

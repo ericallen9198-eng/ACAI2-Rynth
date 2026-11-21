@@ -22,6 +22,7 @@ class World(BaseWorld):
    if f=='maraenavrestore':return 1
    if f=='getplayercoordinates':return 'player'
    if f=='getitemcountininventorybyname':return getattr(self,'mapCount',0)
+   if f=='getfellowshipcount':return 0
    if f=='strlen':return len(str(self.ev(t[2][0],scope)))
    if f=='listcontains':
     values=self.ev(t[2][0],scope);return isinstance(values,list) and self.ev(t[2][1],scope) in values
@@ -275,3 +276,47 @@ print(f"PASS: {ns['checks']} total mission simulations, including continuous hun
 
 w=World();w.p['ml_mesh_maps']=1;s=Sim(w,'STUCK');s.until('MISSION_ERROR')
 check(not any('setmotion' in m for m in w.messages),'mesh search never falls back to a blind backward setmotion')
+
+# Optional task-camp quotas: fixed deadlines, partial turn-ins, and safe fallback.
+for z,key in ((180,'0'),(225,'0'),(275,'zefir')):
+ w=World();w.p['mm_camp_limit']=1;w.v.update(ml_zone=z,ml_hunt_only=0,ml_run_mode=1,pt_turnin=0,ml_use_maps=0,ml_fship_attempted=2)
+ w.v['pt_pickup_'+key]=1
+ s=Sim(w,f'T{z}_HUNT_RESUME');s.tick();deadline=w.p['mm_deadline_'+str(z)]
+ check(deadline==w.now+7200 and w.v['mm_budget_active']==1,'quota starts on first task hunt '+str(z))
+ s.tick(3000)
+ check(s.state==f'T{z}_HUNT','timed mode replaces the old 45-minute KT-progress stop '+str(z))
+ s.state=f'T{z}_HUNT_RESUME';s.fired.clear();s.tick()
+ check(w.p['mm_deadline_'+str(z)]==deadline,'resuming a task hunt never grants another two hours '+str(z))
+ w.now=deadline;s.until('BUDGET_EXPIRED');s.until(f'T{z}_GET_TO')
+ check(w.p['mm_timed_'+str(z)]==1 and w.p['mm_cap_pending_'+str(z)]==1 and w.v['pt_turnin']==1,'expired quota queues persistent partial turn-in '+str(z))
+ check(w.p.get(f'mm_{z}_done_{key}',0)==0,'quota expiry never completes an unfinished task '+str(z))
+ s.state=f'T{z}_TURNIN_WAIT';s.fired.clear();w.v['pt_npc_end']=1
+ s.until(f'T{z}_BUDGET_SETTLE');s.until('BUDGET_AREA_DONE');s.tick()
+ check(w.p['mm_cap_pending_'+str(z)]==0 and s.state=='DISPATCH','partial turn-in advances without all hunters being complete '+str(z))
+w=World();w.p.update(mm_camp_limit=1,mm_timed_180=1,mm_timed_225=1,mm_timed_275=1,mm_fallback_180=0)
+s=Sim(w,'Default');s.until('BUDGET_LOWLANDS');w.cell=0x14B5002F;s.until('T180_FARM_RUN',120)
+check(w.v['ml_zone']==180 and w.v['ml_hunt_only']==1 and w.v['ml_use_maps']==0,'timed task mode ends in continuous Lowlands salvage hunting with maps off')
+w=World();w.p.update(mm_camp_limit=1,mm_area_180=1,mm_area_225=1,mm_area_275=1)
+s=Sim(w,'Default');s.until('BUDGET_LOWLANDS')
+check(s.state=='BUDGET_LOWLANDS','early completion of every camp uses the same Lowlands fallback')
+w=World();w.p.update(mm_camp_limit=0,mm_timed_180=1,mm_deadline_180=1);s=Sim(w,'Default');s.until('T180_START_LOCATION')
+check(w.v['ml_zone']==180,'option off ignores stale expired quotas')
+w=World();w.p.update(mm_camp_limit=1,ml_hunt_only_180=1,mm_deadline_180=1,mm_timed_180=1,ml_area_225=0,ml_area_275=0,ml_maps_180=0);w.cell=0x14B5002F
+s=Sim(w,'Default');s.until('T180_FARM_RUN',120);s.tick(10000)
+check(s.state=='T180_FARM_RUN' and w.v['mm_budget_active']==0,'Hunt only is never limited by task-camp quotas')
+w=World();w.p.update(mm_camp_limit=1,mm_deadline_225=1,mm_timed_225=1,mm_cap_pending_225=1,ml_hunt_only_225=1);w.cell=0x1BC2002B
+s=Sim(w,'Default');s.until('T225_TURNIN_WAIT',120)
+check(w.v['ml_zone']==225 and w.v['mm_cap_return']==1,'reconnect finishes the pending partial turn-in before choosing another camp')
+w=World();w.p.update(mm_camp_limit=1,mm_deadline_180=1);w.v.update(mm_budget_active=1,ml_zone=180,ml_hunt_only=0,pt_turnin=0,tm_cache_pending=1234);w.open=0;w.caches={};w.now=10;w.v['tm_cache_deadline']=1000
+s=Sim(w,'CACHE_SEARCH');s.tick()
+check(s.state=='CACHE_SEARCH' and w.v['tm_cache_pending']==1234,'quota cannot interrupt a possibly issued inventory move')
+w.v['tm_cache_pending']=0;s.until('BUDGET_EXPIRED')
+check(s.state=='BUDGET_EXPIRED','quota is enforced as soon as the pending action settles')
+print(f"PASS: {ns['checks']} mission simulations including optional two-hour camps, partial turn-in and Lowlands fallback.")
+w=World();w.p.update(mm_camp_limit=1,mm_timed_225=1,mm_cap_pending_225=1);w.v.update(ml_zone=225,mm_cap_return=1,pt_npc_end=0,mm_npc_retry=1)
+s=Sim(w,'T225_TURNIN_WAIT');s.tick(181);s.until('BUDGET_AREA_DONE',100);s.tick()
+check(w.p.get('mm_attempted_225',0)==0 and w.p['mm_cap_pending_225']==0,'silent partial turn-in has bounded retries and does not falsely complete/defer task state')
+w=World();w.p.update(mm_camp_limit=1,mm_timed_180=1,mm_deadline_180=7200);w.now=10000
+s=Sim(w,'Default');s.until('T225_START_LOCATION',100);s.state='T225_HUNT_RESUME';s.fired.clear();s.tick()
+check(w.p['mm_deadline_225']==w.now+7200 and w.p['mm_deadline_180']==7200,'next camp receives its own quota without rewriting the previous deadline')
+print(f"PASS: {ns['checks']} total mission simulations with optional camp budgets and bounded partial turn-in.")
