@@ -187,3 +187,10 @@ print(f"PASS: {ns['checks']} total mission simulations including simultaneous ca
 w=World(items=[item(10)]);w.open=0;w.denyCacheMetadata=True
 s=Sim(w,'CACHE_PREP');s.until('CACHE_CONFIRM',100)
 check(w.used==[1] and len(w.moves)==1,'exact-name discovery and acknowledged pickup need no cache coordinate or template reads')
+# Preserve the proven Aun corpse branch; it does not require a cache to spawn.
+w=World();w.open=0;w.caches={1:{'name':'Corpse of Aun Relaria','distance':1}}
+s=Sim(w,'ENCOUNTER');s.tick()
+check(w.options['EnableLooting']==1,'Aun corpse enables the existing profile looter')
+w.inv[1004101]=7;s.until('CACHE_FINISH')
+check(not w.used and not w.moves,'confirmed corpse doubloons finish without any cache-use or explicit duplicate pickup')
+print(f"PASS: {ns['checks']} mission simulations, including single cache, concurrent caches and corpse payout.")
