@@ -5,6 +5,28 @@ click('Start run');step(12)
 check(ai.MacroRunning and sim.meta=='Marae Lassel - Embedded','Start replaces old macro only after verified load')
 check(sim.metaState~='HOLD','stale HOLD cannot cancel pending startup')
 check(sim.pvars.ml_run_mode==1 and sim.pvars.ml_area_180==1,'preferences applied before starting')
+-- Status parsing learns the target, but never computes a required kill total.
+sim.vars.ml_zone=225;sim.vars.pt_pickup_1=0
+sim.chat({Message='Hea Hineroa the Golem Hunter tells you, "You have defeated 17 of 999 A New Golem. The hunt is not yet finished."'})
+check(sim.vars.pt_pickup_1==1,'server in-progress words confirm task regardless of target and total')
+sim.chat({Message='You have killed 2 A New Golems! Your task is complete!'})
+check(sim.pvars.mm_225_done_1==1,'completion notice identifies learned task without comparing kill count')
+sim.chat({Message='Player says, "Hea Hineroa the Golem Hunter tells you something"'})
+sim.chat({Message='Hea Hineroa the Golem Hunter tells you, "Unrecognized new task wording."'})
+sim.vars.mm_npc_log_zone=225;sim.vars.mm_npc_log_missing='[1]';sim.vars.mm_npc_log_generation=1
+step()
+check(sim.logReport and #sim.logReport.entries==1,'unrecognized NPC reply creates a bounded diagnostic entry')
+check(sim.logPath:match('^npc%-mismatches%-')~=nil,'diagnostic export uses a dedicated NPC mismatch file')
+sim.vars.mm_npc_log_generation=2;step()
+check(#sim.logReport.entries==1 and sim.logReport.entries[1].repeats==2,'duplicate mismatch merges instead of growing the log')
+sim.failLog=true;sim.vars.mm_npc_log_generation=3;step()
+check(ai.MacroRunning,'log write failure never stops the mission')
+sim.failLog=false
+for i=1,20 do
+ sim.chat({Message='Hea Hineroa the Golem Hunter tells you, "New unmatched response '..i..'."'})
+ sim.vars.mm_npc_log_generation=3+i;step()
+end
+check(#sim.logReport.entries==16,'mismatch file remains capped at sixteen entries')
 sim.pvars.mm_area_180=1;sim.pvars.mm_180_done_0=1;step(25)
 local saved=sim.stores.A.mission_v1
 check(saved.active and saved.progress.mm_area_180==1,'character checkpoint stores completed area')

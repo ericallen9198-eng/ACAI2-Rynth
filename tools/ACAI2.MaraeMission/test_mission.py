@@ -9,11 +9,35 @@ rules=ns['rules'];BaseWorld=ns['World'];BaseSim=ns['Sim'];check=ns['check'];item
 class World(BaseWorld):
  def __init__(self,cell=0x21B70028,items=()):
   super().__init__(items);self.cell=cell;self.busy=False;self.chat='';self.route=None
+  self.v.update(ml_run_mode=1,ml_area_180=1,ml_area_225=1,ml_area_275=1,tm_cache_preexisting=[],tm_cache_anchor=0)
+  self.caches={1:{'distance':0,'openable':True},2:{'distance':0,'openable':True}}
   self.p.update(ml_run_mode=1,ml_area_180=1,ml_area_225=1,ml_area_275=1,ml_maps_180=0,ml_maps_225=1,ml_maps_275=1)
  def ev(self,t,scope):
   if t[0]=='call':
    if t[1]=='maraerecoverybusy':return int(self.busy)
-   if t[1]=='listcreate':return []
+   f=t[1]
+   if f=='getplayercoordinates':return 'player'
+   if f=='strlen':return len(str(self.ev(t[2][0],scope)))
+   if f=='listcontains':
+    values=self.ev(t[2][0],scope);return isinstance(values,list) and self.ev(t[2][1],scope) in values
+   if f=='listadd':
+    values=self.ev(t[2][0],scope);values.append(self.ev(t[2][1],scope));return 1
+   if f=='wobjectfindalllandscapebytemplatetype':return list(self.caches) if self.ev(t[2][0],scope)==1004150 else []
+   if f=='wobjectgettemplatetype':return 1004150 if self.ev(t[2][0],scope) in self.caches else 0
+   if f=='wobjectgetphysicscoordinates':
+    obj=self.ev(t[2][0],scope);return 'cache:'+str(obj) if obj in self.caches and not self.caches[obj].get('no_position') else ''
+   if f=='coordinatedistanceflat':
+    coord=self.ev(t[2][0],scope);return self.caches[int(coord.split(':')[1])]['distance'] if coord.startswith('cache:') else 0
+   if f=='actiontrymove':
+    a=[self.ev(x,scope) for x in t[2]]
+    assert self.open==self.v['tm_cache_id'] and self.open in self.caches
+    assert int(a[0]) in self.container(self.open) and a[1:3]==[999,0]
+    self.moves.append(tuple(a));return self.dispatch
+   if f=='actiontryuseitem':
+    obj=self.ev(t[2][0],scope);self.used.append(obj)
+    if self.autoopen and self.caches.get(obj,{}).get('openable'):self.open=obj
+    return 0
+   if t[1]=='listcreate':return [self.ev(v,scope) for v in t[2]]
    if t[1] in ('uboptset','vtsetsetting'):return 1
   return super().ev(t,scope)
 class Sim(BaseSim):
@@ -78,3 +102,80 @@ s.until('CACHE_FINISH');check(w.inv=={1004101:7,30001:2},'optional notes and dou
 w=World(items=[item(10)]);s=Sim(w,'CACHE_PREP');s.until('CACHE_CONFIRM');s.until('MISSION_ERROR')
 check(len(w.moves)==1 and not w.inv,'unacknowledged sent pickup holds without blind retry or credit')
 print(f"PASS: {ns['checks']} mission simulations; native actions were fake recordings only.")
+
+# Exact live replies that left five confirmation flags at zero in the first test.
+observed=[
+ (1,'Hea Hineroa the Golem Hunter',50,'Drumtaken Ironstone Golem'),
+ (4,'Hea Kahureka the Siraluun Hunter',50,'Drumtaken Timber Siraluun'),
+ (7,'Hea Tamaneru the Aun Hunter',20,'Aun Elder Shaman'),
+ (8,'Hea Ngarekau the Mattekar Hunter',50,'Drumtaken Greater Canescent Mattekar'),
+ (9,'Hea Hakerea the Olthoi Hunter',50,'Olthoi Soldier')]
+w=World(0x1BC2002B);w.v.update(ml_zone=225,pt_npc_end=0)
+for k in (0,2,3,5,6):w.v['pt_pickup_'+str(k)]=1
+s=Sim(w,'T225_NPC_TALK_WAIT')
+for key,npc,count,target in observed:
+ w.chat=npc+' tells you, "My hunts suit a hunter of about level 225."';s.tick()
+ check(w.v.get('pt_pickup_'+str(key),0)==0,'intro alone does not confirm '+npc)
+ w.chat=npc+f' tells you, "You have defeated 0 of {count} {target}. The hunt is not yet finished."';s.tick()
+ check(w.v.get('pt_pickup_'+str(key))==1,'actual live task reply confirms '+target)
+w.v['pt_npc_end']=1;s.tick()
+check(s.state=='T225_HUNT_LOAD','all ten confirmed tasks plus route end start hunting')
+for key,npc,count,target in observed:
+ w=World();w.v['ml_zone']=225;w.chat=f'You have killed {count} {target}s! Your task is complete!';s=Sim(w,'ENCOUNTER');s.tick()
+ check(w.p.get('mm_225_done_'+str(key))==1,'treasure fight records actual completion '+target)
+w=World();w.v['ml_zone']=225;w.chat='You have killed 50 Aun Shamans! Your task is complete!';s=Sim(w,'ENCOUNTER');s.tick()
+check(w.p.get('mm_225_done_7',0)==0,'obsolete fifty-Shaman task cannot complete Elder Shaman contract')
+print(f"PASS: {ns['checks']} total mission simulations, including exact live Northern hunter replies.")
+# NPC failures never become an idle hold or falsely completed quests.
+w=World(0x1BC2002B);w.v.update(ml_zone=225,pt_npc_end=1,pt_pickup_0=1);s=Sim(w,'T225_NPC_TALK_WAIT')
+s.until('T225_NPC_RETRY');s.tick()
+check(w.v['pt_pickup_0']==1 and w.v['mm_npc_retry']==1,'retry preserves confirmed work')
+w.v['pt_npc_end']=1;s.until('T225_NPC_DECIDE');s.until('T225_HUNT_LOAD')
+check(w.p.get('mm_225_done_1',0)==0 and w.p.get('mm_area_225',0)==0,'missing hunter never becomes completed')
+check('1' in w.v['mm_npc_log_missing'],'retry snapshots missing hunter identities for logging')
+w=World();w.v.update(ml_zone=225,pt_npc_end=0,pt_pickup_0=1,mm_npc_retry=1);s=Sim(w,'T225_NPC_TALK_WAIT');s.tick(181);s.until('T225_HUNT_LOAD')
+check(s.state=='T225_HUNT_LOAD','silent route eventually starts confirmed tasks without waiting for end marker')
+w=World(0x14B5002F);w.p.update(mm_fallback_180=1,mm_area_180=1,mm_area_225=1,mm_area_275=1);s=Sim(w,'Default');s.until('T180_FARM_RUN')
+check(w.v['ml_zone']==180 and w.v['ml_run_mode']==2 and w.v['ml_use_maps']==1,'all cooldowns choose active 180 treasure circuit rather than stopping')
+w=World(0x1BC2002B);w.v.update(ml_zone=225,pt_npc_end=1,mm_npc_retry=1);w.p.update(mm_fallback_180=1,mm_area_180=1,mm_area_275=1);s=Sim(w,'T225_NPC_TALK_WAIT');s.until('MAP_FALLBACK_180')
+check(w.p.get('mm_area_225',0)==0 and w.p['mm_attempted_225']==1,'no confirmed 225 tasks defer unresolved area and fall back without false completion')
+w=World();w.v.update(ml_zone=225,pt_npc_end=1,mm_npc_retry=1);s=Sim(w,'T225_TURNIN_WAIT');s.until('AREA_DEFERRED')
+check('HOLD'!=s.state,'unconfirmed turn-ins are deferred without idle hold')
+w=World();w.v.update(ml_zone=225,pt_npc_end=0);s=Sim(w,'T225_NPC_TALK_WAIT')
+w.chat='Hea Hineroa the Golem Hunter tells you, "You have defeated 17 of 999 A Newly Named Creature. The hunt is not yet finished."';s.tick()
+check(w.v['pt_pickup_1']==1,'NPC in-progress status accepts changed total and target without counting')
+print(f"PASS: {ns['checks']} mission simulations including bounded retries, partial task work and 180 fallback.")
+# Concurrent dig sites: deny the first IDs, use the actual open container only.
+for denied in (1,2):
+ winner=denied+1
+ w=World(items=[item(10,container=winner)]);w.open=0
+ w.caches={i:{'distance':2,'openable':i==winner} for i in range(1,winner+1)}
+ s=Sim(w,'CACHE_PREP');s.until('CACHE_CONFIRM',100)
+ check(w.used==list(range(1,winner+1)) and w.v['tm_cache_id']==winner,'tries distinct IDs until cache '+str(winner)+' actually opens')
+ check(w.moves==[(10,999,0,1)] and not w.inv,'only bound cache dispatches one uncredited inventory move')
+ w.ack(10);s.until('CACHE_FINISH');check(w.inv[1004101]==7,'multi-cache reward requires real inventory acknowledgment')
+# An inaccessible/old/distant cache may remain selected without becoming the reward.
+w=World(items=[item(10,container=2)]);w.open=1
+w.v['tm_cache_preexisting']=[1];w.caches[1]['openable']=False
+w.caches[3]={'distance':200,'openable':True};w.caches[4]={'distance':0,'openable':True,'no_position':True}
+s=Sim(w,'CACHE_PREP');s.until('CACHE_CONFIRM',100)
+check(w.used==[2] and w.v['tm_cache_id']==2,'preexisting, distant and positionless caches are not candidates or open proof')
+# Once bound, closing the window must reopen that ID, never switch to another cache.
+w=World(items=[item(10)]);s=Sim(w,'CACHE_PREP');s.until('CACHE_PICKUP');w.open=2
+s.until('CACHE_CONFIRM',100)
+check(w.used==[1] and w.v['tm_cache_id']==1,'reopens bound cache without rebinding to another open cache')
+# All denied candidates get a fair second round; deadline still prevents infinite waiting.
+w=World();w.open=0
+for cache in w.caches.values():cache['openable']=False
+s=Sim(w,'CACHE_PREP');s.until('MISSION_ERROR',400)
+check(w.used[:4]==[1,2,1,2] and not w.moves and not w.inv,'all denied caches rotate fairly until bounded timeout without false pickup')
+w=World();w.open=0;w.autoopen=False;s=Sim(w,'CACHE_PREP');s.until('CACHE_SEARCH');w.inv[1004101]=7
+s.until('CACHE_FINISH');check(not w.moves,'actual corpse/direct doubloon payout completes without requiring a chest')
+# Map selection must clear the previous encounter anchor even if no deadline field exists.
+map_actions=' '.join(r['ActionData'] for r in rules if r['State']=='MAP_LOCK')
+# Parsed DoAll children contain the real actions.
+def action_text(rule):return rule['ActionData']+' '+ ' '.join(action_text(r) for r in rule.get('ActionChildren',[]))
+map_actions=' '.join(action_text(r) for r in rules if r['State']=='MAP_LOCK')
+check('setvar[tm_cache_anchor,0]' in map_actions and 'setvar[tm_cache_preexisting,listcreate[]]' in map_actions,'each map resets event-local cache identity')
+check('/ub use Unearthed Cache' not in ' '.join(action_text(r) for r in rules),'cache opening never selects an ambiguous object by name')
+print(f"PASS: {ns['checks']} total mission simulations including simultaneous cache ownership and acknowledgments.")

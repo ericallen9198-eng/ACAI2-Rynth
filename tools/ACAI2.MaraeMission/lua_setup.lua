@@ -4,9 +4,9 @@ local function charstore() sim.stores[sim.character]=sim.stores[sim.character] o
 local storage={Get=function(k,d)return sim.global[k] or d end,Set=function(k,v)sim.global[k]=v end,Character={Get=function(k,d)return charstore()[k] or d end,Set=function(k,v)charstore()[k]=v end}}
 hud={OnRender={Add=function(f)sim.render=f end}}
 local imgui={Button=function(label)if sim.click==label then sim.click=nil;return true end return false end,Checkbox=function(l,v)return false,v end,Text=function(s)sim.texts[#sim.texts+1]=s end,TextWrapped=function(s)sim.texts[#sim.texts+1]=s end,TextDisabled=function(s)sim.texts[#sim.texts+1]=s end,SameLine=function()end}
-local modules={views={Huds={CreateHud=function()return hud end}},imgui=imgui,['rynth.ai']=ai,storage=storage}
+local modules={filesystem={GetData=function() return {WriteText=function(path,text)sim.logPath=path;sim.logText=text;return not sim.failLog end} end},json={encode=function(v)sim.logReport=v;return 'fake-json' end},views={Huds={CreateHud=function()return hud end}},imgui=imgui,['rynth.ai']=ai,storage=storage}
 function require(k)return assert(modules[k],k)end
-game={State='InGame',OnTick={Add=function(f)sim.tick=f end},RegisterCommand=function()end}
+game={World={OnChatText={Add=function(f)sim.chat=f end}},State='InGame',OnTick={Add=function(f)sim.tick=f end},RegisterCommand=function()end}
 function expr(s)
  if s=='getunixtime[]' then return math.floor(sim.time) end
  if s=='maraemissionapi[]' then return 1 end
@@ -17,6 +17,7 @@ function expr(s)
  k=s:match('^getpvar%[(.-)%]$');if k then return sim.pvars[k] or 0 end
  local name,v=s:match('^setpvar%[([^,]+),([^%]]+)%]$');if name then sim.pvars[name]=tonumber(v) or v;return 1 end
  if s=='rasetsetting[`LootChestsMacroOff`,getpvar[pt_cache_old_pickup]]' then sim.restoredPickup=sim.pvars.pt_cache_old_pickup;return 1 end
+ local vk,vv=s:match('^setvar%[([^,]+),([^%]]+)%]$');if vk then sim.vars[vk]=tonumber(vv) or vv;return 1 end
  if s=='vtsetmetastate[Default]' then sim.metaState='Default';return 1 end
  if s=='vtsetsetting[EnableMeta,1]' then sim.metaEnabled=true;return 1 end
  error('Unexpected expression '..s)

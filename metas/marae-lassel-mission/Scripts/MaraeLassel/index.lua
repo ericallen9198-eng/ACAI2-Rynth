@@ -1,4 +1,4 @@
--- Marae Lassel mission controller: staged startup, per-character checkpoint, no raw-chat history.
+-- Marae Lassel mission controller: staged startup, per-character checkpoint, only bounded NPC mismatch diagnostics.
 local views, ImGui, ai = require('views'), require('imgui'), require('rynth.ai')
 local storage = require('storage')
 local meta = 'Marae Lassel - Embedded'
@@ -10,9 +10,17 @@ local zones = {
  {level=225,name='High Country',keys={'0','1','2','3','4','5','6','7','8','9'}},
  {level=275,name='Plateau',keys={'carenzi','golem','gromnie','olthoi','siraluun','ursuin','virindi','zefir'}}
 }
+-- BEGIN HUNTERS
+local hunters = {
+ [180] = {["0"]="Hea Tarekeh the Carenzi Hunter",["1"]="Hea Raukawe the Siraluun Hunter",["2"]="Hea Teruana the Gromnie Hunter",["3"]="Hea Talurea the Ursuin Hunter",["4"]="Hea Korenuad the Golem Hunter",["5"]="Hea Mereana the Olthoi Hunter",["6"]="Hea Tuhiraki the Siberite Hunter",["7"]="Hea Aroheka the Zefir Hunter",["8"]="Hea Wairena the Aun Hunter"},
+ [225] = {["0"]="Hea Narekua the Ursuin Hunter",["1"]="Hea Hineroa the Golem Hunter",["2"]="Hea Orewhiti the Zefir Hunter",["3"]="Hea Pukerua the Gromnie Hunter",["4"]="Hea Kahureka the Siraluun Hunter",["5"]="Hea Marenua the Carenzi Hunter",["6"]="Hea Zanuah the Siberite Hunter",["7"]="Hea Tamaneru the Aun Hunter",["8"]="Hea Ngarekau the Mattekar Hunter",["9"]="Hea Hakerea the Olthoi Hunter"},
+ [275] = {["zefir"]="Hea Rukenua the Zefir Hunter",["ursuin"]="Hea Tamarau the Ursuin Hunter",["golem"]="Hea Koruani the Golem Hunter",["gromnie"]="Hea Weneria the Gromnie Hunter",["siraluun"]="Hea Taraneki the Siraluun Hunter",["carenzi"]="Hea Kurelan the Carenzi Hunter",["virindi"]="Hea Ruatane the Virindi Hunter",["olthoi"]="Hea Varenkeh the Olthoi Hunter"},
+}
+-- END HUNTERS
 local keys = {}
 for _,z in ipairs(zones) do
  keys[#keys+1] = 'mm_area_'..z.level
+ keys[#keys+1] = 'mm_attempted_'..z.level
  for _,k in ipairs(z.keys) do keys[#keys+1] = 'mm_'..z.level..'_done_'..k end
 end
 local function value(code) return tostring(expr(code) or '') end
@@ -24,12 +32,14 @@ local function owns()
  return name:lower()==meta:lower()
 end
 local settings, journal, request, startup, snapshot
+local logCursor=0;local recentReplies={}
 local feedback=''; local inGame=false; local sampled=-1; local stopSince=nil
 local function save() storage.Character.Set('mission_v1',journal) end
 local function saveSettings() storage.Character.Set('mission_options_v1',settings) end
 local function selected() return settings.areas[1] or settings.areas[2] or settings.areas[3] end
 local function preferences()
  expr('setpvar[ml_run_mode,1]')
+ expr('setpvar[mm_fallback_180,'..(settings.fallback180~=false and 1 or 0)..']')
  for i,z in ipairs(zones) do
   expr('setpvar[ml_area_'..z.level..','..(settings.areas[i] and 1 or 0)..']')
   expr('setpvar[ml_maps_'..z.level..','..(settings.maps[i] and 1 or 0)..']')
@@ -65,14 +75,113 @@ local function begin(fresh,automatic)
  end
  if fresh or journal.finished then journal={progress={},active=false,resumable=false} end
  journal.active=true;journal.resumable=true;journal.finished=false;save()
+ logCursor=0;recentReplies={}
  startup={phase='stop',deadline=now()+15}
  command('/ra stop')
  feedback='Stopping the old macro before loading '..meta..'...'
 end
 
+-- NPC status and diagnostics: only exact known hunters, never ordinary chat history.
+local fs = require('filesystem').GetData()
+local json = require('json')
+local logWarning = ''
+local function trim(s) return (s:gsub('^%s+',''):gsub('%s+$','')) end
+local function sameTarget(killed,target)
+ local a,b=trim(killed):lower(),trim(target):lower()
+ return a==b or a==b..'s' or a==b..'es' or (b:sub(-1)=='y' and a==b:sub(1,-2)..'ies')
+end
+local function observeNpc(e)
+ if not journal or not journal.active or not owns() or game.State~='InGame' then return end
+ local line=tostring(e.Message or '')
+ local completed
+ local killPrefix,killSuffix='You have killed ','! Your task is complete!'
+ if line:sub(1,#killPrefix)==killPrefix and line:sub(-#killSuffix)==killSuffix then
+  local split=line:find(' ',#killPrefix+1,true)
+  if split then completed=line:sub(split+1,-#killSuffix-1) end
+ end
+ if completed then
+  local zone=tostring(number('getvar[ml_zone]'))
+  for key,c in pairs((journal.contracts or {})[zone] or {}) do
+   if c.target and sameTarget(completed,c.target) then
+    c.status='completed'
+    expr('setpvar[mm_'..zone..'_done_'..key..',1]');save()
+   end
+  end
+  return
+ end
+ local delimiter=' tells you, "'
+ local split=line:find(delimiter,1,true)
+ if not split or line:sub(-1)~='"' then return end
+ local npc,body=line:sub(1,split-1),line:sub(split+#delimiter,-2)
+ local zone=number('getvar[ml_zone]');local key
+ for k,name in pairs(hunters[zone] or {}) do if name==npc then key=k;break end end
+ if not key then return end
+ local cacheKey=tostring(zone)..'/'..key
+ local buffer=recentReplies[cacheKey] or {};recentReplies[cacheKey]=buffer
+ line=line:sub(1,512)
+ if buffer[#buffer]~=line then buffer[#buffer+1]=line;if #buffer>4 then table.remove(buffer,1) end end
+ local status,target
+ if body:match('^Slay %d+ ') and body:find('Return when the work is done.',1,true) then
+  status='in progress'
+  local start=body:find(' ',6,true)
+  if start then target=body:sub(start+1,(body:find('.',start+1,true) or (#body+1))-1) end
+ elseif body:match('^You have defeated %d+ of %d+ ') and body:find('The hunt is not yet finished',1,true) then
+  status='in progress'
+  local of=body:find(' of ',1,true);local start=of and body:find(' ',of+4,true)
+  if start then target=body:sub(start+1,(body:find('.',start+1,true) or (#body+1))-1) end
+ elseif body:match('^Your hunt for today is done%.') or (body:match('^Return in ') and body:find('for another hunt',1,true)) then
+  status='cooldown'
+ elseif body:match('^You have served the Hea well%.') then status='rewarded'
+ elseif body:match('^The hunt is complete') then status='completed' end
+ if not status then return end
+ journal.contracts=journal.contracts or {};local z=tostring(zone)
+ journal.contracts[z]=journal.contracts[z] or {}
+ local c=journal.contracts[z][key] or {};journal.contracts[z][key]=c
+ c.status=status;if target then c.target=target:sub(1,160) end
+ expr('setvar[pt_pickup_'..key..',1]')
+ if status=='cooldown' or status=='rewarded' then
+  expr('setvar[pt_unavailable_'..key..',1]');expr('setpvar[mm_'..zone..'_done_'..key..',1]')
+ elseif status=='completed' then expr('setpvar[mm_'..zone..'_done_'..key..',1]') end
+ save()
+end
+game.World.OnChatText.Add(function(e)
+ local ok,err=pcall(observeNpc,e)
+ if not ok then logWarning='NPC observation error: '..tostring(err) end
+end)
+local function captureMismatch()
+ local generation=number('getvar[mm_npc_log_generation]')
+ if generation==0 or generation==logCursor then return end
+ logCursor=generation
+ local zone=number('getvar[mm_npc_log_zone]')
+ local context=number('getvar[mm_npc_log_turnin]')==1 and 'turn-in' or 'pickup'
+ local logs=storage.Character.Get('npc_mismatches_v1',{})
+ for key in value('getvar[mm_npc_log_missing]'):gmatch('[%w_]+') do
+  local npc=(hunters[zone] or {})[key]
+  if npc then
+   local replies=recentReplies[tostring(zone)..'/'..key] or {'No reply captured from this hunter.'}
+   local signature=tostring(zone)..'/'..npc..'/'..context..'/'..table.concat(replies,'\n')
+   local existing
+   for _,row in ipairs(logs) do if row.zone==zone and row.hunter==npc and row.context==context and table.concat(row.replies or {},'\n')==table.concat(replies,'\n') then existing=row;break end end
+   if existing then existing.lastSeen=now();existing.repeats=(existing.repeats or 1)+1
+   else
+    local copy={};for _,line in ipairs(replies) do copy[#copy+1]=line end
+    logs[#logs+1]={zone=zone,hunter=npc,context=context,replies=copy,lastSeen=now(),repeats=1}
+    if #logs>16 then table.remove(logs,1) end
+   end
+  end
+ end
+ storage.Character.Set('npc_mismatches_v1',logs)
+ local server=tostring(game.ServerName or 'server'):gsub('[^%w_-]','_'):sub(1,48)
+ local character=tostring(game.Character and game.Character.Name or 'character'):gsub('[^%w_-]','_'):sub(1,48)
+ local filename='npc-mismatches-'..server..'-'..character..'.json'
+ local ok,written,err=pcall(function()return fs.WriteText(filename,json.encode({entries=logs,limit=16},true))end)
+ if not ok or not written then logWarning='Could not export NPC mismatch log: '..tostring(err or written)
+ else logWarning='NPC mismatches saved to '..filename..' (latest 16 entries).' end
+end
+
 game.OnTick.Add(function()
  if game.State~='InGame' or not ai.Available then
-  inGame=false;startup=nil;snapshot=nil;return
+  inGame=false;startup=nil;snapshot=nil;recentReplies={};logCursor=0;return
  end
  local ok,err=pcall(function()
   if not inGame then
@@ -118,6 +227,7 @@ game.OnTick.Add(function()
     feedback='Macro stopped. Progress saved; press Resume run to continue.'
    end
   else stopSince=nil end
+  if ours and not startup then captureMismatch() end
   if ours and t~=sampled then checkpoint();sampled=t end
   if ours and not startup and state=='HOLD' then
    local result=value('getvar[ml_outcome]')
@@ -155,6 +265,8 @@ hud.OnRender.Add(function()
    ImGui.SameLine(240,8)
    changed,settings.maps[i]=ImGui.Checkbox('##maps'..z.level,settings.maps[i]);if changed then saveSettings() end
   end
+  local fallbackChanged,fallbackValue=ImGui.Checkbox('Fallback to 180 treasure hunting',settings.fallback180~=false)
+  if fallbackChanged then settings.fallback180=fallbackValue;saveSettings() end
   if snapshot.other then ImGui.TextWrapped('Start will stop the current RynthAi macro before loading this mission.') end
   if selected() and ImGui.Button(journal.resumable and not journal.finished and 'Resume run' or 'Start run') then request='start' end
   if journal.resumable and not journal.finished then
@@ -162,5 +274,6 @@ hud.OnRender.Add(function()
   end
  end
  if feedback~='' then ImGui.TextWrapped(feedback) end
+ if logWarning~='' then ImGui.TextWrapped(logWarning) end
 end)
 game.RegisterCommand('/marae',function() hud.Visible=not hud.Visible end)

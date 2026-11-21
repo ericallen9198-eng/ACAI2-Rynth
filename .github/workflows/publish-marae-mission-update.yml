@@ -1,0 +1,86 @@
+name: Publish Marae mission v1.1 update
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: work
+      - uses: actions/checkout@v4
+        with:
+          repository: tombohar/RynthSuite
+          ref: 1e7c9924c816d8b2c29f27eda95b8ab7e5239870
+          path: RynthSuite
+      - uses: actions/checkout@v4
+        with:
+          repository: tombohar/RynthCore
+          ref: fc246c0a4277fbc68207302e6d7ce22a16715fa6
+          path: RynthCore
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Apply version-matched NPC and read-only recovery compatibility
+        shell: pwsh
+        run: |
+          git -C RynthSuite apply --check "$env:GITHUB_WORKSPACE/work/patches/marae-mission-2026.11.19.1/mission.patch"
+          if ($LASTEXITCODE) { throw 'Patch mismatch' }
+          git -C RynthSuite apply "$env:GITHUB_WORKSPACE/work/patches/marae-mission-2026.11.19.1/mission.patch"
+          if ($LASTEXITCODE) { throw 'Patch application failed' }
+          Copy-Item work/patches/marae-mission-2026.11.19.1/NpcReplyGate.cs RynthSuite/Plugins/RynthCore.Plugin.RynthAi/
+      - name: Build and validate embedded routes and mission graph with genuine parsers
+        shell: pwsh
+        run: |
+          python work/tools/ACAI2.MaraeMission/build_mission.py
+          if ($LASTEXITCODE) { throw 'Generation failed' }
+          dotnet run --project work/tools/ACAI2.MaraeMission "-p:RynthSuiteRoot=$env:GITHUB_WORKSPACE/RynthSuite" -- "$env:GITHUB_WORKSPACE/work/metas/marae-lassel-mission/MetaFiles/Marae Lassel - Embedded.af" "$env:RUNNER_TEMP/mission-rules.json"
+          if ($LASTEXITCODE) { throw 'Parser/graph checks failed' }
+          python work/tools/ACAI2.MaraeMission/test_mission.py "$env:RUNNER_TEMP/mission-rules.json"
+          if ($LASTEXITCODE) { throw 'Mission simulations failed' }
+      - name: Test controller through genuine MoonSharp and preserve NPC behavior
+        shell: pwsh
+        run: |
+          dotnet run --project work/tools/ACAI2.MaraeMission "-p:RynthSuiteRoot=$env:GITHUB_WORKSPACE/RynthSuite" -- --lua-test "$env:GITHUB_WORKSPACE/work/tools/ACAI2.MaraeMission/lua_setup.lua" "$env:GITHUB_WORKSPACE/work/metas/marae-lassel-mission/Scripts/MaraeLassel/index.lua" "$env:GITHUB_WORKSPACE/work/tools/ACAI2.MaraeMission/lua_checks.lua"
+          if ($LASTEXITCODE) { throw 'Lua checks failed' }
+          dotnet run --project work/tools/ACAI2.MaraeNpc.Tests "-p:RynthSuiteRoot=$env:GITHUB_WORKSPACE/RynthSuite" -- "$env:GITHUB_WORKSPACE/work/metas/marae-lassel-beta"
+          if ($LASTEXITCODE) { throw 'NPC regression checks failed' }
+      - name: Test backup-first updater in Windows PowerShell 5.1
+        shell: pwsh
+        run: |
+          & work/patches/marae-mission-v1.1/Test-Installer.ps1
+      - name: Package meta and Lua update only
+        shell: pwsh
+        run: |
+          $pkg=Join-Path $env:RUNNER_TEMP 'Marae-Mission-v1.1'
+          New-Item -ItemType Directory $pkg | Out-Null
+          Copy-Item work/patches/marae-mission-v1.1/Update-Mission.ps1 $pkg
+          Copy-Item work/patches/marae-mission-v1.1/UPDATE-MARAE-MISSION.cmd $pkg
+          Copy-Item work/patches/marae-mission-v1.1/README.md $pkg
+          Copy-Item -Recurse work/metas/marae-lassel-mission (Join-Path $pkg 'Mission')
+          $files=@()
+          foreach($rel in @('Mission\MetaFiles\Marae Lassel - Embedded.af','Mission\Scripts\MaraeLassel\index.lua')) {
+            $files+=@{Source=$rel;Sha256=(Get-FileHash (Join-Path $pkg $rel) -Algorithm SHA256).Hash.ToLowerInvariant()}
+          }
+          @{Files=$files}|ConvertTo-Json -Depth 4|Set-Content (Join-Path $pkg 'checksums.json') -Encoding UTF8
+          Compress-Archive -Path "$pkg/*" -DestinationPath Marae-Lassel-Mission-v1.1.zip
+          $hash=(Get-FileHash Marae-Lassel-Mission-v1.1.zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  Marae-Lassel-Mission-v1.1.zip"|Set-Content Marae-Lassel-Mission-v1.1.zip.sha256 -Encoding ascii
+      - name: Publish tested beta download
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $repo='ericallen9198-eng/ACAI2-Rynth';$tag='marae-lassel-mission-v1.1'
+          gh release view $tag --repo $repo *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $tag Marae-Lassel-Mission-v1.1.zip Marae-Lassel-Mission-v1.1.zip.sha256 --clobber --repo $repo
+          } else {
+            gh release create $tag Marae-Lassel-Mission-v1.1.zip Marae-Lassel-Mission-v1.1.zip.sha256 --repo $repo --target '${{ github.sha }}' --title 'Marae mission v1.1 — hunter fallback and concurrent caches' --notes-file work/patches/marae-mission-v1.1/README.md --latest=false
+          }
+          if ($LASTEXITCODE) { throw 'Release publication failed' }

@@ -32,6 +32,17 @@ for n,b in list(states.items()):
  b=b.replace('Virindi Observer','Virindi Sentry').replace('Virindi\\ Observer','Virindi\\ Sentry').replace('virindiobserver','virindi(?:observer|sentry)')
  b=b.replace('Sentrys!', 'Sentr(?:y|ies)!').replace('Guardians!', 'Guardians?!')
  states[n]=b
+# Verified live Northern Camp assignments (user replies, 2026-11-20).
+# Correct both NPC confirmation and kill/progress messages before sharing completion watchers.
+for name,body in list(states.items()):
+ if not name.startswith('T225_'):continue
+ body=body.replace('Drumtaken Elariwood Golem','Drumtaken Ironstone Golem')
+ body=body.replace('Drumtaken Kithless Siraluun','Drumtaken Timber Siraluun')
+ body=body.replace('Drumtaken Canescent Mattekar','Drumtaken Greater Canescent Mattekar')
+ body=body.replace('Olthoi Eviscerator Grub','Olthoi Soldier')
+ body=body.replace('50 Aun Shaman','20 Aun Elder Shaman').replace('Aun Shaman','Aun Elder Shaman')
+ body=body.replace('Aun Elder Shaman(?:s|es)?! You must kill 50','Aun Elder Shaman(?:s|es)?! You must kill 20')
+ states[name]=body
 # Whole-area completion persists only after the beta's confirmed turn-in/all-unavailable branch.
 state('AREA_DONE',action([expr('setpvar[`mm_area_`+getvar[ml_zone],1]'),expr('setvar[ml_done,getvar[ml_done]+1]'),'SetState {DISPATCH}']))
 state('AREA_COOLDOWN',action([expr('setpvar[`mm_area_`+getvar[ml_zone],1]'),expr('setvar[ml_cooldown,getvar[ml_cooldown]+1]'),'SetState {DISPATCH}']))
@@ -78,6 +89,12 @@ state('MISSION_ERROR',action([restore,expr('setpvar[pt_cache_pickup_held,0]'),ex
 states['STOP_CLEANUP']=states['STOP_CLEANUP'].replace('Chat {/ub clearmotion}',restore+'\n\t\t\t\t'+expr('setpvar[pt_cache_pickup_held,0]')+'\n\t\t\t\tChat {/ub clearmotion}')
 # Prevent the panel from accepting an older/empty same-name meta as this mission.
 states['Default']=states['Default'].replace('SetOpt {EnableNav} {False}',restore+'\n\t\t\t\t'+expr('setpvar[pt_cache_pickup_held,0]')+'\n\t\t\t\t'+expr('setvar[mm_schema,1]')+'\n\t\t\t\tSetOpt {EnableNav} {False}',1)
+# Round-robin typed cache candidates, with event-local binding and acknowledged pickup.
+from cache_policy import apply as apply_cache_policy
+apply_cache_policy(states,state,action,expr)
+# Retry/partial-work policy is applied before completion watchers are shared.
+from npc_policy import apply
+hunters=apply(states,keys,state,action,expr)
 # Task completions can arrive during a treasure fight, not just the hunting state.
 completion_rules=[]
 for zone in (180,225,275):
@@ -112,5 +129,15 @@ text=text.replace('!isportaling[]','maraerecoverybusy[]==0').replace('isportalin
 assert '/ra nav load' not in text
 for name,lines in navs.items():text+='NAVDATA: '+name+' '+str(len(lines))+' ~~ {\n'+'\n'.join(lines)+'\n~~ }\n\n'
 (out/'MetaFiles/Marae Lassel - Embedded.af').write_text(text.rstrip()+'\n')
-(out/'checkpoint-keys.json').write_text(json.dumps([f'mm_area_{z}' for z in (180,225,275)]+[f'mm_{z}_done_{k}' for z in keys for k in keys[z]],indent=2)+'\n')
+(out/'checkpoint-keys.json').write_text(json.dumps([f'mm_area_{z}' for z in (180,225,275)]+[f'mm_attempted_{z}' for z in (180,225,275)]+[f'mm_{z}_done_{k}' for z in keys for k in keys[z]],indent=2)+'\n')
 print(f'Built mission with {len(states)} states, {len(navs)} embedded routes and {sum(map(len,keys.values()))} durable task flags.')
+
+# Generate the fixed NPC identity table for status parsing and bounded mismatch logs.
+panel=out/'Scripts/MaraeLassel/index.lua'
+code=panel.read_text()
+lines=['-- BEGIN HUNTERS','local hunters = {']
+for z,mapping in hunters.items():
+ lines.append(' ['+str(z)+'] = {'+','.join('['+json.dumps(k)+']='+json.dumps(v) for k,v in mapping.items())+'},')
+lines+=['}','-- END HUNTERS']
+code=re.sub(r'-- BEGIN HUNTERS.*?-- END HUNTERS','\n'.join(lines),code,flags=re.S)
+panel.write_text(code)
