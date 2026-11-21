@@ -1,0 +1,210 @@
+diff --git a/Plugins/RynthCore.Plugin.RynthAi/LegacyUi/NavRouteParser.cs b/Plugins/RynthCore.Plugin.RynthAi/LegacyUi/NavRouteParser.cs
+index 9495f9c..d286d36 100644
+--- a/Plugins/RynthCore.Plugin.RynthAi/LegacyUi/NavRouteParser.cs
++++ b/Plugins/RynthCore.Plugin.RynthAi/LegacyUi/NavRouteParser.cs
+@@ -49,6 +49,7 @@ public sealed class NavPoint
+     // Portal (6) / Npc (7) target name; for OpenVendor (5) the vendor's name.
+     public string TargetName { get; set; } = string.Empty;
+     public int ObjectClass { get; set; }
++    public bool ConfirmNpcReply { get; set; } // trailing #rynth-talk:<zero-based index>
+     public bool IsTie { get; set; }
+ 
+     // OpenVendor (5): the captured vendor object id from the route.
+@@ -280,6 +281,17 @@ public sealed class NavRouteParser
+             }
+         }
+ 
++        // Optional extension after the counted VTank points. Never treat a
++        // marker inside a point payload as metadata, or mark a portal waypoint.
++        for (; idx < lines.Count; idx++)
++        {
++            const string marker = "#rynth-talk:";
++            string tail = lines[idx].Trim();
++            if (tail.StartsWith(marker, StringComparison.Ordinal)
++                && int.TryParse(tail.AsSpan(marker.Length), NumberStyles.None, CultureInfo.InvariantCulture, out int n)
++                && n >= 0 && n < route.Points.Count && route.Points[n].Type == NavPointType.Npc)
++                route.Points[n].ConfirmNpcReply = true;
++        }
+         return route;
+     }
+ 
+@@ -370,5 +382,8 @@ public sealed class NavRouteParser
+                     break;
+             }
+         }
++        for (int i = 0; i < Points.Count; i++)
++            if (Points[i].Type == NavPointType.Npc && Points[i].ConfirmNpcReply)
++                writer.WriteLine("#rynth-talk:" + i.ToString(CultureInfo.InvariantCulture));
+     }
+ }
+diff --git a/Plugins/RynthCore.Plugin.RynthAi/NavigationEngine.cs b/Plugins/RynthCore.Plugin.RynthAi/NavigationEngine.cs
+index 5a32fe1..346eb43 100644
+--- a/Plugins/RynthCore.Plugin.RynthAi/NavigationEngine.cs
++++ b/Plugins/RynthCore.Plugin.RynthAi/NavigationEngine.cs
+@@ -50,6 +50,7 @@ internal sealed class NavigationEngine
+ 
+     private readonly RynthCoreHost      _host;
+     private readonly LegacyUiSettings _settings;
++    private readonly NpcReplyGate _npcReply = new();
+ 
+     // ── Timing ──────────────────────────────────────────────────────────────
+     private long _lastNavTick;
+@@ -352,7 +353,16 @@ internal sealed class NavigationEngine
+     }
+ 
+     public void SetWorldObjectCache(WorldObjectCache cache) => _objectCache = cache;
+-    public void SetPlayerId(uint id) => _playerId = id;
++    public void SetPlayerId(uint id) { _npcReply.Reset(); _playerId = id; }
++
++    internal void ObserveNpcReply(string? text, int chatType)
++    {
++        var route = _settings.CurrentRoute;
++        if (!_settings.IsMacroRunning || !_settings.EnableNavigation || route == null
++            || !_npcReply.Waiting(route, _settings.ActiveNavIndex)) return;
++        _npcReply.Observe(text, chatType);
++    }
++
+     public void SetCombatManager(CombatManager cm) => _combatManager = cm;
+     public void SetRecoveryPlanner(INavRecoveryPlanner planner) => _planner = planner;
+ 
+@@ -481,6 +491,7 @@ internal sealed class NavigationEngine
+             // Resetting here kept a character pinned at a wall on the first rung of the stuck ladder
+             // (a jump) for good: no count ever built up, so no detour was ever tried (2026-11-06).
+             bool sameWalk = route.OutdoorHuntWalk && _lastRoute?.OutdoorHuntWalk == true;
++            _npcReply.Reset();
+             _lastRoute      = route;
+             _inPause        = false;
+             _closestDist    = double.MaxValue;
+@@ -593,7 +604,7 @@ internal sealed class NavigationEngine
+         int idx = _settings.ActiveNavIndex;
+         if (!IndexValid(idx, route)) { HandleRouteEnd(route); return; }
+ 
+-        UpdateWatchdog(route);
++        if (!_npcReply.Waiting(route, idx)) UpdateWatchdog(route);
+         if (_inRecovery)
+         {
+             if (Now < _recoveryUntil) return;
+@@ -611,6 +622,9 @@ internal sealed class NavigationEngine
+         // ── Point-type dispatch ──────────────────────────────────────────────
+         switch (pt.Type)
+         {
++            case NavPointType.Npc when pt.ConfirmNpcReply:
++                HandleConfirmedNpc(pt, route, idx);
++                return;
+             case NavPointType.Pause:
+                 HandlePause(pt, route);
+                 return;
+@@ -708,6 +722,7 @@ internal sealed class NavigationEngine
+ 
+     public void Stop()
+     {
++        if (!_settings.IsMacroRunning) _npcReply.Reset();
+         // _inPause / _pauseUntil are NOT reset here: a fight at a Pause waypoint
+         // restarted its full timer, so a "wait N s for the respawn" pause where mobs came
+         // back sooner than N s never finished. The deadline keeps running through the
+@@ -764,6 +779,11 @@ internal sealed class NavigationEngine
+     /// </summary>
+     private void ResumeAfterPause()
+     {
++        if (_settings.CurrentRoute is { } pending && _npcReply.Waiting(pending, _settings.ActiveNavIndex))
++        {
++            ClearPausePosition();
++            return; // a pending hunter reply must never be rejoined past
++        }
+         double pNs = _pauseNs, pEw = _pauseEw;
+         ClearPausePosition();
+         if (!_settings.NavResumeNearest || double.IsNaN(pNs)) return;
+@@ -939,6 +959,7 @@ internal sealed class NavigationEngine
+ 
+     public void ResetRouteState()
+     {
++        _npcReply.Reset();
+         Stop();
+         ClearPausePosition();
+         ResetRecovery("route reset");
+@@ -1363,6 +1384,7 @@ internal sealed class NavigationEngine
+ 
+     private void Advance(NavRouteParser route)
+     {
++        _npcReply.Reset();
+         int oldIdx = _settings.ActiveNavIndex;
+         _closestDist = double.MaxValue;
+         _portalState = PortalState.None;
+@@ -1658,6 +1680,65 @@ internal sealed class NavigationEngine
+     /// Uses CastSpell directly because WriteToChat("/rs N") only *displays* text;
+     /// it does not route through the chat parser.
+     /// </summary>
++    private void HandleConfirmedNpc(NavPoint pt, NavRouteParser route, int idx)
++    {
++        _npcReply.Bind(route, idx, pt.TargetName.Trim());
++        if (_npcReply.HasReply)
++        {
++            StopMovement();
++            _host.Log($"Nav: hunter reply confirmed [{idx}] '{pt.TargetName}' - advancing");
++            Advance(route);
++            return;
++        }
++        if (_npcReply.Waiting(route, idx))
++        {
++            _settings.NavStatusLine = $"Nav: waiting for '{pt.TargetName}' reply...";
++            if (!_npcReply.Due(Now)) return;
++        }
++        else
++        {
++            if (!TryGetPos(out double ns, out double ew)) return;
++            double distance = Math.Sqrt(Sq(pt.NS - ns) + Sq(pt.EW - ew)) * 240.0;
++            if (distance >= ArrivalYards)
++            {
++                SteerToWaypoint(idx, pt, route, ns, ew, distance);
++                return; // reaching coordinates alone never completes this waypoint
++            }
++            if (!_npcReply.Due(Now)) return;
++            StopMovement();
++        }
++
++        int player = unchecked((int)(_playerId != 0 ? _playerId : (uint)_host.GetPlayerId()));
++        int target = 0;
++        double nearest = 30.0;
++        if (_objectCache != null && player != 0 && _host.HasUseObject)
++        {
++            foreach (var obj in _objectCache.GetLandscapeObjects())
++            {
++                // Exact name, not a substring; cache class can differ from a recorded VTank class.
++                var current = _objectCache[obj.Id] ?? obj;
++                if (!string.Equals(current.Name, pt.TargetName.Trim(), StringComparison.OrdinalIgnoreCase)) continue;
++                double distance = _objectCache.Distance(player, obj.Id);
++                if (double.IsFinite(distance) && distance >= 0 && distance < nearest)
++                { nearest = distance; target = obj.Id; }
++            }
++        }
++        if (target == 0)
++        {
++            _npcReply.NoUse(Now);
++            _settings.NavStatusLine = $"Nav: finding hunter '{pt.TargetName}' (retrying)...";
++            return;
++        }
++        _npcReply.BeginUse(Now);
++        if (!_host.UseFor((uint)target, "Nav", $"confirmed NPC waypoint '{pt.TargetName}'"))
++        {
++            _npcReply.NoUse(Now);
++            return;
++        }
++        _settings.NavStatusLine = $"Nav: waiting for '{pt.TargetName}' reply...";
++        _host.Log($"Nav: talk [{idx}] '{pt.TargetName}' 0x{target:X8}; awaiting reply (8s retry)");
++    }
++
+     private void FireRecallSpell(NavPoint pt)
+     {
+         _settings.NavStatusLine = $"Nav: recall spell {pt.SpellId}...";
+diff --git a/Plugins/RynthCore.Plugin.RynthAi/RynthAiPlugin.cs b/Plugins/RynthCore.Plugin.RynthAi/RynthAiPlugin.cs
+index cc9a6b3..58df416 100644
+--- a/Plugins/RynthCore.Plugin.RynthAi/RynthAiPlugin.cs
++++ b/Plugins/RynthCore.Plugin.RynthAi/RynthAiPlugin.cs
+@@ -2532,6 +2532,7 @@ public sealed partial class RynthAiPlugin : RynthPluginBase
+     public override void OnChatWindowText(string? text, int chatType, ref int eat)
+     {
+         if (string.IsNullOrEmpty(text)) return;
++        _navigationEngine?.ObserveNpcReply(text, chatType);
+         try { NoteHandCastChat(text, chatType); } catch { }   // the player casting by hand (RynthAiPlugin.HandCast.cs), before the refusal handlers
+         try { NoteServerPolicyChat(text); } catch { }   // DreamWeave's Thread lines (ServerPolicy)
+         try { NoteDoorServerText(text); } catch { }   // "The door is locked!" (the door logic)

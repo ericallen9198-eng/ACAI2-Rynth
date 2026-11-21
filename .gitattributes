@@ -11,3 +11,6 @@ metas/marae-lassel-beta/** -text whitespace=cr-at-eol
 
 # A patch contains significant single-space context lines.
 patches/**/*.patch -text whitespace=-blank-at-eol
+
+# Double-click Windows installer launcher.
+patches/marae-npc-2026.11.19.1/*.cmd text eol=crlf

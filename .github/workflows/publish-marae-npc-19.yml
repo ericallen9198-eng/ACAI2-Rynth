@@ -1,0 +1,94 @@
+name: Publish Marae NPC compatibility patch (November 19)
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: work
+      - uses: actions/checkout@v4
+        with:
+          repository: tombohar/RynthSuite
+          ref: 1e7c9924c816d8b2c29f27eda95b8ab7e5239870
+          path: RynthSuite
+      - uses: actions/checkout@v4
+        with:
+          repository: tombohar/RynthCore
+          ref: fc246c0a4277fbc68207302e6d7ce22a16715fa6
+          path: RynthCore
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Apply minimal pinned-source patch
+        shell: pwsh
+        run: |
+          git -C RynthSuite apply --check "$env:GITHUB_WORKSPACE/work/patches/marae-npc-2026.11.19.1/npc-reply.patch"
+          if ($LASTEXITCODE) { throw 'Patch check failed' }
+          git -C RynthSuite apply "$env:GITHUB_WORKSPACE/work/patches/marae-npc-2026.11.19.1/npc-reply.patch"
+          if ($LASTEXITCODE) { throw 'Patch failed' }
+          Copy-Item work/patches/marae-npc-2026.11.19.1/NpcReplyGate.cs RynthSuite/Plugins/RynthCore.Plugin.RynthAi/
+      - name: Test real parser, beta routes and reply gate without game actions
+        shell: pwsh
+        run: |
+          dotnet run --project work/tools/ACAI2.MaraeNpc.Tests "-p:RynthSuiteRoot=$env:GITHUB_WORKSPACE/RynthSuite" -- "$env:GITHUB_WORKSPACE/work/metas/marae-lassel-beta"
+          if ($LASTEXITCODE) { throw 'Offline tests failed' }
+      - name: Verify installer with temporary files on Windows PowerShell 5.1
+        shell: pwsh
+        run: |
+          & work/patches/marae-npc-2026.11.19.1/Test-Installer.ps1
+      - name: Build matching managed x86 DLL with Windows manifest
+        shell: pwsh
+        run: |
+          dotnet build RynthSuite/Plugins/RynthCore.Plugin.RynthAi/RynthCore.Plugin.RynthAi.csproj -c Release -p:PublishAot=false -p:NativeLib= -p:SelfContained=false -p:RuntimeIdentifier=win-x86 -p:PlatformTarget=x86 -p:Version=2026.11.19.1 -p:InformationalVersion=2026.11.19.1+acai2-npc-reply.1 -p:RynthPluginSharedSdk=true
+          if ($LASTEXITCODE) { throw 'Windows build failed' }
+      - name: Package single-plugin patch and unchanged beta
+        shell: pwsh
+        run: |
+          $package = Join-Path $env:RUNNER_TEMP 'Marae-NPC-2026.11.19.1'
+          New-Item -ItemType Directory $package | Out-Null
+          $dll = 'RynthSuite/Plugins/RynthCore.Plugin.RynthAi/bin/Release/net10.0-windows/win-x86/RynthCore.Plugin.RynthAi.dll'
+          # Generated JSON plus embedded Windows resource must both be present.
+          $manifest = 'RynthSuite/Plugins/RynthCore.Plugin.RynthAi/obj/Release/net10.0-windows/win-x86/rynth-plugin.json'
+          if (-not (Test-Path $manifest)) { throw 'Generated plugin manifest missing' }
+          $raw = [Text.Encoding]::UTF8.GetString([IO.File]::ReadAllBytes((Resolve-Path $dll)))
+          if (-not $raw.Contains('RYNTH_PLUGIN_MANIFEST') -and -not [Text.Encoding]::Unicode.GetString([IO.File]::ReadAllBytes((Resolve-Path $dll))).Contains('RYNTH_PLUGIN_MANIFEST')) { throw 'Embedded manifest resource missing' }
+          $tokens = $null; $parseErrors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path work/patches/marae-npc-2026.11.19.1/Install-NpcPatch.ps1), [ref]$tokens, [ref]$parseErrors) | Out-Null
+          if ($parseErrors.Count) { throw "Installer syntax error: $parseErrors" }
+          $info = Get-Content $manifest -Raw | ConvertFrom-Json
+          if ($info.name -ne 'RynthAi' -or $info.minEngineApi -ne 97) { throw 'Unexpected plugin manifest identity/API' }
+          Add-Type -AssemblyName System.Reflection.Metadata
+          $stream = [IO.File]::OpenRead((Resolve-Path $dll))
+          $pe = [System.Reflection.PortableExecutable.PEReader]::new($stream)
+          try {
+            if ($pe.PEHeaders.CoffHeader.Machine.ToString() -ne 'I386' -or (([int]$pe.PEHeaders.CorHeader.Flags -band 2) -eq 0)) { throw 'Expected managed x86 DLL with 32-bit-required flag' }
+          } finally { $pe.Dispose(); $stream.Dispose() }
+          Copy-Item work/patches/marae-npc-2026.11.19.1/INSTALL-NPC-FIX.cmd $package
+          Copy-Item $dll $package
+          Copy-Item RynthSuite/LICENSE (Join-Path $package 'RynthSuite-LICENSE.txt')
+          Copy-Item work/patches/marae-npc-2026.11.19.1/Install-NpcPatch.ps1 $package
+          Copy-Item work/patches/marae-npc-2026.11.19.1/README.md $package
+          Copy-Item -Recurse work/metas/marae-lassel-beta (Join-Path $package 'Beta')
+          $hash = (Get-FileHash (Join-Path $package 'RynthCore.Plugin.RynthAi.dll') -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  RynthCore.Plugin.RynthAi.dll" | Set-Content (Join-Path $package 'RynthCore.Plugin.RynthAi.dll.sha256') -Encoding ascii
+          $zip = Join-Path $env:GITHUB_WORKSPACE 'Marae-NPC-Patch-2026.11.19.1-v1.zip'
+          Compress-Archive -Path "$package/*" -DestinationPath $zip
+          $zhash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$zhash  Marae-NPC-Patch-2026.11.19.1-v1.zip" | Set-Content "$zip.sha256" -Encoding ascii
+      - name: Publish download
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view marae-npc-2026.11.19.1-v1 --repo ericallen9198-eng/ACAI2-Rynth *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload marae-npc-2026.11.19.1-v1 Marae-NPC-Patch-2026.11.19.1-v1.zip Marae-NPC-Patch-2026.11.19.1-v1.zip.sha256 --clobber --repo ericallen9198-eng/ACAI2-Rynth
+            if ($LASTEXITCODE) { throw 'Release upload failed' }
+          } else {
+          gh release create marae-npc-2026.11.19.1-v1 Marae-NPC-Patch-2026.11.19.1-v1.zip Marae-NPC-Patch-2026.11.19.1-v1.zip.sha256 --repo ericallen9198-eng/ACAI2-Rynth --target '${{ github.sha }}' --title 'Marae Lassel NPC reply compatibility — RynthAi 2026.11.19.1' --notes 'Single managed x86 RynthAi compatibility build for the exact reviewed 2026.11.19.1 DLL. Marked type-7 NPC waypoints use the named hunter, wait for that hunter reply, and retry without skipping. Ordinary NPC and portal handling preserved. Includes Soot beta unchanged, 94 offline NPC checks, Windows PowerShell 5.1 installer checks, checksum and backup-first installer. Double-click INSTALL-NPC-FIX.cmd: the supplied active DLL path is prefilled and the result stays visible. Close AC before installing. No engine/Lua/Keyfer/Threads/Combat replacement. In-game Lua panel and hunter-step verification still required; see README.' --latest=false
+          if ($LASTEXITCODE) { throw 'Release publication failed' }
+          }
