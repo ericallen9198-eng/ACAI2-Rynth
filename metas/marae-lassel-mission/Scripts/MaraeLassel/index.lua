@@ -4,6 +4,7 @@ local storage = require('storage')
 local meta = 'Marae Lassel - Embedded'
 local hud = views.Huds.CreateHud('MaraeLassel')
 hud.Title, hud.ShowInBar, hud.Visible = 'Marae Lassel', true, true
+hud.RefreshRate = 5
 if Vector2 then hud.DefaultSize = Vector2(430, 350) end
 local zones = {
  {level=180,name='Lowlands',keys={'0','1','2','3','4','5','6','7','8'}},
@@ -34,6 +35,9 @@ end
 local settings, journal, request, startup, snapshot
 local logCursor=0;local recentReplies={}
 local feedback=''; local inGame=false; local sampled=-1; local stopSince=nil
+local nextPoll=0
+local checkpointReads={}
+for i,k in ipairs(keys) do checkpointReads[i]='getpvar['..k..']' end
 local function save() storage.Character.Set('mission_v1',journal) end
 local function saveSettings() storage.Character.Set('mission_options_v1',settings) end
 local function selected() return settings.areas[1] or settings.areas[2] or settings.areas[3] end
@@ -50,8 +54,8 @@ local function checkpoint()
  if not journal or not owns() or number('getvar[mm_schema]')~=1 then return end
  journal.progress=journal.progress or {}
  local changed=false
- for _,k in ipairs(keys) do
-  local v=number('getpvar['..k..']')==1 and 1 or 0
+ for i,k in ipairs(keys) do
+  local v=number(checkpointReads[i])==1 and 1 or 0
   if journal.progress[k]~=v then journal.progress[k]=v;changed=true end
  end
  journal.zone=number('getvar[ml_zone]')
@@ -91,8 +95,11 @@ local function sameTarget(killed,target)
  return a==b or a==b..'s' or a==b..'es' or (b:sub(-1)=='y' and a==b:sub(1,-2)..'ies')
 end
 local function observeNpc(e)
- if not journal or not journal.active or not owns() or game.State~='InGame' then return end
+ if not journal or not journal.active or game.State~='InGame' then return end
  local line=tostring(e.Message or '')
+ -- Reject ordinary combat/player chat before crossing the expression bridge.
+ if line:sub(1,16)~='You have killed ' and not line:find(' tells you, "',1,true) then return end
+ if not owns() then return end
  local completed
  local killPrefix,killSuffix='You have killed ','! Your task is complete!'
  if line:sub(1,#killPrefix)==killPrefix and line:sub(-#killSuffix)==killSuffix then
@@ -181,8 +188,13 @@ end
 
 game.OnTick.Add(function()
  if game.State~='InGame' or not ai.Available then
-  inGame=false;startup=nil;snapshot=nil;recentReplies={};logCursor=0;return
+  if inGame then inGame=false;startup=nil;snapshot=nil;recentReplies={};logCursor=0;nextPoll=0 end
+  return
  end
+ -- clock() is RynthLua's monotonic millisecond clock; no expression allocation.
+ local ms=clock()
+ if inGame and not request and ms<nextPoll then return end
+ nextPoll=ms+(startup and 200 or 1000)
  local ok,err=pcall(function()
   if not inGame then
    inGame=true; sampled=-1
@@ -228,7 +240,7 @@ game.OnTick.Add(function()
    end
   else stopSince=nil end
   if ours and not startup then captureMismatch() end
-  if ours and t~=sampled then checkpoint();sampled=t end
+  if ours and (sampled<0 or t-sampled>=5) then checkpoint();sampled=t end
   if ours and not startup and state=='HOLD' then
    local result=value('getvar[ml_outcome]')
    if journal.active then
@@ -237,9 +249,12 @@ game.OnTick.Add(function()
    if ai.MacroRunning then command('/ra stop') end
    feedback=value('getvar[ml_status]')
   end
-  snapshot={running=ours and ai.MacroRunning,other=not ours and ai.MacroRunning,state=state,
-    zone=ours and number('getvar[ml_zone]') or 0,detail=ours and value('getvar[ml_status]') or '',
-    loaded=value('vtgetmeta[]'),recovery=number('maraerecoverybusy[]')==1}
+  snapshot=snapshot or {}
+  snapshot.running=ours and ai.MacroRunning; snapshot.other=not ours and ai.MacroRunning; snapshot.state=state
+  snapshot.zone=ours and number('getvar[ml_zone]') or 0
+  snapshot.detail=ours and value('getvar[ml_status]') or ''
+  snapshot.loaded=value('vtgetmeta[]');snapshot.recovery=ours and number('maraerecoverybusy[]')==1
+  if startup then nextPoll=math.min(nextPoll,ms+200) end
  end)
  if not ok then
   startup=nil;feedback='Controller error: '..tostring(err)

@@ -7,7 +7,9 @@ local imgui={Button=function(label)if sim.click==label then sim.click=nil;return
 local modules={filesystem={GetData=function() return {WriteText=function(path,text)sim.logPath=path;sim.logText=text;return not sim.failLog end} end},json={encode=function(v)sim.logReport=v;return 'fake-json' end},views={Huds={CreateHud=function()return hud end}},imgui=imgui,['rynth.ai']=ai,storage=storage}
 function require(k)return assert(modules[k],k)end
 game={World={OnChatText={Add=function(f)sim.chat=f end}},State='InGame',OnTick={Add=function(f)sim.tick=f end},RegisterCommand=function()end}
+function clock() return sim.time*1000 end
 function expr(s)
+ sim.exprCalls=(sim.exprCalls or 0)+1
  if s=='getunixtime[]' then return math.floor(sim.time) end
  if s=='maraemissionapi[]' then return 1 end
  if s=='maraerecoverybusy[]' then return sim.busy and 1 or 0 end
@@ -25,7 +27,7 @@ end
 function command(s)sim.commands[#sim.commands+1]=s end
 function step(n)
  for i=1,n or 1 do
-  sim.time=sim.time+.05;game.State=sim.state
+  sim.time=sim.time+(sim.delta or .05);game.State=sim.state
   local q=sim.commands;sim.commands={}
   for _,c in ipairs(q) do
    if c=='/ra stop' then ai.MacroRunning=false

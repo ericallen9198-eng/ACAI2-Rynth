@@ -5,7 +5,16 @@ if(args[0]=="--lua-test") {
  var vm=new MoonSharp.Interpreter.Script(MoonSharp.Interpreter.CoreModules.Preset_Complete);
  vm.DoString(File.ReadAllText(args[1]));vm.DoString(File.ReadAllText(args[2]));
  var count=vm.DoString(File.ReadAllText(args[3]));
- Console.WriteLine($"PASS: {count.Number} controller checks through genuine MoonSharp; fake game interfaces only.");return;
+ Console.WriteLine($"PASS: {count.Number} controller checks through genuine MoonSharp; fake game interfaces only.");
+ if(args.Length>4) {
+  var allocationRun=vm.LoadString(File.ReadAllText(args[4]));
+  long before=GC.GetAllocatedBytesForCurrentThread();
+  vm.Call(allocationRun);
+  long bytes=GC.GetAllocatedBytesForCurrentThread()-before;
+  Console.WriteLine($"Synthetic 5-second high-tick Lua allocation test: {bytes / 1048576.0:F2} MiB (fake native interfaces; excludes live engine costs).");
+  if(bytes>16*1024*1024)throw new Exception("Lua allocation regression exceeds 16 MiB synthetic budget");
+ }
+ return;
 }
 var meta=AfFileParser.Load(args[0]);
 if(meta.Warnings.Count>0)throw new Exception(string.Join(";",meta.Warnings));
