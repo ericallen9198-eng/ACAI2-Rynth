@@ -16,12 +16,18 @@ class World(BaseWorld):
   if t[0]=='call':
    if t[1]=='maraerecoverybusy':return int(self.busy)
    f=t[1]
+   if getattr(self,'denyCacheMetadata',False) and f in ('wobjectgetphysicscoordinates','wobjectgettemplatetype','wobjectfindalllandscapebytemplatetype'):
+    raise AssertionError('cache discovery must not require native coordinate or template metadata')
    if f=='getplayercoordinates':return 'player'
    if f=='strlen':return len(str(self.ev(t[2][0],scope)))
    if f=='listcontains':
     values=self.ev(t[2][0],scope);return isinstance(values,list) and self.ev(t[2][1],scope) in values
    if f=='listadd':
     values=self.ev(t[2][0],scope);values.append(self.ev(t[2][1],scope));return 1
+   if f=='wobjectfindalllandscapebynamerx':
+    pattern=self.ev(t[2][0],scope);return [k for k,v in self.caches.items() if re.search(pattern,v.get('name','Unearthed Cache'))]
+   if f=='wobjectgetname':
+    obj=self.ev(t[2][0],scope);return self.caches.get(obj,{}).get('name','Unearthed Cache') if obj in self.caches else ''
    if f=='wobjectfindalllandscapebytemplatetype':return list(self.caches) if self.ev(t[2][0],scope)==1004150 else []
    if f=='wobjectgettemplatetype':return 1004150 if self.ev(t[2][0],scope) in self.caches else 0
    if f=='wobjectgetphysicscoordinates':
@@ -154,12 +160,13 @@ for denied in (1,2):
  check(w.used==list(range(1,winner+1)) and w.v['tm_cache_id']==winner,'tries distinct IDs until cache '+str(winner)+' actually opens')
  check(w.moves==[(10,999,0,1)] and not w.inv,'only bound cache dispatches one uncredited inventory move')
  w.ack(10);s.until('CACHE_FINISH');check(w.inv[1004101]==7,'multi-cache reward requires real inventory acknowledgment')
-# An inaccessible/old/distant cache may remain selected without becoming the reward.
-w=World(items=[item(10,container=2)]);w.open=1
-w.v['tm_cache_preexisting']=[1];w.caches[1]['openable']=False
-w.caches[3]={'distance':200,'openable':True};w.caches[4]={'distance':0,'openable':True,'no_position':True}
+# Native cache discovery must not require template or coordinate metadata.
+w=World(items=[item(10,container=2)]);w.open=0;w.denyCacheMetadata=True
+w.v['tm_cache_preexisting']=[1,2];w.caches[1]['openable']=False
+w.caches[2]['no_position']=True;w.caches[2]['distance']=200
+w.caches[3]={'distance':0,'openable':True,'name':'Other Cache'}
 s=Sim(w,'CACHE_PREP');s.until('CACHE_CONFIRM',100)
-check(w.used==[2] and w.v['tm_cache_id']==2,'preexisting, distant and positionless caches are not candidates or open proof')
+check(w.used==[1,2] and w.v['tm_cache_id']==2,'exact cache names rotate without a template, old-cache or coordinate prerequisite')
 # Once bound, closing the window must reopen that ID, never switch to another cache.
 w=World(items=[item(10)]);s=Sim(w,'CACHE_PREP');s.until('CACHE_PICKUP');w.open=2
 s.until('CACHE_CONFIRM',100)
@@ -171,11 +178,12 @@ s=Sim(w,'CACHE_PREP');s.until('MISSION_ERROR',400)
 check(w.used[:4]==[1,2,1,2] and not w.moves and not w.inv,'all denied caches rotate fairly until bounded timeout without false pickup')
 w=World();w.open=0;w.autoopen=False;s=Sim(w,'CACHE_PREP');s.until('CACHE_SEARCH');w.inv[1004101]=7
 s.until('CACHE_FINISH');check(not w.moves,'actual corpse/direct doubloon payout completes without requiring a chest')
-# Map selection must clear the previous encounter anchor even if no deadline field exists.
-map_actions=' '.join(r['ActionData'] for r in rules if r['State']=='MAP_LOCK')
-# Parsed DoAll children contain the real actions.
 def action_text(rule):return rule['ActionData']+' '+ ' '.join(action_text(r) for r in rule.get('ActionChildren',[]))
-map_actions=' '.join(action_text(r) for r in rules if r['State']=='MAP_LOCK')
-check('setvar[tm_cache_anchor,0]' in map_actions and 'setvar[tm_cache_preexisting,listcreate[]]' in map_actions,'each map resets event-local cache identity')
+scan=' '.join(action_text(r) for r in rules if r['State']=='CACHE_SCAN')
+check('wobjectfindalllandscapebynamerx[`^Unearthed Cache$`]' in scan and 'physicscoordinates' not in scan and 'templatetype' not in scan,'cache scan preserves proven name discovery without added metadata gates')
 check('/ub use Unearthed Cache' not in ' '.join(action_text(r) for r in rules),'cache opening never selects an ambiguous object by name')
 print(f"PASS: {ns['checks']} total mission simulations including simultaneous cache ownership and acknowledgments.")
+
+w=World(items=[item(10)]);w.open=0;w.denyCacheMetadata=True
+s=Sim(w,'CACHE_PREP');s.until('CACHE_CONFIRM',100)
+check(w.used==[1] and len(w.moves)==1,'exact-name discovery and acknowledged pickup need no cache coordinate or template reads')

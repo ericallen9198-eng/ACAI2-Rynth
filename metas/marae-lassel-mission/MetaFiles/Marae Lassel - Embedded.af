@@ -531,8 +531,6 @@ STATE: {T180_Default} ~~ {
 				SetOpt {AutoCram} {False}
 				SetOpt {AttackDistance} {0.0208333333333333}
 				DoExpr {uboptset[`InventoryManager.AutoCram`,false]}
-				DoExpr {setvar[tm_cache_anchor,0]}
-				DoExpr {setvar[tm_cache_preexisting,listcreate[]]}
 				DoExpr {setvar[tm_cache_deadline,0]}
 				DoExpr {setvar[tm_cache_retry_at,0]}
 				DoExpr {setvar[tm_aun_loot_active,0]}
@@ -1960,8 +1958,6 @@ STATE: {T225_Default} ~~ {
 				SetOpt {AutoCram} {False}
 				SetOpt {AttackDistance} {0.0208333333333333}
 				DoExpr {uboptset[`InventoryManager.AutoCram`,false]}
-				DoExpr {setvar[tm_cache_anchor,0]}
-				DoExpr {setvar[tm_cache_preexisting,listcreate[]]}
 				DoExpr {setvar[tm_cache_deadline,0]}
 				DoExpr {setvar[tm_cache_retry_at,0]}
 				DoExpr {setvar[tm_aun_loot_active,0]}
@@ -3572,8 +3568,6 @@ STATE: {T275_Default} ~~ {
 				SetOpt {AutoCram} {False}
 				SetOpt {AttackDistance} {0.0208333333333333}
 				DoExpr {uboptset[`InventoryManager.AutoCram`,false]}
-				DoExpr {setvar[tm_cache_anchor,0]}
-				DoExpr {setvar[tm_cache_preexisting,listcreate[]]}
 				DoExpr {setvar[tm_cache_deadline,0]}
 				DoExpr {setvar[tm_cache_retry_at,0]}
 				DoExpr {setvar[tm_aun_loot_active,0]}
@@ -5852,8 +5846,6 @@ STATE: {MAP_LOCK} ~~ {
 	IF:	Always
 		DO:	DoAll
 				DoExpr {setpvar[tm_dig_active,0]}
-				DoExpr {setvar[tm_cache_anchor,0]}
-				DoExpr {setvar[tm_cache_preexisting,listcreate[]]}
 				DoExpr {setvar[tm_map_id,wobjectgetid[wobjectfindininventorybyname[Treasure Map]]]}
 				DoExpr {setvar[tm_watch_pos,getplayercoordinates[]]}
 				DoExpr {setvar[pt_last_move,getunixtime[]]}
@@ -12123,8 +12115,6 @@ STATE: {DIG_FIRST} ~~ {
 		DO:	DoAll
 				DoExpr {setpvar[tm_stat_dig1,getpvar[tm_stat_dig1]+1]}
 				DoExpr {setvar[tm_doubloon_before,getinventorycountbytemplatetype[1004101]]}
-				DoExpr {if[getvar[tm_cache_anchor]==0,setvar[tm_cache_preexisting,wobjectfindalllandscapebytemplatetype[1004150]]]}
-				DoExpr {if[getvar[tm_cache_anchor]==0,setvar[tm_cache_anchor,getplayercoordinates[]]]}
 				DoExpr {setpvar[tm_dig_active,1]}
 				Chat {/ub clearmotion}
 				SetState {DIG_1_WAIT}
@@ -14158,19 +14148,19 @@ STATE: {CACHE_SEARCH} ~~ {
 				SetState {MISSION_ERROR}
 	IF: Expr {getpvar[tm_dig_active]==1 && getvar[tm_cache_id]==0 && getvar[tm_cache_pending]==0 && getinventorycountbytemplatetype[1004101]>getvar[tm_doubloon_before]}
 		DO: SetState {CACHE_FINISH}
-	IF: Expr {wobjectgettemplatetype[wobjectgetopencontainer[]]==1004150 && getvar[tm_cache_id]==0 && !listcontains[getvar[tm_cache_preexisting],wobjectgetid[wobjectgetopencontainer[]]] && strlen[wobjectgetphysicscoordinates[wobjectgetopencontainer[]]]>0 && coordinatedistanceflat[wobjectgetphysicscoordinates[wobjectgetopencontainer[]],getvar[tm_cache_anchor]]<=80}
+	IF: Expr {wobjectgetname[wobjectgetopencontainer[]]==`Unearthed Cache` && getvar[tm_cache_id]==0}
 		DO: DoAll
 				DoExpr {setvar[tm_cache_id,wobjectgetid[wobjectgetopencontainer[]]]}
 				DoExpr {setvar[tm_cache_probe_id,0]}
 				SetState {CACHE_SEARCH}
-	IF: Expr {wobjectgettemplatetype[wobjectgetopencontainer[]]==1004150 && getvar[tm_cache_id]!=0 && wobjectgetid[wobjectgetopencontainer[]]==getvar[tm_cache_id] && listcount[listfilter[wobjectfindallbycontainer[wobjectgetopencontainer[]], `wobjectgetintprop[$1,218103808]==1004101 || wobjectgetobjectclass[$1]==15`]]>0 && getunixtime[]>=getvar[tm_cache_pickup_retry_at]}
+	IF: Expr {wobjectgetname[wobjectgetopencontainer[]]==`Unearthed Cache` && getvar[tm_cache_id]!=0 && wobjectgetid[wobjectgetopencontainer[]]==getvar[tm_cache_id] && listcount[listfilter[wobjectfindallbycontainer[wobjectgetopencontainer[]], `wobjectgetintprop[$1,218103808]==1004101 || wobjectgetobjectclass[$1]==15`]]>0 && getunixtime[]>=getvar[tm_cache_pickup_retry_at]}
 		DO: DoAll
 				DoExpr {setvar[tm_cache_pending,wobjectgetid[listgetitem[listfilter[wobjectfindallbycontainer[wobjectgetopencontainer[]], `wobjectgetintprop[$1,218103808]==1004101 || wobjectgetobjectclass[$1]==15`],0]]]}
 				DoExpr {setvar[tm_cache_pending_template,wobjectgetintprop[wobjectfindbyid[getvar[tm_cache_pending]],218103808]]}
 				DoExpr {setvar[tm_cache_pending_amount,max[1,wobjectgetintprop[wobjectfindbyid[getvar[tm_cache_pending]],12]]]}
 				DoExpr {setvar[tm_cache_before_count,getinventorycountbytemplatetype[getvar[tm_cache_pending_template]]]}
 				SetState {CACHE_PICKUP}
-	IF: Expr {wobjectgettemplatetype[wobjectgetopencontainer[]]==1004150 && getvar[tm_cache_id]!=0 && wobjectgetid[wobjectgetopencontainer[]]==getvar[tm_cache_id] && listcount[listfilter[wobjectfindallbycontainer[wobjectgetopencontainer[]], `wobjectgetintprop[$1,218103808]==1004101 || wobjectgetobjectclass[$1]==15`]]==0 && getvar[tm_cache_pickups]>0}
+	IF: Expr {wobjectgetname[wobjectgetopencontainer[]]==`Unearthed Cache` && getvar[tm_cache_id]!=0 && wobjectgetid[wobjectgetopencontainer[]]==getvar[tm_cache_id] && listcount[listfilter[wobjectfindallbycontainer[wobjectgetopencontainer[]], `wobjectgetintprop[$1,218103808]==1004101 || wobjectgetobjectclass[$1]==15`]]==0 && getvar[tm_cache_pickups]>0}
 		DO: DoAll
 				SetState {CACHE_SETTLE}
 	IF: Expr {getvar[tm_cache_probe_id]!=0 && getunixtime[]>=getvar[tm_cache_probe_until]}
@@ -15730,7 +15720,7 @@ STATE: {CACHE_PICKUP} ~~ {
 		DO: DoAll
 				DoExpr {echo[`Plateau Treasure: missing cache item identity; holding without moving it.`]}
 				SetState {MISSION_ERROR}
-	IF: Expr {wobjectgettemplatetype[wobjectgetopencontainer[]]==1004150 && getvar[tm_cache_id]!=0 && wobjectgetid[wobjectgetopencontainer[]]==getvar[tm_cache_id] && listcount[listfilter[wobjectfindallbycontainer[wobjectgetopencontainer[]], `wobjectgetid[$1]==getvar[tm_cache_pending]`]]>0}
+	IF: Expr {wobjectgetname[wobjectgetopencontainer[]]==`Unearthed Cache` && getvar[tm_cache_id]!=0 && wobjectgetid[wobjectgetopencontainer[]]==getvar[tm_cache_id] && listcount[listfilter[wobjectfindallbycontainer[wobjectgetopencontainer[]], `wobjectgetid[$1]==getvar[tm_cache_pending]`]]>0}
 		DO: DoAll
 				DoExpr {setvar[tm_cache_sent,actiontrymove[wobjectfindbyid[getvar[tm_cache_pending]],wobjectgetplayer[],0,getvar[tm_cache_stackmode]]]}
 				SetState {CACHE_CONFIRM}
@@ -16104,7 +16094,7 @@ STATE: {CACHE_SETTLE} ~~ {
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
 	IF: Death
 		DO: SetState {MAP_DEATH}
-	IF: Expr {!(wobjectgettemplatetype[wobjectgetopencontainer[]]==1004150 && getvar[tm_cache_id]!=0 && wobjectgetid[wobjectgetopencontainer[]]==getvar[tm_cache_id]) || listcount[listfilter[wobjectfindallbycontainer[wobjectgetopencontainer[]], `wobjectgetintprop[$1,218103808]==1004101 || wobjectgetobjectclass[$1]==15`]]>0}
+	IF: Expr {!(wobjectgetname[wobjectgetopencontainer[]]==`Unearthed Cache` && getvar[tm_cache_id]!=0 && wobjectgetid[wobjectgetopencontainer[]]==getvar[tm_cache_id]) || listcount[listfilter[wobjectfindallbycontainer[wobjectgetopencontainer[]], `wobjectgetintprop[$1,218103808]==1004101 || wobjectgetobjectclass[$1]==15`]]>0}
 		DO: DoAll
 				SetState {CACHE_SEARCH}
 	IF: SecsInStateGE 2
@@ -16301,7 +16291,7 @@ STATE: {CACHE_SCAN} ~~ {
 		DO: SetState {MISSION_ERROR}
 	IF: Always
 		DO: DoAll
-				DoExpr {setvar[tm_cache_candidates,listfilter[wobjectfindalllandscapebytemplatetype[1004150],`strlen[wobjectgetphysicscoordinates[$1]]>0 && coordinatedistanceflat[wobjectgetphysicscoordinates[$1],getvar[tm_cache_anchor]]<=80 && !listcontains[getvar[tm_cache_preexisting],wobjectgetid[$1]] && !listcontains[getvar[tm_cache_tried],wobjectgetid[$1]]`]]}
+				DoExpr {setvar[tm_cache_candidates,listfilter[wobjectfindalllandscapebynamerx[`^Unearthed Cache$`],`!listcontains[getvar[tm_cache_tried],wobjectgetid[$1]]`]]}
 				SetState {CACHE_CHOOSE}
 ~~ }
 
