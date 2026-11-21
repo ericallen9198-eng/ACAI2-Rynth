@@ -280,11 +280,17 @@ STATE: {MAP_DEATH} ~~ {
 				DoExpr {setpvar[mm_275_done_olthoi,1]}
 				DoExpr {setvar[pt_last_progress,getunixtime[]]}
 	IF: Expr {getvar[ml_zone]==180}
-		DO: SetState {T180_DEATH_RECOVERY}
+		DO: DoAll
+				DoExpr {maraenavrestore[]}
+				SetState {T180_DEATH_RECOVERY}
 	IF: Expr {getvar[ml_zone]==225}
-		DO: SetState {T225_DEATH_RECOVERY}
+		DO: DoAll
+				DoExpr {maraenavrestore[]}
+				SetState {T225_DEATH_RECOVERY}
 	IF: Expr {getvar[ml_zone]==275}
-		DO: SetState {T275_DEATH_RECOVERY}
+		DO: DoAll
+				DoExpr {maraenavrestore[]}
+				SetState {T275_DEATH_RECOVERY}
 ~~ }
 
 STATE: {MAP_RETURN} ~~ {

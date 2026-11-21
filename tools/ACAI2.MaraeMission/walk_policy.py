@@ -1,5 +1,6 @@
 """Explicit, bounded return-to-dig and selected-cache approach via the Lua/native nav bridge."""
 def apply(states,state,action,expr):
+ import re
  # A new map owns a new anchor; the first successful dig fixes its location before combat chase.
  states['MAP_LOCK']=states['MAP_LOCK'].replace('DoExpr {setpvar[tm_dig_active,0]}',expr('setvar[tm_cache_anchor,0]')+'\n\t\t\t\tDoExpr {setpvar[tm_dig_active,0]}',1)
  for n in ('DIG_FIRST','ENCOUNTER_INIT'):
@@ -32,6 +33,7 @@ def apply(states,state,action,expr):
    states[n]=states[n].replace('DoExpr {setpvar[tm_dig_active,0]}',expr('maraenavrestore[]')+'\n\t\t\t\tDoExpr {setpvar[tm_dig_active,0]}',1)
   else:
    states[n]=states[n].replace('DoExpr {',expr('maraenavrestore[]')+'\n\t\t\t\tDoExpr {',1)
+ states['MAP_DEATH']=re.sub(r'DO: SetState \{([^}]+)\}',lambda m:'DO: DoAll\n\t\t\t\tDoExpr {maraenavrestore[]}\n\t\t\t\tSetState {'+m[1]+'}',states['MAP_DEATH'])
  for name in ('CACHE_RETURN_CHECK','CACHE_RETURN','CACHE_RETURN_WAIT','CACHE_APPROACH_CHECK','CACHE_APPROACH','CACHE_APPROACH_WAIT','CACHE_SKIP_SELECTED','CACHE_OPEN_SELECTED'):
   header='STATE: {'+name+'} ~~ {\n'
   states[name]=states[name].replace(header,header+'\tIF: Death\n\t\tDO: SetState {MAP_DEATH}\n\tIF: Expr {getunixtime[]>=getvar[tm_cache_deadline]}\n\t\tDO: SetState {MISSION_ERROR}\n',1)

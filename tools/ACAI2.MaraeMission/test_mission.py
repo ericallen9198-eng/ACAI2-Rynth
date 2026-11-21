@@ -222,3 +222,5 @@ w=World();w.open=0;w.caches={1:{'distance':22,'openable':True}}
 s=Sim(w,'CACHE_PREP');s.until('CACHE_APPROACH_WAIT',100);w.dead=True;s.tick()
 check(s.state=='MAP_DEATH' and not w.used and not w.moves,'death during approach yields to recovery without using or moving loot')
 print(f"PASS: {ns['checks']} mission simulations including chase return, 24-yard single-cache approach, timeout and death.")
+
+check(any('maraenavrestore[]' in action_text(r) for r in rules if r['State']=='MAP_DEATH'),'death delegates to recovery only after releasing mission navigation')
