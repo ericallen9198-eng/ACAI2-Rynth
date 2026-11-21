@@ -1,5 +1,5 @@
 sim={time=100,character='A',state='InGame',vars={},pvars={},commands={},click=nil,ignoreLoad=false,stores={},global={},texts={}}
-ai={Available=true,MacroRunning=false}
+ai={Available=true,MacroRunning=false,GoTo=function(ns,ew)sim.walks=(sim.walks or 0)+1;sim.route='temporary';sim.walkNS=ns;sim.walkEW=ew;return true end}
 local function charstore() sim.stores[sim.character]=sim.stores[sim.character] or {};return sim.stores[sim.character] end
 local storage={Get=function(k,d)return sim.global[k] or d end,Set=function(k,v)sim.global[k]=v end,Character={Get=function(k,d)return charstore()[k] or d end,Set=function(k,v)charstore()[k]=v end}}
 hud={OnRender={Add=function(f)sim.render=f end}}
@@ -11,7 +11,11 @@ function clock() return sim.time*1000 end
 function expr(s)
  sim.exprCalls=(sim.exprCalls or 0)+1
  if s=='getunixtime[]' then return math.floor(sim.time) end
- if s=='maraemissionapi[]' then return 1 end
+ if s=='maraemissionapi[]' then return 2 end
+ if s=='maraenavsave[]' then sim.savedRoute=sim.savedRoute or sim.route;return 1 end
+ if s=='maraenavmark[]' then return 1 end
+ if s=='maraenavrestore[]' then sim.route=sim.savedRoute or sim.route;sim.savedRoute=nil;return 1 end
+ if s=='getcharvital_current[1]' then return sim.dead and 0 or 100 end
  if s=='maraerecoverybusy[]' then return sim.busy and 1 or 0 end
  if s=='vtgetmeta[]' then return sim.meta or '275 Plateau Treasure - Verified' end
  if s=='vtgetmetastate[]' then return sim.metaState or 'HOLD' end

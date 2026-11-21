@@ -92,6 +92,8 @@ states['Default']=states['Default'].replace('SetOpt {EnableNav} {False}',restore
 # Round-robin typed cache candidates, with event-local binding and acknowledged pickup.
 from cache_policy import apply as apply_cache_policy
 apply_cache_policy(states,state,action,expr)
+from walk_policy import apply as apply_walk_policy
+apply_walk_policy(states,state,action,expr)
 # Retry/partial-work policy is applied before completion watchers are shared.
 from npc_policy import apply
 hunters=apply(states,keys,state,action,expr)

@@ -64,4 +64,15 @@ sim.state='CharacterSelect';step();sim.character='B';sim.state='InGame';step(30)
 check(not ai.MacroRunning and not (sim.stores.B.mission_v1 or {}).active,'another character does not inherit mission')
 sim.state='CharacterSelect';step();sim.character='A';sim.stores.A.mission_v1.active=true;sim.meta='Other work';ai.MacroRunning=true;sim.state='InGame';step(30)
 check(sim.meta=='Other work' and ai.MacroRunning,'automatic resume never stops a different running macro')
+-- Walk dispatch is owned, once per request, and never competes with recovery.
+sim.ignoreLoad=false;click('Resume run');step(40)
+sim.route='saved hunt route';sim.metaState='CACHE_APPROACH_WAIT'
+sim.vars.tm_walk_target='51.2|-84.0|0.2';sim.vars.tm_walk_generation=1
+sim.busy=true;local walks=sim.walks or 0;step(25)
+check((sim.walks or 0)==walks,'native recovery blocks temporary navigation')
+sim.busy=false;step(25)
+check(sim.walks==walks+1 and sim.savedRoute=='saved hunt route','walk saves the hunt route before GoTo')
+step(25);check(sim.walks==walks+1,'same movement generation does not replace the route every tick')
+click('Stop run');step(3)
+check(sim.route=='saved hunt route' and not ai.MacroRunning,'Stop restores hunt route without resuming macro')
 return checks

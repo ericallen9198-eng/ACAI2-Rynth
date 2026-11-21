@@ -15,9 +15,11 @@ class World(BaseWorld):
  def ev(self,t,scope):
   if t[0]=='call':
    if t[1]=='maraerecoverybusy':return int(self.busy)
+   if t[1]=='maraenavrestore':return 1
    f=t[1]
-   if getattr(self,'denyCacheMetadata',False) and f in ('wobjectgetphysicscoordinates','wobjectgettemplatetype','wobjectfindalllandscapebytemplatetype'):
-    raise AssertionError('cache discovery must not require native coordinate or template metadata')
+   if getattr(self,'denyCacheMetadata',False) and f in ('wobjectgettemplatetype','wobjectfindalllandscapebytemplatetype'):
+    raise AssertionError('cache discovery must not require template metadata')
+   if f=='maraenavrestore':return 1
    if f=='getplayercoordinates':return 'player'
    if f=='strlen':return len(str(self.ev(t[2][0],scope)))
    if f=='listcontains':
@@ -33,7 +35,10 @@ class World(BaseWorld):
    if f=='wobjectgetphysicscoordinates':
     obj=self.ev(t[2][0],scope);return 'cache:'+str(obj) if obj in self.caches and not self.caches[obj].get('no_position') else ''
    if f=='coordinatedistanceflat':
-    coord=self.ev(t[2][0],scope);return self.caches[int(coord.split(':')[1])]['distance'] if coord.startswith('cache:') else 0
+    coords=[self.ev(x,scope) for x in t[2]]
+    for coord in coords:
+     if isinstance(coord,str) and coord.startswith('cache:'):return self.caches.get(int(coord.split(':')[1]),{}).get('distance',0)
+    return getattr(self,'digDistance',0)
    if f=='actiontrymove':
     a=[self.ev(x,scope) for x in t[2]]
     assert self.open==self.v['tm_cache_id'] and self.open in self.caches
@@ -155,7 +160,7 @@ print(f"PASS: {ns['checks']} mission simulations including bounded retries, part
 for denied in (1,2):
  winner=denied+1
  w=World(items=[item(10,container=winner)]);w.open=0
- w.caches={i:{'distance':2,'openable':i==winner} for i in range(1,winner+1)}
+ w.caches={i:{'distance':0.5,'openable':i==winner} for i in range(1,winner+1)}
  s=Sim(w,'CACHE_PREP');s.until('CACHE_CONFIRM',100)
  check(w.used==list(range(1,winner+1)) and w.v['tm_cache_id']==winner,'tries distinct IDs until cache '+str(winner)+' actually opens')
  check(w.moves==[(10,999,0,1)] and not w.inv,'only bound cache dispatches one uncredited inventory move')
@@ -186,7 +191,7 @@ print(f"PASS: {ns['checks']} total mission simulations including simultaneous ca
 
 w=World(items=[item(10)]);w.open=0;w.denyCacheMetadata=True
 s=Sim(w,'CACHE_PREP');s.until('CACHE_CONFIRM',100)
-check(w.used==[1] and len(w.moves)==1,'exact-name discovery and acknowledged pickup need no cache coordinate or template reads')
+check(w.used==[1] and len(w.moves)==1,'exact-name discovery needs no template metadata prerequisite')
 # Preserve the proven Aun corpse branch; it does not require a cache to spawn.
 w=World();w.open=0;w.caches={1:{'name':'Corpse of Aun Relaria','distance':1}}
 s=Sim(w,'ENCOUNTER');s.tick()
@@ -194,3 +199,26 @@ check(w.options['EnableLooting']==1,'Aun corpse enables the existing profile loo
 w.inv[1004101]=7;s.until('CACHE_FINISH')
 check(not w.used and not w.moves,'confirmed corpse doubloons finish without any cache-use or explicit duplicate pickup')
 print(f"PASS: {ns['checks']} mission simulations, including single cache, concurrent caches and corpse payout.")
+
+# A cache 24 yards away must be reached before opening or moving currency.
+w=World(items=[item(10)]);w.open=0;w.caches={1:{'distance':22,'openable':True}}
+s=Sim(w,'CACHE_PREP');s.until('CACHE_APPROACH_WAIT',100)
+check(not w.used and not w.moves,'distant single cache enters approach without premature use or pickup')
+w.v['tm_walk_ack']=1;s.tick(5)
+check(s.state=='CACHE_APPROACH_WAIT' and not w.used,'accepted movement dispatch alone does not count as arrival')
+w.caches[1]['distance']=0.5;s.until('CACHE_CONFIRM',100)
+check(w.used==[1] and len(w.moves)==1,'arrival opens the only cache and dispatches its currency exactly once')
+w.ack(10);s.until('CACHE_FINISH')
+# Chase can change player position; the original dig anchor remains the return goal.
+w=World();w.open=0;w.v['tm_cache_anchor']='dig';w.digDistance=22
+s=Sim(w,'CACHE_PREP');s.until('CACHE_RETURN_WAIT',100)
+check(w.v['tm_walk_target']=='dig' and not w.used,'post-fight collection returns to recorded digsite first')
+w.v['tm_walk_ack']=1;w.digDistance=0;s.until('CACHE_SEARCH')
+check(s.state=='CACHE_SEARCH','actual digsite arrival proceeds to cache search')
+w=World();w.open=0;w.caches={1:{'distance':22,'openable':False},2:{'distance':0,'openable':True}}
+s=Sim(w,'CACHE_PREP');s.until('CACHE_APPROACH_WAIT',100);s.tick(46);s.until('CACHE_OPEN_SELECTED',100)
+check(w.v['tm_cache_probe_id']==2,'unreachable candidate times out and next local cache is tried')
+w=World();w.open=0;w.caches={1:{'distance':22,'openable':True}}
+s=Sim(w,'CACHE_PREP');s.until('CACHE_APPROACH_WAIT',100);w.dead=True;s.tick()
+check(s.state=='MAP_DEATH' and not w.used and not w.moves,'death during approach yields to recovery without using or moving loot')
+print(f"PASS: {ns['checks']} mission simulations including chase return, 24-yard single-cache approach, timeout and death.")

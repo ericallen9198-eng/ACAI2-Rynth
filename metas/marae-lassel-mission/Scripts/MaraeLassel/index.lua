@@ -34,6 +34,7 @@ local function owns()
 end
 local settings, journal, request, startup, snapshot
 local logCursor=0;local recentReplies={}
+local walkGeneration=-1
 local feedback=''; local inGame=false; local sampled=-1; local stopSince=nil
 local nextPoll=0
 local checkpointReads={}
@@ -62,6 +63,7 @@ local function checkpoint()
  if changed then save() end
 end
 local function restorePickup()
+ if owns() and number('maraemissionapi[]')>=2 then expr('maraenavrestore[]') end
  if owns() and number('getpvar[pt_cache_pickup_held]')==1 then
   expr('rasetsetting[\x60LootChestsMacroOff\x60,getpvar[pt_cache_old_pickup]]')
   expr('setpvar[pt_cache_pickup_held,0]')
@@ -73,10 +75,11 @@ local function fail(message)
 end
 local function begin(fresh,automatic)
  if not selected() then feedback='Select at least one area.';return end
- if number('maraemissionapi[]')~=1 then feedback='Install the mission-compatible RynthAi DLL from this package first.';return end
+ if number('maraemissionapi[]')<2 then feedback='Install the mission-compatible RynthAi DLL from this package first.';return end
  if automatic and ai.MacroRunning and not owns() then
   feedback='Saved mission waiting: another macro is running. Stop it, then press Resume run.';return
  end
+ if owns() then restorePickup() end
  if fresh or journal.finished then journal={progress={},active=false,resumable=false} end
  journal.active=true;journal.resumable=true;journal.finished=false;save()
  logCursor=0;recentReplies={}
@@ -188,7 +191,7 @@ end
 
 game.OnTick.Add(function()
  if game.State~='InGame' or not ai.Available then
-  if inGame then inGame=false;startup=nil;snapshot=nil;recentReplies={};logCursor=0;nextPoll=0 end
+  if inGame then inGame=false;startup=nil;snapshot=nil;recentReplies={};logCursor=0;walkGeneration=-1;nextPoll=0 end
   return
  end
  -- clock() is RynthLua's monotonic millisecond clock; no expression allocation.
@@ -232,6 +235,18 @@ game.OnTick.Add(function()
   end
   local ours=owns()
   local state=ours and value('vtgetmetastate[]') or ''
+  if ours and journal.active and ai.MacroRunning and not startup and
+    (state=='CACHE_RETURN_WAIT' or state=='CACHE_APPROACH_WAIT') then
+   local generation=number('getvar[tm_walk_generation]')
+   if generation~=walkGeneration and number('getcharvital_current[1]')>0 and number('maraerecoverybusy[]')==0 then
+    walkGeneration=generation
+    local coords=value('getvar[tm_walk_target]')
+    local ns,ew=coords:match('^([^|]+)|([^|]+)|')
+    ns,ew=tonumber(ns),tonumber(ew)
+    local accepted=ns and ew and number('maraenavsave[]')==1 and ai.GoTo(ns,ew) and number('maraenavmark[]')==1
+    expr('setvar[tm_walk_ack,'..(accepted and 1 or -1)..']')
+   end
+  else walkGeneration=-1 end
   if ours and journal.active and not startup and not ai.MacroRunning and state~='HOLD' then
    stopSince=stopSince or t
    if t-stopSince>=3 then

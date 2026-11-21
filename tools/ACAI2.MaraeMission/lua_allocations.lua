@@ -1,6 +1,6 @@
 -- Explicit Start replaces the different macro left by the identity regression test.
 sim.ignoreLoad=false
-click('Resume run');step(40)
+step(25);click('Resume run');step(40)
 assert(ai.MacroRunning and sim.meta=='Marae Lassel - Embedded','allocation test needs running mission')
 sim.delta=.005
 local before=sim.exprCalls

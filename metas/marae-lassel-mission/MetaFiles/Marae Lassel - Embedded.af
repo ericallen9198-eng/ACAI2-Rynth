@@ -5845,6 +5845,7 @@ STATE: {MAP_LOCK} ~~ {
 		DO:	SetState {MAP_DEATH}
 	IF:	Always
 		DO:	DoAll
+				DoExpr {setvar[tm_cache_anchor,0]}
 				DoExpr {setpvar[tm_dig_active,0]}
 				DoExpr {setvar[tm_map_id,wobjectgetid[wobjectfindininventorybyname[Treasure Map]]]}
 				DoExpr {setvar[tm_watch_pos,getplayercoordinates[]]}
@@ -12113,6 +12114,7 @@ STATE: {DIG_FIRST} ~~ {
 		DO: SetState {MAP_COMBAT_RESUME}
 	IF:	Always
 		DO:	DoAll
+				DoExpr {if[getvar[tm_cache_anchor]==0,setvar[tm_cache_anchor,getplayercoordinates[]]]}
 				DoExpr {setpvar[tm_stat_dig1,getpvar[tm_stat_dig1]+1]}
 				DoExpr {setvar[tm_doubloon_before,getinventorycountbytemplatetype[1004101]]}
 				DoExpr {setpvar[tm_dig_active,1]}
@@ -13752,6 +13754,7 @@ STATE: {ENCOUNTER_INIT} ~~ {
 		DO:	SetState {MAP_DEATH}
 	IF:	Always
 		DO:	DoAll
+				DoExpr {if[getvar[tm_cache_anchor]==0,setvar[tm_cache_anchor,getplayercoordinates[]]]}
 				DoExpr {setpvar[tm_stat_encounter,getpvar[tm_stat_encounter]+1]}
 				DoExpr {setvar[tm_cache_retry_at,0]}
 				DoExpr {setvar[tm_aun_loot_active,0]}
@@ -14352,6 +14355,7 @@ STATE: {CACHE_FINISH} ~~ {
 		DO:	DoAll
 				DoExpr {if[getpvar[pt_cache_pickup_held]==1,rasetsetting[`LootChestsMacroOff`,getpvar[pt_cache_old_pickup]]]}
 				DoExpr {setpvar[pt_cache_pickup_held,0]}
+				DoExpr {maraenavrestore[]}
 				DoExpr {setpvar[tm_dig_active,0]}
 				DoExpr {setvar[tm_map_id,0]}
 				DoExpr {setvar[tm_cache_probe_id,0]}
@@ -15540,7 +15544,9 @@ STATE: {CACHE_PREP} ~~ {
 				DoExpr {setvar[tm_cache_pickups,0]}
 				DoExpr {setvar[tm_cache_stackmode,1]}
 				DoExpr {setvar[tm_cache_retry_at,0]}
-				SetState {CACHE_SEARCH}
+				DoExpr {setvar[tm_walk_generation,0]}
+				DoExpr {setvar[tm_walk_ack,0]}
+				SetState {CACHE_RETURN_CHECK}
 ~~ }
 
 STATE: {CACHE_PICKUP} ~~ {
@@ -15722,6 +15728,7 @@ STATE: {CACHE_PICKUP} ~~ {
 				SetState {MISSION_ERROR}
 	IF: Expr {wobjectgetname[wobjectgetopencontainer[]]==`Unearthed Cache` && getvar[tm_cache_id]!=0 && wobjectgetid[wobjectgetopencontainer[]]==getvar[tm_cache_id] && listcount[listfilter[wobjectfindallbycontainer[wobjectgetopencontainer[]], `wobjectgetid[$1]==getvar[tm_cache_pending]`]]>0}
 		DO: DoAll
+				DoExpr {setvar[ml_status,`Collecting currency from the opened cache`]}
 				DoExpr {setvar[tm_cache_sent,actiontrymove[wobjectfindbyid[getvar[tm_cache_pending]],wobjectgetplayer[],0,getvar[tm_cache_stackmode]]]}
 				SetState {CACHE_CONFIRM}
 	IF: Always
@@ -16107,6 +16114,7 @@ STATE: {CACHE_SETTLE} ~~ {
 STATE: {MISSION_ERROR} ~~ {
 	IF: Always
 		DO: DoAll
+				DoExpr {maraenavrestore[]}
 				DoExpr {if[getpvar[pt_cache_pickup_held]==1,rasetsetting[`LootChestsMacroOff`,getpvar[pt_cache_old_pickup]]]}
 				DoExpr {setpvar[pt_cache_pickup_held,0]}
 				DoExpr {setvar[ml_outcome,`Needs attention`]}
@@ -16476,7 +16484,7 @@ STATE: {CACHE_CHOOSE} ~~ {
 		DO: DoAll
 				DoExpr {setvar[tm_cache_tried,listcreate[]]}
 				DoExpr {setvar[tm_cache_retry_at,getunixtime[]+8]}
-				DoExpr {setvar[ml_status,`Waiting for another local cache candidate`]}
+				DoExpr {setvar[ml_status,`No unopened cache confirmed; refreshing local cache IDs`]}
 				SetState {CACHE_SEARCH}
 ~~ }
 
@@ -16659,13 +16667,369 @@ STATE: {CACHE_TRY_NEXT} ~~ {
 		DO: DoAll
 				DoExpr {setvar[tm_cache_probe_id,wobjectgetid[listgetitem[getvar[tm_cache_candidates],0]]]}
 				DoExpr {listadd[getvar[tm_cache_tried],getvar[tm_cache_probe_id]]}
-				DoExpr {setvar[tm_cache_probe_until,getunixtime[]+8]}
-				DoExpr {setvar[ml_status,`Trying the next local Unearthed Cache`]}
-				DoExpr {actiontryuseitem[wobjectfindbyid[getvar[tm_cache_probe_id]]]}
-				SetState {CACHE_SEARCH}
+				SetState {CACHE_APPROACH_CHECK}
 ~~ }
 
 STATE: {CACHE_REOPEN_BOUND} ~~ {
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Carenzi Stalker(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_0,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Lesser Littoral Siraluun(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_1,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Sable Gromnies! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_2,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Marae Ursuin(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_3,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Sand Golem(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_4,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Olthoi Drone(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_5,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Siberite Fragment(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_6,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Kirit Zefir(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_7,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Aun Runner(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_8,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Woodland Ursuin(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_0,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Ironstone Golem(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_1,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Azael Zefir(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_2,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Copper Gromnies! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_3,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Timber Siraluun(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_4,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Rabid Carenzi(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_5,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Siberite Shard(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_6,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Aun Elder Shaman(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_7,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Greater Canescent Mattekar(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_8,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Olthoi Soldier(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_9,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_zefir]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Enku\ Zefirs! Your task is complete!|^huntcount_plateauzefirenkuzefir - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_zefir,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_ursuin]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Ursuin\ Slicers! Your task is complete!|^huntcount_plateauursuinursuinslicer - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_ursuin,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_golem]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Verdigris\ Golems! Your task is complete!|^huntcount_plateaugolemverdigrisgolem - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_golem,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_gromnie]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Brass\ Gromnies! Your task is complete!|^huntcount_plateaugromniebrassgromnie - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_gromnie,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_siraluun]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Untamed\ Siraluuns! Your task is complete!|^huntcount_plateausiraluununtamedsiraluun - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_siraluun,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_carenzi]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Savage\ Carenzis! Your task is complete!|^huntcount_plateaucarenzisavagecarenzi - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_carenzi,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_virindi]==0}
+			ChatMatch {(?:^You have killed \d+ Virindi\ Sentr(?:y|ies)! Your task is complete!|^huntcount_plateauvirindivirindi(?:observer|sentry) - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_virindi,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_olthoi]==0}
+			ChatMatch {(?:^You have killed \d+ Olthoi\ Hive\ Guardians?! Your task is complete!|^huntcount_plateauolthoiolthoihive(?:mutilator|guardian) - 20 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_olthoi,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Always
+		DO: DoAll
+				DoExpr {setvar[tm_cache_probe_id,getvar[tm_cache_id]]}
+				SetState {CACHE_APPROACH_CHECK}
+~~ }
+
+STATE: {CACHE_RETURN_CHECK} ~~ {
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Carenzi Stalker(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_0,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Lesser Littoral Siraluun(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_1,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Sable Gromnies! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_2,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Marae Ursuin(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_3,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Sand Golem(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_4,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Olthoi Drone(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_5,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Siberite Fragment(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_6,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Kirit Zefir(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_7,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Aun Runner(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_8,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Woodland Ursuin(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_0,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Ironstone Golem(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_1,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Azael Zefir(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_2,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Copper Gromnies! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_3,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Timber Siraluun(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_4,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Rabid Carenzi(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_5,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Siberite Shard(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_6,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Aun Elder Shaman(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_7,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Greater Canescent Mattekar(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_8,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Olthoi Soldier(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_9,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_zefir]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Enku\ Zefirs! Your task is complete!|^huntcount_plateauzefirenkuzefir - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_zefir,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_ursuin]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Ursuin\ Slicers! Your task is complete!|^huntcount_plateauursuinursuinslicer - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_ursuin,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_golem]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Verdigris\ Golems! Your task is complete!|^huntcount_plateaugolemverdigrisgolem - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_golem,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_gromnie]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Brass\ Gromnies! Your task is complete!|^huntcount_plateaugromniebrassgromnie - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_gromnie,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_siraluun]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Untamed\ Siraluuns! Your task is complete!|^huntcount_plateausiraluununtamedsiraluun - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_siraluun,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_carenzi]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Savage\ Carenzis! Your task is complete!|^huntcount_plateaucarenzisavagecarenzi - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_carenzi,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_virindi]==0}
+			ChatMatch {(?:^You have killed \d+ Virindi\ Sentr(?:y|ies)! Your task is complete!|^huntcount_plateauvirindivirindi(?:observer|sentry) - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_virindi,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_olthoi]==0}
+			ChatMatch {(?:^You have killed \d+ Olthoi\ Hive\ Guardians?! Your task is complete!|^huntcount_plateauolthoiolthoihive(?:mutilator|guardian) - 20 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_olthoi,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getunixtime[]>=getvar[tm_cache_deadline]}
+		DO: SetState {MISSION_ERROR}
+	IF: Expr {getvar[tm_cache_anchor]!=0 && strlen[getvar[tm_cache_anchor]]>0 && coordinatedistanceflat[getplayercoordinates[],getvar[tm_cache_anchor]]>3}
+		DO: SetState {CACHE_RETURN}
+	IF: Always
+		DO: DoAll
+				SetState {CACHE_SEARCH}
+~~ }
+
+STATE: {CACHE_RETURN} ~~ {
 	IF: All
 			Expr {getvar[ml_zone]==180}
 			ChatMatch {^You have killed \d+ Drumtaken Carenzi Stalker(?:s|es)?! Your task is complete\!}
@@ -16842,9 +17206,1122 @@ STATE: {CACHE_REOPEN_BOUND} ~~ {
 		DO: SetState {MISSION_ERROR}
 	IF: Always
 		DO: DoAll
-				DoExpr {setvar[tm_cache_probe_id,getvar[tm_cache_id]]}
+				DoExpr {setvar[tm_walk_target,getvar[tm_cache_anchor]]}
+				DoExpr {setvar[tm_walk_generation,getvar[tm_walk_generation]+1]}
+				DoExpr {setvar[tm_walk_ack,0]}
+				DoExpr {setvar[ml_status,`Returning to the recorded digsite`]}
+				SetState {CACHE_RETURN_WAIT}
+~~ }
+
+STATE: {CACHE_RETURN_WAIT} ~~ {
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Carenzi Stalker(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_0,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Lesser Littoral Siraluun(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_1,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Sable Gromnies! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_2,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Marae Ursuin(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_3,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Sand Golem(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_4,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Olthoi Drone(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_5,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Siberite Fragment(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_6,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Kirit Zefir(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_7,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Aun Runner(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_8,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Woodland Ursuin(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_0,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Ironstone Golem(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_1,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Azael Zefir(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_2,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Copper Gromnies! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_3,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Timber Siraluun(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_4,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Rabid Carenzi(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_5,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Siberite Shard(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_6,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Aun Elder Shaman(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_7,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Greater Canescent Mattekar(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_8,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Olthoi Soldier(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_9,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_zefir]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Enku\ Zefirs! Your task is complete!|^huntcount_plateauzefirenkuzefir - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_zefir,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_ursuin]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Ursuin\ Slicers! Your task is complete!|^huntcount_plateauursuinursuinslicer - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_ursuin,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_golem]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Verdigris\ Golems! Your task is complete!|^huntcount_plateaugolemverdigrisgolem - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_golem,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_gromnie]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Brass\ Gromnies! Your task is complete!|^huntcount_plateaugromniebrassgromnie - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_gromnie,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_siraluun]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Untamed\ Siraluuns! Your task is complete!|^huntcount_plateausiraluununtamedsiraluun - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_siraluun,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_carenzi]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Savage\ Carenzis! Your task is complete!|^huntcount_plateaucarenzisavagecarenzi - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_carenzi,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_virindi]==0}
+			ChatMatch {(?:^You have killed \d+ Virindi\ Sentr(?:y|ies)! Your task is complete!|^huntcount_plateauvirindivirindi(?:observer|sentry) - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_virindi,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_olthoi]==0}
+			ChatMatch {(?:^You have killed \d+ Olthoi\ Hive\ Guardians?! Your task is complete!|^huntcount_plateauolthoiolthoihive(?:mutilator|guardian) - 20 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_olthoi,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getunixtime[]>=getvar[tm_cache_deadline]}
+		DO: SetState {MISSION_ERROR}
+	IF: Expr {getvar[tm_walk_ack]==1 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],getvar[tm_walk_target]]<=2}
+		DO: DoAll
+				SetOpt {EnableNav} {False}
+				Chat {/ub clearmotion}
+				SetState {CACHE_SEARCH}
+	IF: Expr {getvar[tm_walk_ack]==-1}
+		DO: SetState {CACHE_SEARCH}
+	IF: SecsInStateGE 45
+		DO: DoAll
+				SetOpt {EnableNav} {False}
+				Chat {/ub clearmotion}
+				SetState {CACHE_SEARCH}
+~~ }
+
+STATE: {CACHE_APPROACH_CHECK} ~~ {
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Carenzi Stalker(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_0,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Lesser Littoral Siraluun(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_1,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Sable Gromnies! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_2,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Marae Ursuin(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_3,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Sand Golem(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_4,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Olthoi Drone(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_5,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Siberite Fragment(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_6,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Kirit Zefir(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_7,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Aun Runner(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_8,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Woodland Ursuin(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_0,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Ironstone Golem(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_1,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Azael Zefir(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_2,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Copper Gromnies! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_3,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Timber Siraluun(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_4,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Rabid Carenzi(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_5,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Siberite Shard(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_6,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Aun Elder Shaman(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_7,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Greater Canescent Mattekar(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_8,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Olthoi Soldier(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_9,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_zefir]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Enku\ Zefirs! Your task is complete!|^huntcount_plateauzefirenkuzefir - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_zefir,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_ursuin]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Ursuin\ Slicers! Your task is complete!|^huntcount_plateauursuinursuinslicer - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_ursuin,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_golem]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Verdigris\ Golems! Your task is complete!|^huntcount_plateaugolemverdigrisgolem - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_golem,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_gromnie]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Brass\ Gromnies! Your task is complete!|^huntcount_plateaugromniebrassgromnie - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_gromnie,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_siraluun]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Untamed\ Siraluuns! Your task is complete!|^huntcount_plateausiraluununtamedsiraluun - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_siraluun,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_carenzi]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Savage\ Carenzis! Your task is complete!|^huntcount_plateaucarenzisavagecarenzi - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_carenzi,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_virindi]==0}
+			ChatMatch {(?:^You have killed \d+ Virindi\ Sentr(?:y|ies)! Your task is complete!|^huntcount_plateauvirindivirindi(?:observer|sentry) - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_virindi,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_olthoi]==0}
+			ChatMatch {(?:^You have killed \d+ Olthoi\ Hive\ Guardians?! Your task is complete!|^huntcount_plateauolthoiolthoihive(?:mutilator|guardian) - 20 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_olthoi,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getunixtime[]>=getvar[tm_cache_deadline]}
+		DO: SetState {MISSION_ERROR}
+	IF: Expr {strlen[wobjectgetphysicscoordinates[wobjectfindbyid[getvar[tm_cache_probe_id]]]]>0 && coordinatedistanceflat[getplayercoordinates[],wobjectgetphysicscoordinates[wobjectfindbyid[getvar[tm_cache_probe_id]]]]>0.9}
+		DO: SetState {CACHE_APPROACH}
+	IF: Always
+		DO: DoAll
+				SetState {CACHE_OPEN_SELECTED}
+~~ }
+
+STATE: {CACHE_APPROACH} ~~ {
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Carenzi Stalker(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_0,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Lesser Littoral Siraluun(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_1,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Sable Gromnies! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_2,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Marae Ursuin(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_3,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Sand Golem(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_4,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Olthoi Drone(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_5,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Siberite Fragment(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_6,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Kirit Zefir(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_7,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Aun Runner(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_8,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Woodland Ursuin(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_0,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Ironstone Golem(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_1,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Azael Zefir(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_2,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Copper Gromnies! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_3,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Timber Siraluun(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_4,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Rabid Carenzi(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_5,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Siberite Shard(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_6,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Aun Elder Shaman(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_7,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Greater Canescent Mattekar(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_8,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Olthoi Soldier(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_9,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_zefir]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Enku\ Zefirs! Your task is complete!|^huntcount_plateauzefirenkuzefir - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_zefir,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_ursuin]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Ursuin\ Slicers! Your task is complete!|^huntcount_plateauursuinursuinslicer - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_ursuin,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_golem]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Verdigris\ Golems! Your task is complete!|^huntcount_plateaugolemverdigrisgolem - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_golem,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_gromnie]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Brass\ Gromnies! Your task is complete!|^huntcount_plateaugromniebrassgromnie - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_gromnie,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_siraluun]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Untamed\ Siraluuns! Your task is complete!|^huntcount_plateausiraluununtamedsiraluun - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_siraluun,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_carenzi]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Savage\ Carenzis! Your task is complete!|^huntcount_plateaucarenzisavagecarenzi - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_carenzi,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_virindi]==0}
+			ChatMatch {(?:^You have killed \d+ Virindi\ Sentr(?:y|ies)! Your task is complete!|^huntcount_plateauvirindivirindi(?:observer|sentry) - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_virindi,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_olthoi]==0}
+			ChatMatch {(?:^You have killed \d+ Olthoi\ Hive\ Guardians?! Your task is complete!|^huntcount_plateauolthoiolthoihive(?:mutilator|guardian) - 20 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_olthoi,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getunixtime[]>=getvar[tm_cache_deadline]}
+		DO: SetState {MISSION_ERROR}
+	IF: Always
+		DO: DoAll
+				DoExpr {setvar[tm_walk_target,wobjectgetphysicscoordinates[wobjectfindbyid[getvar[tm_cache_probe_id]]]]}
+				DoExpr {setvar[tm_walk_generation,getvar[tm_walk_generation]+1]}
+				DoExpr {setvar[tm_walk_ack,0]}
+				DoExpr {setvar[ml_status,`Walking to the selected Unearthed Cache`]}
+				SetState {CACHE_APPROACH_WAIT}
+~~ }
+
+STATE: {CACHE_APPROACH_WAIT} ~~ {
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Carenzi Stalker(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_0,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Lesser Littoral Siraluun(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_1,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Sable Gromnies! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_2,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Marae Ursuin(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_3,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Sand Golem(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_4,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Olthoi Drone(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_5,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Siberite Fragment(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_6,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Kirit Zefir(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_7,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Aun Runner(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_8,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Woodland Ursuin(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_0,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Ironstone Golem(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_1,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Azael Zefir(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_2,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Copper Gromnies! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_3,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Timber Siraluun(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_4,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Rabid Carenzi(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_5,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Siberite Shard(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_6,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Aun Elder Shaman(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_7,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Greater Canescent Mattekar(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_8,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Olthoi Soldier(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_9,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_zefir]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Enku\ Zefirs! Your task is complete!|^huntcount_plateauzefirenkuzefir - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_zefir,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_ursuin]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Ursuin\ Slicers! Your task is complete!|^huntcount_plateauursuinursuinslicer - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_ursuin,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_golem]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Verdigris\ Golems! Your task is complete!|^huntcount_plateaugolemverdigrisgolem - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_golem,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_gromnie]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Brass\ Gromnies! Your task is complete!|^huntcount_plateaugromniebrassgromnie - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_gromnie,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_siraluun]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Untamed\ Siraluuns! Your task is complete!|^huntcount_plateausiraluununtamedsiraluun - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_siraluun,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_carenzi]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Savage\ Carenzis! Your task is complete!|^huntcount_plateaucarenzisavagecarenzi - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_carenzi,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_virindi]==0}
+			ChatMatch {(?:^You have killed \d+ Virindi\ Sentr(?:y|ies)! Your task is complete!|^huntcount_plateauvirindivirindi(?:observer|sentry) - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_virindi,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_olthoi]==0}
+			ChatMatch {(?:^You have killed \d+ Olthoi\ Hive\ Guardians?! Your task is complete!|^huntcount_plateauolthoiolthoihive(?:mutilator|guardian) - 20 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_olthoi,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getunixtime[]>=getvar[tm_cache_deadline]}
+		DO: SetState {MISSION_ERROR}
+	IF: Expr {getvar[tm_walk_ack]==1 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],getvar[tm_walk_target]]<=0.9}
+		DO: DoAll
+				SetOpt {EnableNav} {False}
+				Chat {/ub clearmotion}
+				SetState {CACHE_OPEN_SELECTED}
+	IF: Expr {getvar[tm_walk_ack]==-1}
+		DO: SetState {CACHE_SKIP_SELECTED}
+	IF: SecsInStateGE 45
+		DO: DoAll
+				SetOpt {EnableNav} {False}
+				Chat {/ub clearmotion}
+				SetState {CACHE_SKIP_SELECTED}
+~~ }
+
+STATE: {CACHE_SKIP_SELECTED} ~~ {
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Carenzi Stalker(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_0,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Lesser Littoral Siraluun(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_1,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Sable Gromnies! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_2,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Marae Ursuin(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_3,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Sand Golem(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_4,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Olthoi Drone(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_5,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Siberite Fragment(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_6,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Kirit Zefir(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_7,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Aun Runner(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_8,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Woodland Ursuin(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_0,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Ironstone Golem(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_1,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Azael Zefir(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_2,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Copper Gromnies! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_3,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Timber Siraluun(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_4,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Rabid Carenzi(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_5,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Siberite Shard(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_6,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Aun Elder Shaman(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_7,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Greater Canescent Mattekar(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_8,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Olthoi Soldier(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_9,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_zefir]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Enku\ Zefirs! Your task is complete!|^huntcount_plateauzefirenkuzefir - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_zefir,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_ursuin]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Ursuin\ Slicers! Your task is complete!|^huntcount_plateauursuinursuinslicer - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_ursuin,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_golem]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Verdigris\ Golems! Your task is complete!|^huntcount_plateaugolemverdigrisgolem - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_golem,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_gromnie]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Brass\ Gromnies! Your task is complete!|^huntcount_plateaugromniebrassgromnie - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_gromnie,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_siraluun]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Untamed\ Siraluuns! Your task is complete!|^huntcount_plateausiraluununtamedsiraluun - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_siraluun,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_carenzi]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Savage\ Carenzis! Your task is complete!|^huntcount_plateaucarenzisavagecarenzi - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_carenzi,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_virindi]==0}
+			ChatMatch {(?:^You have killed \d+ Virindi\ Sentr(?:y|ies)! Your task is complete!|^huntcount_plateauvirindivirindi(?:observer|sentry) - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_virindi,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_olthoi]==0}
+			ChatMatch {(?:^You have killed \d+ Olthoi\ Hive\ Guardians?! Your task is complete!|^huntcount_plateauolthoiolthoihive(?:mutilator|guardian) - 20 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_olthoi,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getunixtime[]>=getvar[tm_cache_deadline]}
+		DO: SetState {MISSION_ERROR}
+	IF: Always
+		DO: DoAll
+				SetOpt {EnableNav} {False}
+				DoExpr {setvar[tm_cache_probe_id,0]}
+				DoExpr {setvar[ml_status,`Could not reach that cache; trying another ID`]}
+				SetState {CACHE_SEARCH}
+~~ }
+
+STATE: {CACHE_OPEN_SELECTED} ~~ {
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Carenzi Stalker(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_0,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Lesser Littoral Siraluun(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_1,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Sable Gromnies! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_2,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Marae Ursuin(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_3,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Sand Golem(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_4,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Olthoi Drone(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_5,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Siberite Fragment(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_6,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Drumtaken Kirit Zefir(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_7,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==180}
+			ChatMatch {^You have killed \d+ Aun Runner(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_180_done_8,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Woodland Ursuin(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_0,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Ironstone Golem(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_1,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Azael Zefir(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_2,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Copper Gromnies! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_3,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Timber Siraluun(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_4,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Rabid Carenzi(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_5,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Siberite Shard(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_6,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Aun Elder Shaman(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_7,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Drumtaken Greater Canescent Mattekar(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_8,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==225}
+			ChatMatch {^You have killed \d+ Olthoi Soldier(?:s|es)?! Your task is complete\!}
+		DO: DoAll
+				DoExpr {setpvar[mm_225_done_9,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_zefir]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Enku\ Zefirs! Your task is complete!|^huntcount_plateauzefirenkuzefir - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_zefir,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_ursuin]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Ursuin\ Slicers! Your task is complete!|^huntcount_plateauursuinursuinslicer - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_ursuin,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_golem]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Verdigris\ Golems! Your task is complete!|^huntcount_plateaugolemverdigrisgolem - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_golem,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_gromnie]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Brass\ Gromnies! Your task is complete!|^huntcount_plateaugromniebrassgromnie - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_gromnie,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_siraluun]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Untamed\ Siraluuns! Your task is complete!|^huntcount_plateausiraluununtamedsiraluun - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_siraluun,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_carenzi]==0}
+			ChatMatch {(?:^You have killed \d+ Drumtaken\ Savage\ Carenzis! Your task is complete!|^huntcount_plateaucarenzisavagecarenzi - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_carenzi,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_virindi]==0}
+			ChatMatch {(?:^You have killed \d+ Virindi\ Sentr(?:y|ies)! Your task is complete!|^huntcount_plateauvirindivirindi(?:observer|sentry) - 50 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_virindi,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: All
+			Expr {getvar[ml_zone]==275}
+			Expr {getpvar[mm_275_done_olthoi]==0}
+			ChatMatch {(?:^You have killed \d+ Olthoi\ Hive\ Guardians?! Your task is complete!|^huntcount_plateauolthoiolthoihive(?:mutilator|guardian) - 20 solves \()}
+		DO: DoAll
+				DoExpr {setpvar[mm_275_done_olthoi,1]}
+				DoExpr {setvar[pt_last_progress,getunixtime[]]}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getunixtime[]>=getvar[tm_cache_deadline]}
+		DO: SetState {MISSION_ERROR}
+	IF: Always
+		DO: DoAll
+				SetOpt {EnableNav} {False}
+				Chat {/ub clearmotion}
 				DoExpr {setvar[tm_cache_probe_until,getunixtime[]+8]}
-				DoExpr {actiontryuseitem[wobjectfindbyid[getvar[tm_cache_id]]]}
+				DoExpr {setvar[ml_status,`Waiting for the selected cache to open`]}
+				DoExpr {actiontryuseitem[wobjectfindbyid[getvar[tm_cache_probe_id]]]}
 				SetState {CACHE_SEARCH}
 ~~ }
 
