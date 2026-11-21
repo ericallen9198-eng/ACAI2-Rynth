@@ -65,7 +65,7 @@ for state in ('T275_TRAVEL_WAIT','ENCOUNTER','CACHE_SEARCH','TURN_SETTLE'):
  check(w.p.get('mm_275_done_olthoi')==1,'actual Guardian completion retained in '+state)
 # Currency collection is explicit, serial and acknowledged. Notes remain optional.
 for zone,monster,key in ((180,'Drumtaken Carenzi Stalkers','0'),(225,'Drumtaken Woodland Ursuins','0')):
- for phase in (f'T{zone}_TRAVEL_WAIT','ENCOUNTER','CACHE_SEARCH','TURN_SETTLE'):
+ for phase in (f'T{zone}_GET_TO_WAIT','ENCOUNTER','CACHE_SEARCH','TURN_SETTLE'):
   w=World();w.v['ml_zone']=zone;w.chat=f'You have killed 50 {monster}! Your task is complete!';s=Sim(w,phase);s.tick()
   check(w.p.get(f'mm_{zone}_done_{key}')==1,'task completion retained in '+str(zone)+' '+phase)
 w=World(items=[item(10)]);w.v['ml_zone']=180;s=Sim(w,'CACHE_PREP');s.until('CACHE_CONFIRM')
