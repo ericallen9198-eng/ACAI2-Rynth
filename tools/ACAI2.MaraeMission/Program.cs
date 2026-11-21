@@ -22,6 +22,10 @@ if(args[0]=="--lua-test") {
  vm.DoString(File.ReadAllText(args[1]));vm.DoString(File.ReadAllText(args[2]));
  var count=vm.DoString(File.ReadAllText(args[3]));
  Console.WriteLine($"PASS: {count.Number} controller checks through genuine MoonSharp; fake game interfaces only.");
+ if(args.Length>5) {
+  var seen=vm.Globals.Get("sim").Table.Get("exprSeen").Table.Keys.Select(k=>k.String).ToArray();
+  File.WriteAllText(args[5],JsonSerializer.Serialize(seen));
+ }
  if(args.Length>4) {
   var allocationRun=vm.LoadString(File.ReadAllText(args[4]));
   long before=GC.GetAllocatedBytesForCurrentThread();

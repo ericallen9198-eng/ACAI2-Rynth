@@ -101,7 +101,7 @@ local function fail(message)
 end
 local function begin(fresh,automatic)
  if not selected() then feedback='Select at least one area.';return end
- if number('maraemissionapi[]')<2 then feedback='Install the mission-compatible RynthAi DLL from this package first.';return end
+ if number('maraemissionapi[]')<6 then feedback='Install the mission-compatible RynthAi DLL from this package first.';return end
  if settings.meshMaps and number('maraemissionapi[]')<5 then feedback='Install the new mission DLL before enabling Mesh map steps.';return end
  if automatic and ai.MacroRunning and not owns() then
   feedback='Saved mission waiting: another macro is running. Stop it, then press Resume run.';return
@@ -308,6 +308,8 @@ game.OnTick.Add(function()
    local deadline=number('getpvar[mm_deadline_'..snapshot.zone..']')
    if deadline>0 then snapshot.budgetMinutes=math.max(0,math.ceil((deadline-t)/60)) end
   end
+  snapshot.mode=ours and (number('getvar[mm_budget_fallback]')==1 and 'Lowlands fallback' or number('getvar[ml_hunt_only]')==1 and 'Hunt only' or 'Tasks') or 'Stopped'
+  snapshot.maps=ours and number('getvar[ml_use_maps]')==1
   snapshot.loaded=value('vtgetmeta[]');snapshot.recovery=ours and number('maraerecoverybusy[]')==1
   if startup then nextPoll=math.min(nextPoll,ms+200) end
  end)
@@ -326,17 +328,17 @@ hud.OnRender.Add(function()
   ImGui.Text('Area: '..tostring(snapshot.zone~=0 and snapshot.zone or 'choosing'))
   ImGui.TextWrapped(snapshot.recovery and 'Waiting for respawn / corpse recovery' or snapshot.state)
   if snapshot.budgetMinutes then ImGui.Text('Camp hunt limit: '..snapshot.budgetMinutes..' min remaining') end
+  ImGui.Text('Mode: '..snapshot.mode..(snapshot.maps and ' + maps' or ' (maps off)'))
   if snapshot.detail~='0' then ImGui.TextWrapped(snapshot.detail) end
   if ImGui.Button('Stop run') then request='stop' end
  else
-  ImGui.TextDisabled('Area                  Maps      Hunt only')
+  ImGui.TextDisabled('Choose each area, then its labeled options:')
   for i,z in ipairs(zones) do
    local changed
    changed,settings.areas[i]=ImGui.Checkbox(z.level..' '..z.name,settings.areas[i]);if changed then saveSettings() end
-   ImGui.SameLine(220,8)
-   changed,settings.maps[i]=ImGui.Checkbox('##maps'..z.level,settings.maps[i]);if changed then saveSettings() end
-   ImGui.SameLine(305,8)
-   changed,settings.huntOnly[i]=ImGui.Checkbox('##huntOnly'..z.level,settings.huntOnly[i]);if changed then saveSettings() end
+   changed,settings.maps[i]=ImGui.Checkbox('Use maps##maps'..z.level,settings.maps[i]);if changed then saveSettings() end
+   ImGui.SameLine()
+   changed,settings.huntOnly[i]=ImGui.Checkbox('Hunt only##huntOnly'..z.level,settings.huntOnly[i]);if changed then saveSettings() end
   end
   ImGui.TextWrapped('Hunt only skips tasks and repeats the nav. Maps remain optional. Task areas run first; hunt-only areas then rotate each circuit.')
   local meshChanged,meshValue=ImGui.Checkbox('Mesh map steps (needs RynthNav)',settings.meshMaps==true)

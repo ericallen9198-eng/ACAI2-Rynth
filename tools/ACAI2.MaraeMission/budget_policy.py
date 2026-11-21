@@ -11,7 +11,7 @@ def apply(states,state,action,expr):
   states[p+'HUNT_RESUME']=states[p+'HUNT_RESUME'].replace('Chat {/ub clearmotion}',expr(start)+'\n\t\t\t\t'+expr(f'setvar[mm_budget_active,{enabled} && getvar[ml_hunt_only]!=1 && getvar[ml_run_mode]==1]')+'\n\t\t\t\tChat {/ub clearmotion}',1)
   # The optional quota replaces the old no-KT-progress stop while it is enabled.
   states[p+'HUNT']=states[p+'HUNT'].replace('getitemcountininventorybyname[Treasure Map]','getitemcountininventorybyname[`Treasure Map`]').replace('getunixtime[]-getvar[pt_last_progress]>=2700',f'getpvar[mm_camp_limit]!=1 && getunixtime[]-getvar[pt_last_progress]>=2700')
-  states['DISPATCH']=states['DISPATCH'].replace(f'getpvar[mm_area_{z}]!=1 &&',f'!({enabled} && getpvar[mm_timed_{z}]==1) && getpvar[mm_area_{z}]!=1 &&',1)
+  states['DISPATCH']=states['DISPATCH'].replace(f'getpvar[mm_area_{z}]!=1 &&',f'(getpvar[mm_camp_limit]!=1 || getpvar[mm_timed_{z}]!=1) && getpvar[mm_area_{z}]!=1 &&',1)
   state(p+'BUDGET_RETURN','\tIF: Death\n\t\tDO: SetState {MAP_DEATH}\n'+action([expr('setvar[mm_budget_active,0]'),expr('setvar[mm_cap_return,1]'),expr(f'setpvar[mm_timed_{z},1]'),expr(f'setpvar[mm_cap_pending_{z},1]'),expr('maraenavrestore[]'),expr('if[getpvar[pt_cache_pickup_held]==1,rasetsetting[`LootChestsMacroOff`,getpvar[pt_cache_old_pickup]]]'),expr('setpvar[pt_cache_pickup_held,0]'),'Chat {/ub clearmotion}','SetOpt {EnableNav} {False}','SetOpt {EnableCombat} {True}','SetOpt {EnableBuffing} {True}','SetOpt {EnableLooting} {True}',expr('setvar[tm_map_id,0]'),expr('setpvar[tm_dig_active,0]'),expr('setvar[pt_turnin,1]'),expr('setvar[ml_status,`Two-hour camp limit reached; returning for completed rewards`]'),'SetState {'+p+'GET_TO}']))
   # In-progress replies are expected on a partial turn-in, not an NPC failure.
   wait=states[p+'TURNIN_WAIT'];pos=wait.index('\tIF: Expr {getvar[pt_npc_end]==1')
@@ -46,3 +46,8 @@ def apply(states,state,action,expr):
   if n in ('Default','DISPATCH','HOLD','STOP_CLEANUP','MISSION_ERROR','MAP_FALLBACK_180') or n.endswith('_Default') or n.startswith(('AREA_','CONTINUOUS_','BUDGET_')) or 'DEATH' in n or 'BUDGET' in n:continue
   pos=b.index('\tIF:')
   states[n]=b[:pos]+'\tIF: Death\n\t\tDO: SetState {MAP_DEATH}\n\tIF: Expr {'+condition+'}\n\t\tDO: SetState {BUDGET_EXPIRED}\n'+b[pos:]
+
+ # Fallback requires every selected task area to be resolved, never just fall-through.
+ resolved=' && '.join(f'(getvar[ml_area_{z}]!=1 || getvar[ml_hunt_only_{z}]==1 || getpvar[mm_area_{z}]==1 || getpvar[mm_attempted_{z}]==1 || (getpvar[mm_camp_limit]==1 && getpvar[mm_timed_{z}]==1))' for z in (180,225,275))
+ for condition in ('getpvar[mm_camp_limit]==1','getpvar[mm_fallback_180]!=0'):
+  states['DISPATCH']=states['DISPATCH'].replace('IF: Expr {'+condition+'}', 'IF: Expr {('+resolved+') && '+condition+'}')

@@ -75,6 +75,9 @@ ns=183*.8+156.236633/240-101.95;ew=33*.8+113.813011/240-101.95;zz=92.934402/240
 for z,name in ((180,'Southern Hamlet Hunters (Rec Lvl 180)'),(225,"Northern Hunters' Camp (Rec Lvl 225)")):
  navs['Hub_to_'+str(z)]=['uTank2 NAV 1.2','4','2','0',str(ew),str(ns),str(zz),'0','6',str(ew),str(ns),str(zz),'0',name,'14','False',str(ew),str(ns),str(zz)]
 # Carry forward the already-tested acknowledged optional-currency collector.
+# Quote legacy echo messages: this engine evaluates echo's first argument.
+for n,b in list(states.items()):
+ states[n]=re.sub(r'echo\[([^`\[\]\n]+)\]',lambda m:'echo[`'+m[1]+'`]',b)
 v3=(root/'metas/plateau-treasure-verified-v3/275 Plateau Treasure - Verified.af').read_text()
 v3states={re.search(r'STATE: \{([^}]+)\}',b)[1]:b for b in re.split(r'(?=^STATE:)',v3,flags=re.M) if b.strip()}
 for name in ('CACHE_PREP','CACHE_SEARCH','CACHE_PICKUP','CACHE_CONFIRM','CACHE_SETTLE'):

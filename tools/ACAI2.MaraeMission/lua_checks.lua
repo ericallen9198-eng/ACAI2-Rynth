@@ -76,7 +76,7 @@ step(25);check(sim.walks==walks+1,'same movement generation does not replace the
 click('Stop run');step(3)
 check(sim.route=='saved hunt route' and not ai.MacroRunning,'Stop restores hunt route without resuming macro')
 step(25)
-sim.toggle='##huntOnly180';sim.render()
+sim.toggle='Hunt only##huntOnly180';sim.render()
 check(sim.stores.A.mission_options_v1.huntOnly[1]==true,'per-area hunt-only choice is saved for this character')
 click('Resume run');step(40)
 check(sim.pvars.ml_hunt_only_180==1 and sim.pvars.ml_maps_180==0,'hunt-only preference does not force maps on')

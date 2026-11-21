@@ -44,7 +44,7 @@ def apply(states,keys,state,action,expr):
     line=m[0]
     for k in keys[z]:
      active=f'(getvar[pt_pickup_{k}]==1 && getvar[pt_unavailable_{k}]!=1 && getpvar[mm_{z}_done_{k}]!=1)'
-     line=line.replace(f'getpvar[mm_{z}_done_{k}]==1','!'+active).replace(f'getpvar[mm_{z}_done_{k}]==0',active)
+     line=line.replace(f'getpvar[mm_{z}_done_{k}]==1','('+active+'==0)').replace(f'getpvar[mm_{z}_done_{k}]==0',active)
     return line
    states[n]=re.sub(r'^\tIF: Expr \{[^\n]+',eligibility,states[n],flags=re.M)
   states['DISPATCH']=states['DISPATCH'].replace(f'getpvar[mm_area_{z}]!=1 &&',f'getpvar[mm_area_{z}]!=1 && getpvar[mm_attempted_{z}]!=1 &&')

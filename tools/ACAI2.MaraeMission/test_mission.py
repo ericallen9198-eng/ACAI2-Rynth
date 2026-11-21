@@ -12,6 +12,9 @@ class World(BaseWorld):
   self.v.update(ml_run_mode=1,ml_area_180=1,ml_area_225=1,ml_area_275=1,tm_cache_preexisting=[],tm_cache_anchor=0)
   self.caches={1:{'distance':0,'openable':True},2:{'distance':0,'openable':True}}
   self.p.update(ml_run_mode=1,ml_area_180=1,ml_area_225=1,ml_area_275=1,ml_maps_180=0,ml_maps_225=1,ml_maps_275=1)
+ def eval(self,s,scope=None):
+  assert not re.search(r'!(?!=)',s), "Unsupported native unary NOT: "+s
+  return super().eval(s,scope)
  def ev(self,t,scope):
   if t[0]=='call':
    if t[1]=='maraerecoverybusy':return int(self.busy)
@@ -42,8 +45,9 @@ class World(BaseWorld):
     for coord in coords:
      if isinstance(coord,str) and coord.startswith('cache:'):return self.caches.get(int(coord.split(':')[1]),{}).get('distance',0)
     return getattr(self,'digDistance',0)
-   if f=='actiontrymove':
+   if f in ('actiontrymove','maraecachepickup'):
     a=[self.ev(x,scope) for x in t[2]]
+    if f=='maraecachepickup':a += [999,0,self.v.get('tm_cache_stackmode',0)]
     assert self.open==self.v['tm_cache_id'] and self.open in self.caches
     assert int(a[0]) in self.container(self.open) and a[1:3]==[999,0]
     self.moves.append(tuple(a));return self.dispatch
@@ -341,3 +345,9 @@ for far,near,expectedFar,expectedNear in ((1,1,60,10),(999,999,180,60),(120,30,1
  w=World();w.p.update(ml_mesh_maps=1,mm_mesh_far=far,mm_mesh_close=near)
  s=Sim(w,'FAR_NORTH');s.until('MAP_MESH_WAIT');check(w.v['tm_mesh_step']==expectedFar,'far travel respects 60-180 range')
  s.state='CLOSE_NORTH';s.fired.clear();s.until('MAP_MESH_WAIT');check(w.v['tm_mesh_step']==expectedNear,'close travel respects 10-60 range')
+
+# Exact reported live flags must enter task NPC flow, not Lowlands fallback.
+w=World(0x14B5002F);w.v.update(ml_area_180=1,ml_area_225=0,ml_area_275=0,ml_hunt_only_180=0,ml_maps_180=1)
+w.p.update(mm_camp_limit=1,mm_fallback_180=1,ml_hunt_only_180=0,ml_maps_180=1,mm_area_180=0,mm_attempted_180=0,mm_timed_180=0)
+s=Sim(w,'DISPATCH');s.until('T180_NPC_TALK_WAIT')
+check(w.v.get('mm_budget_fallback',0)!=1 and w.v['ml_hunt_only']==0 and w.v['ml_use_maps']==1,'reported live flags start NPC tasks plus maps, not continuous fallback')

@@ -60,21 +60,21 @@ STATE: {DISPATCH} ~~ {
 				DoExpr {setvar[ml_zone,275]}
 				DoExpr {setvar[ml_use_maps,0]}
 				SetState {T275_Default}
-	IF: Expr {getvar[ml_hunt_only_180]!=1 && !(getpvar[mm_camp_limit]==1 && getpvar[mm_timed_180]==1) && getpvar[mm_area_180]!=1 && getpvar[mm_attempted_180]!=1 && getvar[ml_area_180]==1}
+	IF: Expr {getvar[ml_hunt_only_180]!=1 && (getpvar[mm_camp_limit]!=1 || getpvar[mm_timed_180]!=1) && getpvar[mm_area_180]!=1 && getpvar[mm_attempted_180]!=1 && getvar[ml_area_180]==1}
 		DO: DoAll
 				DoExpr {setvar[ml_zone,180]}
 				DoExpr {setvar[ml_fship_attempted,0]}
 				DoExpr {setvar[ml_use_maps,getvar[ml_run_mode]==2 || getvar[ml_maps_180]==1]}
 				DoExpr {setvar[ml_status,`Traveling to camp`]}
 				SetState {T180_Default}
-	IF: Expr {getvar[ml_hunt_only_225]!=1 && !(getpvar[mm_camp_limit]==1 && getpvar[mm_timed_225]==1) && getpvar[mm_area_225]!=1 && getpvar[mm_attempted_225]!=1 && getvar[ml_area_225]==1}
+	IF: Expr {getvar[ml_hunt_only_225]!=1 && (getpvar[mm_camp_limit]!=1 || getpvar[mm_timed_225]!=1) && getpvar[mm_area_225]!=1 && getpvar[mm_attempted_225]!=1 && getvar[ml_area_225]==1}
 		DO: DoAll
 				DoExpr {setvar[ml_zone,225]}
 				DoExpr {setvar[ml_fship_attempted,0]}
 				DoExpr {setvar[ml_use_maps,getvar[ml_run_mode]==2 || getvar[ml_maps_225]==1]}
 				DoExpr {setvar[ml_status,`Traveling to camp`]}
 				SetState {T225_Default}
-	IF: Expr {getvar[ml_hunt_only_275]!=1 && !(getpvar[mm_camp_limit]==1 && getpvar[mm_timed_275]==1) && getpvar[mm_area_275]!=1 && getpvar[mm_attempted_275]!=1 && getvar[ml_area_275]==1}
+	IF: Expr {getvar[ml_hunt_only_275]!=1 && (getpvar[mm_camp_limit]!=1 || getpvar[mm_timed_275]!=1) && getpvar[mm_area_275]!=1 && getpvar[mm_attempted_275]!=1 && getvar[ml_area_275]==1}
 		DO: DoAll
 				DoExpr {setvar[ml_zone,275]}
 				DoExpr {setvar[ml_fship_attempted,0]}
@@ -117,9 +117,9 @@ STATE: {DISPATCH} ~~ {
 				DoExpr {setvar[ml_use_maps,getvar[ml_maps_275]]}
 				DoExpr {setvar[ml_status,`Traveling to the next continuous hunting area`]}
 				SetState {T275_Default}
-	IF: Expr {getpvar[mm_camp_limit]==1}
+	IF: Expr {((getvar[ml_area_180]!=1 || getvar[ml_hunt_only_180]==1 || getpvar[mm_area_180]==1 || getpvar[mm_attempted_180]==1 || (getpvar[mm_camp_limit]==1 && getpvar[mm_timed_180]==1)) && (getvar[ml_area_225]!=1 || getvar[ml_hunt_only_225]==1 || getpvar[mm_area_225]==1 || getpvar[mm_attempted_225]==1 || (getpvar[mm_camp_limit]==1 && getpvar[mm_timed_225]==1)) && (getvar[ml_area_275]!=1 || getvar[ml_hunt_only_275]==1 || getpvar[mm_area_275]==1 || getpvar[mm_attempted_275]==1 || (getpvar[mm_camp_limit]==1 && getpvar[mm_timed_275]==1))) && getpvar[mm_camp_limit]==1}
 		DO: SetState {BUDGET_LOWLANDS}
-	IF: Expr {getpvar[mm_fallback_180]!=0}
+	IF: Expr {((getvar[ml_area_180]!=1 || getvar[ml_hunt_only_180]==1 || getpvar[mm_area_180]==1 || getpvar[mm_attempted_180]==1 || (getpvar[mm_camp_limit]==1 && getpvar[mm_timed_180]==1)) && (getvar[ml_area_225]!=1 || getvar[ml_hunt_only_225]==1 || getpvar[mm_area_225]==1 || getpvar[mm_attempted_225]==1 || (getpvar[mm_camp_limit]==1 && getpvar[mm_timed_225]==1)) && (getvar[ml_area_275]!=1 || getvar[ml_hunt_only_275]==1 || getpvar[mm_area_275]==1 || getpvar[mm_attempted_275]==1 || (getpvar[mm_camp_limit]==1 && getpvar[mm_timed_275]==1))) && getpvar[mm_fallback_180]!=0}
 		DO: SetState {MAP_FALLBACK_180}
 	IF: Always
 		DO: DoAll
@@ -1413,7 +1413,7 @@ STATE: {T180_HUNT} ~~ {
 		DO: DoExpr {setvar[pt_last_progress,getunixtime[]]}
 	IF: ChatMatch {^You have killed \d+ Aun Runner(?:s|es)?! You must kill 50 to complete your task\.}
 		DO: DoExpr {setvar[pt_last_progress,getunixtime[]]}
-	IF: Expr {!(getvar[pt_pickup_0]==1 && getvar[pt_unavailable_0]!=1 && getpvar[mm_180_done_0]!=1) && !(getvar[pt_pickup_1]==1 && getvar[pt_unavailable_1]!=1 && getpvar[mm_180_done_1]!=1) && !(getvar[pt_pickup_2]==1 && getvar[pt_unavailable_2]!=1 && getpvar[mm_180_done_2]!=1) && !(getvar[pt_pickup_3]==1 && getvar[pt_unavailable_3]!=1 && getpvar[mm_180_done_3]!=1) && !(getvar[pt_pickup_4]==1 && getvar[pt_unavailable_4]!=1 && getpvar[mm_180_done_4]!=1) && !(getvar[pt_pickup_5]==1 && getvar[pt_unavailable_5]!=1 && getpvar[mm_180_done_5]!=1) && !(getvar[pt_pickup_6]==1 && getvar[pt_unavailable_6]!=1 && getpvar[mm_180_done_6]!=1) && !(getvar[pt_pickup_7]==1 && getvar[pt_unavailable_7]!=1 && getpvar[mm_180_done_7]!=1) && !(getvar[pt_pickup_8]==1 && getvar[pt_unavailable_8]!=1 && getpvar[mm_180_done_8]!=1)}
+	IF: Expr {((getvar[pt_pickup_0]==1 && getvar[pt_unavailable_0]!=1 && getpvar[mm_180_done_0]!=1)==0) && ((getvar[pt_pickup_1]==1 && getvar[pt_unavailable_1]!=1 && getpvar[mm_180_done_1]!=1)==0) && ((getvar[pt_pickup_2]==1 && getvar[pt_unavailable_2]!=1 && getpvar[mm_180_done_2]!=1)==0) && ((getvar[pt_pickup_3]==1 && getvar[pt_unavailable_3]!=1 && getpvar[mm_180_done_3]!=1)==0) && ((getvar[pt_pickup_4]==1 && getvar[pt_unavailable_4]!=1 && getpvar[mm_180_done_4]!=1)==0) && ((getvar[pt_pickup_5]==1 && getvar[pt_unavailable_5]!=1 && getpvar[mm_180_done_5]!=1)==0) && ((getvar[pt_pickup_6]==1 && getvar[pt_unavailable_6]!=1 && getpvar[mm_180_done_6]!=1)==0) && ((getvar[pt_pickup_7]==1 && getvar[pt_unavailable_7]!=1 && getpvar[mm_180_done_7]!=1)==0) && ((getvar[pt_pickup_8]==1 && getvar[pt_unavailable_8]!=1 && getpvar[mm_180_done_8]!=1)==0)}
 		DO: DoAll
 				DoExpr {setvar[pt_turnin,1]}
 				SetState {T180_GET_TO}
@@ -3052,7 +3052,7 @@ STATE: {T225_HUNT} ~~ {
 		DO: DoExpr {setvar[pt_last_progress,getunixtime[]]}
 	IF: ChatMatch {^You have killed \d+ Olthoi Soldier(?:s|es)?! You must kill 50 to complete your task\.}
 		DO: DoExpr {setvar[pt_last_progress,getunixtime[]]}
-	IF: Expr {!(getvar[pt_pickup_0]==1 && getvar[pt_unavailable_0]!=1 && getpvar[mm_225_done_0]!=1) && !(getvar[pt_pickup_1]==1 && getvar[pt_unavailable_1]!=1 && getpvar[mm_225_done_1]!=1) && !(getvar[pt_pickup_2]==1 && getvar[pt_unavailable_2]!=1 && getpvar[mm_225_done_2]!=1) && !(getvar[pt_pickup_3]==1 && getvar[pt_unavailable_3]!=1 && getpvar[mm_225_done_3]!=1) && !(getvar[pt_pickup_4]==1 && getvar[pt_unavailable_4]!=1 && getpvar[mm_225_done_4]!=1) && !(getvar[pt_pickup_5]==1 && getvar[pt_unavailable_5]!=1 && getpvar[mm_225_done_5]!=1) && !(getvar[pt_pickup_6]==1 && getvar[pt_unavailable_6]!=1 && getpvar[mm_225_done_6]!=1) && !(getvar[pt_pickup_7]==1 && getvar[pt_unavailable_7]!=1 && getpvar[mm_225_done_7]!=1) && !(getvar[pt_pickup_8]==1 && getvar[pt_unavailable_8]!=1 && getpvar[mm_225_done_8]!=1) && !(getvar[pt_pickup_9]==1 && getvar[pt_unavailable_9]!=1 && getpvar[mm_225_done_9]!=1)}
+	IF: Expr {((getvar[pt_pickup_0]==1 && getvar[pt_unavailable_0]!=1 && getpvar[mm_225_done_0]!=1)==0) && ((getvar[pt_pickup_1]==1 && getvar[pt_unavailable_1]!=1 && getpvar[mm_225_done_1]!=1)==0) && ((getvar[pt_pickup_2]==1 && getvar[pt_unavailable_2]!=1 && getpvar[mm_225_done_2]!=1)==0) && ((getvar[pt_pickup_3]==1 && getvar[pt_unavailable_3]!=1 && getpvar[mm_225_done_3]!=1)==0) && ((getvar[pt_pickup_4]==1 && getvar[pt_unavailable_4]!=1 && getpvar[mm_225_done_4]!=1)==0) && ((getvar[pt_pickup_5]==1 && getvar[pt_unavailable_5]!=1 && getpvar[mm_225_done_5]!=1)==0) && ((getvar[pt_pickup_6]==1 && getvar[pt_unavailable_6]!=1 && getpvar[mm_225_done_6]!=1)==0) && ((getvar[pt_pickup_7]==1 && getvar[pt_unavailable_7]!=1 && getpvar[mm_225_done_7]!=1)==0) && ((getvar[pt_pickup_8]==1 && getvar[pt_unavailable_8]!=1 && getpvar[mm_225_done_8]!=1)==0) && ((getvar[pt_pickup_9]==1 && getvar[pt_unavailable_9]!=1 && getpvar[mm_225_done_9]!=1)==0)}
 		DO: DoAll
 				DoExpr {setvar[pt_turnin,1]}
 				SetState {T225_GET_TO}
@@ -4423,7 +4423,7 @@ STATE: {T275_NPC_TALK_WAIT} ~~ {
 				DoExpr {setvar[pt_unavailable_olthoi,1]}
 	IF: Expr {getvar[pt_npc_end]==1 && getvar[pt_unavailable_zefir]==1 && getvar[pt_unavailable_ursuin]==1 && getvar[pt_unavailable_golem]==1 && getvar[pt_unavailable_gromnie]==1 && getvar[pt_unavailable_siraluun]==1 && getvar[pt_unavailable_carenzi]==1 && getvar[pt_unavailable_virindi]==1 && getvar[pt_unavailable_olthoi]==1}
 		DO: DoAll
-				DoExpr {echo[Plateau Treasure: all eight hunts are on cooldown or already rewarded.]}
+				DoExpr {echo[`Plateau Treasure: all eight hunts are on cooldown or already rewarded.`]}
 				SetState {AREA_COOLDOWN}
 	IF: Expr {getvar[pt_pickup_zefir]==1 && getvar[pt_pickup_ursuin]==1 && getvar[pt_pickup_golem]==1 && getvar[pt_pickup_gromnie]==1 && getvar[pt_pickup_siraluun]==1 && getvar[pt_pickup_carenzi]==1 && getvar[pt_pickup_virindi]==1 && getvar[pt_pickup_olthoi]==1 && getvar[pt_npc_end]==1}
 		DO: SetState {T275_HUNT_INIT}
@@ -4502,7 +4502,7 @@ STATE: {T275_HUNT_INIT} ~~ {
 		DO: SetState {BUDGET_EXPIRED}
 	IF: Death
 		DO: SetState {T275_DEATH_RECOVERY}
-	IF: Expr {!(getvar[pt_pickup_golem]==1 && getvar[pt_unavailable_golem]!=1 && getpvar[mm_275_done_golem]!=1) && !(getvar[pt_pickup_siraluun]==1 && getvar[pt_unavailable_siraluun]!=1 && getpvar[mm_275_done_siraluun]!=1) && !(getvar[pt_pickup_virindi]==1 && getvar[pt_unavailable_virindi]!=1 && getpvar[mm_275_done_virindi]!=1) && !(getvar[pt_pickup_olthoi]==1 && getvar[pt_unavailable_olthoi]!=1 && getpvar[mm_275_done_olthoi]!=1) && !(getvar[pt_pickup_gromnie]==1 && getvar[pt_unavailable_gromnie]!=1 && getpvar[mm_275_done_gromnie]!=1) && !(getvar[pt_pickup_zefir]==1 && getvar[pt_unavailable_zefir]!=1 && getpvar[mm_275_done_zefir]!=1) && !(getvar[pt_pickup_ursuin]==1 && getvar[pt_unavailable_ursuin]!=1 && getpvar[mm_275_done_ursuin]!=1) && !(getvar[pt_pickup_carenzi]==1 && getvar[pt_unavailable_carenzi]!=1 && getpvar[mm_275_done_carenzi]!=1)}
+	IF: Expr {((getvar[pt_pickup_golem]==1 && getvar[pt_unavailable_golem]!=1 && getpvar[mm_275_done_golem]!=1)==0) && ((getvar[pt_pickup_siraluun]==1 && getvar[pt_unavailable_siraluun]!=1 && getpvar[mm_275_done_siraluun]!=1)==0) && ((getvar[pt_pickup_virindi]==1 && getvar[pt_unavailable_virindi]!=1 && getpvar[mm_275_done_virindi]!=1)==0) && ((getvar[pt_pickup_olthoi]==1 && getvar[pt_unavailable_olthoi]!=1 && getpvar[mm_275_done_olthoi]!=1)==0) && ((getvar[pt_pickup_gromnie]==1 && getvar[pt_unavailable_gromnie]!=1 && getpvar[mm_275_done_gromnie]!=1)==0) && ((getvar[pt_pickup_zefir]==1 && getvar[pt_unavailable_zefir]!=1 && getpvar[mm_275_done_zefir]!=1)==0) && ((getvar[pt_pickup_ursuin]==1 && getvar[pt_unavailable_ursuin]!=1 && getpvar[mm_275_done_ursuin]!=1)==0) && ((getvar[pt_pickup_carenzi]==1 && getvar[pt_unavailable_carenzi]!=1 && getpvar[mm_275_done_carenzi]!=1)==0)}
 		DO: SetState {T275_TURNIN_START}
 	IF: Expr {getvar[pt_region]==0 && ((getvar[pt_pickup_golem]==1 && getvar[pt_unavailable_golem]!=1 && getpvar[mm_275_done_golem]!=1) || (getvar[pt_pickup_siraluun]==1 && getvar[pt_unavailable_siraluun]!=1 && getpvar[mm_275_done_siraluun]!=1) || (getvar[pt_pickup_virindi]==1 && getvar[pt_unavailable_virindi]!=1 && getpvar[mm_275_done_virindi]!=1))}
 		DO: SetState {T275_CAMP_EAST}
@@ -5349,7 +5349,7 @@ STATE: {T275_TURNIN_WAIT} ~~ {
 		DO: SetState {T275_BUDGET_SETTLE}
 	IF: Expr {getvar[pt_npc_end]==1 && getvar[pt_unavailable_zefir]==1 && getvar[pt_unavailable_ursuin]==1 && getvar[pt_unavailable_golem]==1 && getvar[pt_unavailable_gromnie]==1 && getvar[pt_unavailable_siraluun]==1 && getvar[pt_unavailable_carenzi]==1 && getvar[pt_unavailable_virindi]==1 && getvar[pt_unavailable_olthoi]==1}
 		DO: DoAll
-				DoExpr {echo[Plateau Treasure: all active hunt rewards confirmed.]}
+				DoExpr {echo[`Plateau Treasure: all active hunt rewards confirmed.`]}
 				SetState {AREA_DONE}
 	IF: Expr {getvar[pt_npc_end]==1 && getvar[mm_npc_retry]==0}
 		DO: SetState {T275_TURNIN_RETRY}
@@ -5531,19 +5531,19 @@ STATE: {T275_HUNT} ~~ {
 		DO: DoExpr {setvar[pt_last_progress,getunixtime[]]}
 	IF: ChatMatch {^You have killed \d+ Olthoi\ Hive\ Guardians?! You must kill 20 to complete your task\.}
 		DO: DoExpr {setvar[pt_last_progress,getunixtime[]]}
-	IF: Expr {!(getvar[pt_pickup_golem]==1 && getvar[pt_unavailable_golem]!=1 && getpvar[mm_275_done_golem]!=1) && !(getvar[pt_pickup_siraluun]==1 && getvar[pt_unavailable_siraluun]!=1 && getpvar[mm_275_done_siraluun]!=1) && !(getvar[pt_pickup_virindi]==1 && getvar[pt_unavailable_virindi]!=1 && getpvar[mm_275_done_virindi]!=1) && !(getvar[pt_pickup_olthoi]==1 && getvar[pt_unavailable_olthoi]!=1 && getpvar[mm_275_done_olthoi]!=1) && !(getvar[pt_pickup_gromnie]==1 && getvar[pt_unavailable_gromnie]!=1 && getpvar[mm_275_done_gromnie]!=1) && !(getvar[pt_pickup_zefir]==1 && getvar[pt_unavailable_zefir]!=1 && getpvar[mm_275_done_zefir]!=1) && !(getvar[pt_pickup_ursuin]==1 && getvar[pt_unavailable_ursuin]!=1 && getpvar[mm_275_done_ursuin]!=1) && !(getvar[pt_pickup_carenzi]==1 && getvar[pt_unavailable_carenzi]!=1 && getpvar[mm_275_done_carenzi]!=1)}
+	IF: Expr {((getvar[pt_pickup_golem]==1 && getvar[pt_unavailable_golem]!=1 && getpvar[mm_275_done_golem]!=1)==0) && ((getvar[pt_pickup_siraluun]==1 && getvar[pt_unavailable_siraluun]!=1 && getpvar[mm_275_done_siraluun]!=1)==0) && ((getvar[pt_pickup_virindi]==1 && getvar[pt_unavailable_virindi]!=1 && getpvar[mm_275_done_virindi]!=1)==0) && ((getvar[pt_pickup_olthoi]==1 && getvar[pt_unavailable_olthoi]!=1 && getpvar[mm_275_done_olthoi]!=1)==0) && ((getvar[pt_pickup_gromnie]==1 && getvar[pt_unavailable_gromnie]!=1 && getpvar[mm_275_done_gromnie]!=1)==0) && ((getvar[pt_pickup_zefir]==1 && getvar[pt_unavailable_zefir]!=1 && getpvar[mm_275_done_zefir]!=1)==0) && ((getvar[pt_pickup_ursuin]==1 && getvar[pt_unavailable_ursuin]!=1 && getpvar[mm_275_done_ursuin]!=1)==0) && ((getvar[pt_pickup_carenzi]==1 && getvar[pt_unavailable_carenzi]!=1 && getpvar[mm_275_done_carenzi]!=1)==0)}
 		DO: DoAll
 				SetOpt {AttackDistance} {0.0416666666666667}
 				SetState {T275_HUNT_INIT}
-	IF: Expr {getvar[pt_region]==1 && !(getvar[pt_pickup_golem]==1 && getvar[pt_unavailable_golem]!=1 && getpvar[mm_275_done_golem]!=1) && !(getvar[pt_pickup_siraluun]==1 && getvar[pt_unavailable_siraluun]!=1 && getpvar[mm_275_done_siraluun]!=1) && !(getvar[pt_pickup_virindi]==1 && getvar[pt_unavailable_virindi]!=1 && getpvar[mm_275_done_virindi]!=1)}
+	IF: Expr {getvar[pt_region]==1 && ((getvar[pt_pickup_golem]==1 && getvar[pt_unavailable_golem]!=1 && getpvar[mm_275_done_golem]!=1)==0) && ((getvar[pt_pickup_siraluun]==1 && getvar[pt_unavailable_siraluun]!=1 && getpvar[mm_275_done_siraluun]!=1)==0) && ((getvar[pt_pickup_virindi]==1 && getvar[pt_unavailable_virindi]!=1 && getpvar[mm_275_done_virindi]!=1)==0)}
 		DO: DoAll
 				SetOpt {AttackDistance} {0.0416666666666667}
 				SetState {T275_HUNT_INIT}
-	IF: Expr {getvar[pt_region]==2 && !(getvar[pt_pickup_olthoi]==1 && getvar[pt_unavailable_olthoi]!=1 && getpvar[mm_275_done_olthoi]!=1)}
+	IF: Expr {getvar[pt_region]==2 && ((getvar[pt_pickup_olthoi]==1 && getvar[pt_unavailable_olthoi]!=1 && getpvar[mm_275_done_olthoi]!=1)==0)}
 		DO: DoAll
 				SetOpt {AttackDistance} {0.0416666666666667}
 				SetState {T275_HUNT_INIT}
-	IF: Expr {getvar[pt_region]==3 && !(getvar[pt_pickup_gromnie]==1 && getvar[pt_unavailable_gromnie]!=1 && getpvar[mm_275_done_gromnie]!=1) && !(getvar[pt_pickup_zefir]==1 && getvar[pt_unavailable_zefir]!=1 && getpvar[mm_275_done_zefir]!=1) && !(getvar[pt_pickup_ursuin]==1 && getvar[pt_unavailable_ursuin]!=1 && getpvar[mm_275_done_ursuin]!=1) && !(getvar[pt_pickup_carenzi]==1 && getvar[pt_unavailable_carenzi]!=1 && getpvar[mm_275_done_carenzi]!=1)}
+	IF: Expr {getvar[pt_region]==3 && ((getvar[pt_pickup_gromnie]==1 && getvar[pt_unavailable_gromnie]!=1 && getpvar[mm_275_done_gromnie]!=1)==0) && ((getvar[pt_pickup_zefir]==1 && getvar[pt_unavailable_zefir]!=1 && getpvar[mm_275_done_zefir]!=1)==0) && ((getvar[pt_pickup_ursuin]==1 && getvar[pt_unavailable_ursuin]!=1 && getpvar[mm_275_done_ursuin]!=1)==0) && ((getvar[pt_pickup_carenzi]==1 && getvar[pt_unavailable_carenzi]!=1 && getpvar[mm_275_done_carenzi]!=1)==0)}
 		DO: DoAll
 				SetOpt {AttackDistance} {0.0416666666666667}
 				SetState {T275_HUNT_INIT}
@@ -7535,7 +7535,7 @@ STATE: {FAR_NORTH} ~~ {
 	IF: Expr {getpvar[ml_mesh_maps]==1}
 		DO: DoAll
 				DoExpr {setvar[tm_mesh_heading,0]}
-				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_far]>0,max[60,min[180,getpvar[mm_mesh_far]]],60]]}
+				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_far]>0,iif[getpvar[mm_mesh_far]<60,60,iif[getpvar[mm_mesh_far]>180,180,getpvar[mm_mesh_far]]],60]]}
 				SetState {MAP_MESH_PREP}
 	IF:	Always
 		DO:	DoAll
@@ -7727,7 +7727,7 @@ STATE: {FAR_NORTHEAST} ~~ {
 	IF: Expr {getpvar[ml_mesh_maps]==1}
 		DO: DoAll
 				DoExpr {setvar[tm_mesh_heading,45]}
-				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_far]>0,max[60,min[180,getpvar[mm_mesh_far]]],60]]}
+				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_far]>0,iif[getpvar[mm_mesh_far]<60,60,iif[getpvar[mm_mesh_far]>180,180,getpvar[mm_mesh_far]]],60]]}
 				SetState {MAP_MESH_PREP}
 	IF:	Always
 		DO:	DoAll
@@ -7919,7 +7919,7 @@ STATE: {FAR_EAST} ~~ {
 	IF: Expr {getpvar[ml_mesh_maps]==1}
 		DO: DoAll
 				DoExpr {setvar[tm_mesh_heading,90]}
-				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_far]>0,max[60,min[180,getpvar[mm_mesh_far]]],60]]}
+				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_far]>0,iif[getpvar[mm_mesh_far]<60,60,iif[getpvar[mm_mesh_far]>180,180,getpvar[mm_mesh_far]]],60]]}
 				SetState {MAP_MESH_PREP}
 	IF:	Always
 		DO:	DoAll
@@ -8111,7 +8111,7 @@ STATE: {FAR_SOUTHEAST} ~~ {
 	IF: Expr {getpvar[ml_mesh_maps]==1}
 		DO: DoAll
 				DoExpr {setvar[tm_mesh_heading,135]}
-				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_far]>0,max[60,min[180,getpvar[mm_mesh_far]]],60]]}
+				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_far]>0,iif[getpvar[mm_mesh_far]<60,60,iif[getpvar[mm_mesh_far]>180,180,getpvar[mm_mesh_far]]],60]]}
 				SetState {MAP_MESH_PREP}
 	IF:	Always
 		DO:	DoAll
@@ -8303,7 +8303,7 @@ STATE: {FAR_SOUTH} ~~ {
 	IF: Expr {getpvar[ml_mesh_maps]==1}
 		DO: DoAll
 				DoExpr {setvar[tm_mesh_heading,180]}
-				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_far]>0,max[60,min[180,getpvar[mm_mesh_far]]],60]]}
+				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_far]>0,iif[getpvar[mm_mesh_far]<60,60,iif[getpvar[mm_mesh_far]>180,180,getpvar[mm_mesh_far]]],60]]}
 				SetState {MAP_MESH_PREP}
 	IF:	Always
 		DO:	DoAll
@@ -8495,7 +8495,7 @@ STATE: {FAR_SOUTHWEST} ~~ {
 	IF: Expr {getpvar[ml_mesh_maps]==1}
 		DO: DoAll
 				DoExpr {setvar[tm_mesh_heading,225]}
-				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_far]>0,max[60,min[180,getpvar[mm_mesh_far]]],60]]}
+				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_far]>0,iif[getpvar[mm_mesh_far]<60,60,iif[getpvar[mm_mesh_far]>180,180,getpvar[mm_mesh_far]]],60]]}
 				SetState {MAP_MESH_PREP}
 	IF:	Always
 		DO:	DoAll
@@ -8687,7 +8687,7 @@ STATE: {FAR_WEST} ~~ {
 	IF: Expr {getpvar[ml_mesh_maps]==1}
 		DO: DoAll
 				DoExpr {setvar[tm_mesh_heading,270]}
-				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_far]>0,max[60,min[180,getpvar[mm_mesh_far]]],60]]}
+				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_far]>0,iif[getpvar[mm_mesh_far]<60,60,iif[getpvar[mm_mesh_far]>180,180,getpvar[mm_mesh_far]]],60]]}
 				SetState {MAP_MESH_PREP}
 	IF:	Always
 		DO:	DoAll
@@ -8879,7 +8879,7 @@ STATE: {FAR_NORTHWEST} ~~ {
 	IF: Expr {getpvar[ml_mesh_maps]==1}
 		DO: DoAll
 				DoExpr {setvar[tm_mesh_heading,315]}
-				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_far]>0,max[60,min[180,getpvar[mm_mesh_far]]],60]]}
+				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_far]>0,iif[getpvar[mm_mesh_far]<60,60,iif[getpvar[mm_mesh_far]>180,180,getpvar[mm_mesh_far]]],60]]}
 				SetState {MAP_MESH_PREP}
 	IF:	Always
 		DO:	DoAll
@@ -9071,7 +9071,7 @@ STATE: {CLOSE_NORTH} ~~ {
 	IF: Expr {getpvar[ml_mesh_maps]==1}
 		DO: DoAll
 				DoExpr {setvar[tm_mesh_heading,0]}
-				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_close]>0,max[10,min[60,getpvar[mm_mesh_close]]],10]]}
+				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_close]>0,iif[getpvar[mm_mesh_close]<10,10,iif[getpvar[mm_mesh_close]>60,60,getpvar[mm_mesh_close]]],10]]}
 				SetState {MAP_MESH_PREP}
 	IF:	Always
 		DO:	DoAll
@@ -9263,7 +9263,7 @@ STATE: {CLOSE_NORTHEAST} ~~ {
 	IF: Expr {getpvar[ml_mesh_maps]==1}
 		DO: DoAll
 				DoExpr {setvar[tm_mesh_heading,45]}
-				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_close]>0,max[10,min[60,getpvar[mm_mesh_close]]],10]]}
+				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_close]>0,iif[getpvar[mm_mesh_close]<10,10,iif[getpvar[mm_mesh_close]>60,60,getpvar[mm_mesh_close]]],10]]}
 				SetState {MAP_MESH_PREP}
 	IF:	Always
 		DO:	DoAll
@@ -9455,7 +9455,7 @@ STATE: {CLOSE_EAST} ~~ {
 	IF: Expr {getpvar[ml_mesh_maps]==1}
 		DO: DoAll
 				DoExpr {setvar[tm_mesh_heading,90]}
-				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_close]>0,max[10,min[60,getpvar[mm_mesh_close]]],10]]}
+				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_close]>0,iif[getpvar[mm_mesh_close]<10,10,iif[getpvar[mm_mesh_close]>60,60,getpvar[mm_mesh_close]]],10]]}
 				SetState {MAP_MESH_PREP}
 	IF:	Always
 		DO:	DoAll
@@ -9647,7 +9647,7 @@ STATE: {CLOSE_SOUTHEAST} ~~ {
 	IF: Expr {getpvar[ml_mesh_maps]==1}
 		DO: DoAll
 				DoExpr {setvar[tm_mesh_heading,135]}
-				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_close]>0,max[10,min[60,getpvar[mm_mesh_close]]],10]]}
+				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_close]>0,iif[getpvar[mm_mesh_close]<10,10,iif[getpvar[mm_mesh_close]>60,60,getpvar[mm_mesh_close]]],10]]}
 				SetState {MAP_MESH_PREP}
 	IF:	Always
 		DO:	DoAll
@@ -9839,7 +9839,7 @@ STATE: {CLOSE_SOUTH} ~~ {
 	IF: Expr {getpvar[ml_mesh_maps]==1}
 		DO: DoAll
 				DoExpr {setvar[tm_mesh_heading,180]}
-				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_close]>0,max[10,min[60,getpvar[mm_mesh_close]]],10]]}
+				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_close]>0,iif[getpvar[mm_mesh_close]<10,10,iif[getpvar[mm_mesh_close]>60,60,getpvar[mm_mesh_close]]],10]]}
 				SetState {MAP_MESH_PREP}
 	IF:	Always
 		DO:	DoAll
@@ -10031,7 +10031,7 @@ STATE: {CLOSE_SOUTHWEST} ~~ {
 	IF: Expr {getpvar[ml_mesh_maps]==1}
 		DO: DoAll
 				DoExpr {setvar[tm_mesh_heading,225]}
-				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_close]>0,max[10,min[60,getpvar[mm_mesh_close]]],10]]}
+				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_close]>0,iif[getpvar[mm_mesh_close]<10,10,iif[getpvar[mm_mesh_close]>60,60,getpvar[mm_mesh_close]]],10]]}
 				SetState {MAP_MESH_PREP}
 	IF:	Always
 		DO:	DoAll
@@ -10223,7 +10223,7 @@ STATE: {CLOSE_WEST} ~~ {
 	IF: Expr {getpvar[ml_mesh_maps]==1}
 		DO: DoAll
 				DoExpr {setvar[tm_mesh_heading,270]}
-				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_close]>0,max[10,min[60,getpvar[mm_mesh_close]]],10]]}
+				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_close]>0,iif[getpvar[mm_mesh_close]<10,10,iif[getpvar[mm_mesh_close]>60,60,getpvar[mm_mesh_close]]],10]]}
 				SetState {MAP_MESH_PREP}
 	IF:	Always
 		DO:	DoAll
@@ -10415,7 +10415,7 @@ STATE: {CLOSE_NORTHWEST} ~~ {
 	IF: Expr {getpvar[ml_mesh_maps]==1}
 		DO: DoAll
 				DoExpr {setvar[tm_mesh_heading,315]}
-				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_close]>0,max[10,min[60,getpvar[mm_mesh_close]]],10]]}
+				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_close]>0,iif[getpvar[mm_mesh_close]<10,10,iif[getpvar[mm_mesh_close]>60,60,getpvar[mm_mesh_close]]],10]]}
 				SetState {MAP_MESH_PREP}
 	IF:	Always
 		DO:	DoAll
@@ -14764,7 +14764,7 @@ STATE: {CACHE_SEARCH} ~~ {
 		DO: DoAll
 				DoExpr {setvar[tm_cache_pending,wobjectgetid[listgetitem[listfilter[wobjectfindallbycontainer[wobjectgetopencontainer[]], `wobjectgetintprop[$1,218103808]==1004101 || wobjectgetobjectclass[$1]==15`],0]]]}
 				DoExpr {setvar[tm_cache_pending_template,wobjectgetintprop[wobjectfindbyid[getvar[tm_cache_pending]],218103808]]}
-				DoExpr {setvar[tm_cache_pending_amount,max[1,wobjectgetintprop[wobjectfindbyid[getvar[tm_cache_pending]],12]]]}
+				DoExpr {setvar[tm_cache_pending_amount,iif[wobjectgetintprop[wobjectfindbyid[getvar[tm_cache_pending]],12]>1,wobjectgetintprop[wobjectfindbyid[getvar[tm_cache_pending]],12],1]]}
 				DoExpr {setvar[tm_cache_before_count,getinventorycountbytemplatetype[getvar[tm_cache_pending_template]]]}
 				SetState {CACHE_PICKUP}
 	IF: Expr {wobjectgetname[wobjectgetopencontainer[]]==`Unearthed Cache` && getvar[tm_cache_id]!=0 && wobjectgetid[wobjectgetopencontainer[]]==getvar[tm_cache_id] && listcount[listfilter[wobjectfindallbycontainer[wobjectgetopencontainer[]], `wobjectgetintprop[$1,218103808]==1004101 || wobjectgetobjectclass[$1]==15`]]==0 && getvar[tm_cache_pickups]>0}
@@ -16389,7 +16389,7 @@ STATE: {CACHE_PICKUP} ~~ {
 	IF: Expr {wobjectgetname[wobjectgetopencontainer[]]==`Unearthed Cache` && getvar[tm_cache_id]!=0 && wobjectgetid[wobjectgetopencontainer[]]==getvar[tm_cache_id] && listcount[listfilter[wobjectfindallbycontainer[wobjectgetopencontainer[]], `wobjectgetid[$1]==getvar[tm_cache_pending]`]]>0}
 		DO: DoAll
 				DoExpr {setvar[ml_status,`Collecting currency from the opened cache`]}
-				DoExpr {setvar[tm_cache_sent,actiontrymove[wobjectfindbyid[getvar[tm_cache_pending]],wobjectgetplayer[],0,getvar[tm_cache_stackmode]]]}
+				DoExpr {setvar[tm_cache_sent,maraecachepickup[wobjectfindbyid[getvar[tm_cache_pending]]]]}
 				SetState {CACHE_CONFIRM}
 	IF: Always
 		DO: DoAll
@@ -16769,7 +16769,7 @@ STATE: {CACHE_SETTLE} ~~ {
 		DO: SetState {BUDGET_EXPIRED}
 	IF: Death
 		DO: SetState {MAP_DEATH}
-	IF: Expr {!(wobjectgetname[wobjectgetopencontainer[]]==`Unearthed Cache` && getvar[tm_cache_id]!=0 && wobjectgetid[wobjectgetopencontainer[]]==getvar[tm_cache_id]) || listcount[listfilter[wobjectfindallbycontainer[wobjectgetopencontainer[]], `wobjectgetintprop[$1,218103808]==1004101 || wobjectgetobjectclass[$1]==15`]]>0}
+	IF: Expr {(wobjectgetname[wobjectgetopencontainer[]]==`Unearthed Cache` && getvar[tm_cache_id]!=0 && wobjectgetid[wobjectgetopencontainer[]]==getvar[tm_cache_id])==0 || listcount[listfilter[wobjectfindallbycontainer[wobjectgetopencontainer[]], `wobjectgetintprop[$1,218103808]==1004101 || wobjectgetobjectclass[$1]==15`]]>0}
 		DO: DoAll
 				SetState {CACHE_SEARCH}
 	IF: SecsInStateGE 2
@@ -16971,7 +16971,7 @@ STATE: {CACHE_SCAN} ~~ {
 		DO: SetState {MISSION_ERROR}
 	IF: Always
 		DO: DoAll
-				DoExpr {setvar[tm_cache_candidates,listfilter[wobjectfindalllandscapebynamerx[`^Unearthed Cache$`],`!listcontains[getvar[tm_cache_tried],wobjectgetid[$1]]`]]}
+				DoExpr {setvar[tm_cache_candidates,listfilter[wobjectfindalllandscapebynamerx[`^Unearthed Cache$`],`listcontains[getvar[tm_cache_tried],wobjectgetid[$1]]==0`]]}
 				SetState {CACHE_CHOOSE}
 ~~ }
 
@@ -21485,7 +21485,7 @@ STATE: {MAP_MESH_RETRY} ~~ {
 				SetState {MISSION_ERROR}
 	IF: SecsInStateGE 2
 		DO: DoAll
-				DoExpr {setvar[tm_mesh_step,max[4,getvar[tm_mesh_step]/2]]}
+				DoExpr {setvar[tm_mesh_step,iif[getvar[tm_mesh_step]/2<4,4,getvar[tm_mesh_step]/2]]}
 				SetState {MAP_MESH_PREP}
 ~~ }
 

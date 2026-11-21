@@ -9,9 +9,10 @@ function require(k)return assert(modules[k],k)end
 game={World={OnChatText={Add=function(f)sim.chat=f end}},State='InGame',OnTick={Add=function(f)sim.tick=f end},RegisterCommand=function()end}
 function clock() return sim.time*1000 end
 function expr(s)
+ sim.exprSeen=sim.exprSeen or {};sim.exprSeen[s]=true
  sim.exprCalls=(sim.exprCalls or 0)+1
  if s=='getunixtime[]' then return math.floor(sim.time) end
- if s=='maraemissionapi[]' then return 5 end
+ if s=='maraemissionapi[]' then return 6 end
  if s:match('^maraemapwalk%[') then sim.meshWalks=(sim.meshWalks or 0)+1;return sim.meshFailure and 0 or 1 end
  if s=='maraenavsave[]' then sim.savedRoute=sim.savedRoute or sim.route;return 1 end
  if s=='maraenavmark[]' then return 1 end

@@ -1,0 +1,43 @@
+--- a/Plugins/RynthCore.Plugin.RynthAi/Meta/ExpressionEngine.cs
++++ b/Plugins/RynthCore.Plugin.RynthAi/Meta/ExpressionEngine.cs
+@@ -594,7 +594,8 @@
+             "rasetmetastate" or "vtsetmetastate" or "setmetastate" => EvalVtSetMetaState(Text(0)),
+             "ragetmetastate" or "vtgetmetastate" or "getmetastate" => _settings?.CurrentState ?? "",
+             // UB vtgetmeta[]: the loaded meta's name (file name without extension).
+-            "maraemissionapi" => "5",
++            "maraemissionapi" => "6",
++            "maraecachepickup" => EvalMaraeCachePickup(A(0)),
+             "maraemapwalk" => EvalMaraeMapWalk(A(0), A(1)),
+             "maraenavsave" => EvalMaraeNavSave(),
+             "maraenavrestore" => EvalMaraeNavRestore(),
+@@ -2805,6 +2806,30 @@
+         if (!_host.HasSelectItem) return "0";
+         RynthCore.Plugin.RynthAi.ItemInfo.SelfSelect.Mark(uid);
+         return _host.SelectItem(uid) ? "1" : "0";
++    }
++
++    // One acknowledged cache-currency move; this does not expose generic inventory moves.
++    private string EvalMaraeCachePickup(string arg)
++    {
++        if (_worldObjectCache == null || _playerId == 0 || !_host.HasGetGroundContainerId
++            || !_host.HasGetContainerContents || !_host.HasMoveItemExternal) return "0";
++        if (!TryParseWobjectHandle(arg, out uint item, out _) || item == 0) return "0";
++        if (_settings?.CurrentState != "CACHE_PICKUP"
++            || !_variables.TryGetValue("tm_cache_pending", out string? pending)
++            || !uint.TryParse(pending, out uint expectedItem) || item != expectedItem
++            || !_variables.TryGetValue("tm_cache_id", out string? bound)
++            || !uint.TryParse(bound, out uint cacheId) || cacheId == 0
++            || _host.GetGroundContainerId() != cacheId
++            || _worldObjectCache[unchecked((int)cacheId)]?.Name != "Unearthed Cache") return "0";
++        uint container = cacheId;
++        var wo = _worldObjectCache[unchecked((int)item)];
++        bool doubloon = _host.HasGetObjectWcid && _host.TryGetObjectWcid(item, out uint wcid) && wcid == 1004101;
++        if (!doubloon && (wo == null || (int)wo.ObjectClass != 15)) return "0";
++        uint[] contents = new uint[512];
++        int count = Math.Clamp(_host.GetContainerContents(container, contents), 0, contents.Length);
++        if (Array.IndexOf(contents, item, 0, count) < 0) return "0";
++        return RynthCore.Plugin.RynthAi.Loot.LootPickup.Send(_host, _worldObjectCache, item, _playerId, out _)
++            == RynthCore.Plugin.RynthAi.Loot.LootPickupResult.Moved ? "1" : "0";
+     }
+ 
+     private string EvalActionTryUseItem(string arg)

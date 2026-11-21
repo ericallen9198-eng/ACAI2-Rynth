@@ -1,6 +1,9 @@
 """Try local Unearthed Cache object IDs fairly; bind pickup only after an open acknowledgment."""
 
 def apply(states,state,action,expr):
+ states['CACHE_SEARCH']=states['CACHE_SEARCH'].replace('max[1,wobjectgetintprop[wobjectfindbyid[getvar[tm_cache_pending]],12]]','iif[wobjectgetintprop[wobjectfindbyid[getvar[tm_cache_pending]],12]>1,wobjectgetintprop[wobjectfindbyid[getvar[tm_cache_pending]],12],1]')
+ states['CACHE_PICKUP']=states['CACHE_PICKUP'].replace('actiontrymove[wobjectfindbyid[getvar[tm_cache_pending]],wobjectgetplayer[],0,getvar[tm_cache_stackmode]]','maraecachepickup[wobjectfindbyid[getvar[tm_cache_pending]]]')
+ states['CACHE_SETTLE']=states['CACHE_SETTLE'].replace('!(', '(').replace(') ||', ')==0 ||',1)
  typed='wobjectgetname[wobjectgetopencontainer[]]==`Unearthed Cache`'
  # If entering an already active encounter, don't exclude its already spawned reward.
  states['CACHE_PREP']=states['CACHE_PREP'].replace('DoExpr {setvar[tm_cache_id,0]}','\n\t\t\t\t'.join([expr('setvar[tm_cache_id,0]'),expr('if[getvar[tm_cache_anchor]==0,setvar[tm_cache_anchor,getplayercoordinates[]]]'),expr('setvar[tm_cache_tried,listcreate[]]'),expr('setvar[tm_cache_probe_id,0]'),expr('setvar[tm_cache_probe_until,0]'),expr('setvar[tm_cache_candidates,listcreate[]]')]))
@@ -14,7 +17,7 @@ def apply(states,state,action,expr):
  # A late corpse/direct payout needs no cache to exist; real inventory increase is still required.
  b=states['CACHE_SEARCH'];pos=b.index('\tIF: Expr {'+typed)
  b=b[:pos]+'\tIF: Expr {getpvar[tm_dig_active]==1 && getvar[tm_cache_id]==0 && getvar[tm_cache_pending]==0 && getinventorycountbytemplatetype[1004101]>getvar[tm_doubloon_before]}\n\t\tDO: SetState {CACHE_FINISH}\n'+b[pos:];states['CACHE_SEARCH']=b
- candidates='listfilter[wobjectfindalllandscapebynamerx[`^Unearthed Cache$`],`!listcontains[getvar[tm_cache_tried],wobjectgetid[$1]]`]'
+ candidates='listfilter[wobjectfindalllandscapebynamerx[`^Unearthed Cache$`],`listcontains[getvar[tm_cache_tried],wobjectgetid[$1]]==0`]'
  state('CACHE_SCAN',action([expr('setvar[tm_cache_candidates,'+candidates+']'),'SetState {CACHE_CHOOSE}']))
  state('CACHE_CHOOSE','\tIF: Expr {listcount[getvar[tm_cache_candidates]]>0}\n\t\tDO: SetState {CACHE_TRY_NEXT}\n'+action([expr('setvar[tm_cache_tried,listcreate[]]'),expr('setvar[tm_cache_retry_at,getunixtime[]+8]'),expr('setvar[ml_status,`Waiting for another local cache candidate`]'),'SetState {CACHE_SEARCH}']))
  state('CACHE_TRY_NEXT',action([expr('setvar[tm_cache_probe_id,wobjectgetid[listgetitem[getvar[tm_cache_candidates],0]]]'),expr('listadd[getvar[tm_cache_tried],getvar[tm_cache_probe_id]]'),expr('setvar[tm_cache_probe_until,getunixtime[]+8]'),expr('setvar[ml_status,`Trying the next local Unearthed Cache`]'),expr('actiontryuseitem[wobjectfindbyid[getvar[tm_cache_probe_id]]]'),'SetState {CACHE_SEARCH}']))
