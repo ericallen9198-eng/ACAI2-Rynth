@@ -58,7 +58,6 @@ void Rule(JsonElement r) {
 }
 foreach(var r in doc.RootElement.EnumerateArray())Rule(r);
 if(args.Length>3)foreach(string s in JsonSerializer.Deserialize<string[]>(File.ReadAllText(args[3]))!)Audit(s,"Lua controller");
-if(args.Length>3)foreach(var expression in JsonSerializer.Deserialize<string[]>(File.ReadAllText(args[3]))!)Audit(expression,"Lua controller");
 foreach(string f in failures)Console.Error.WriteLine(f);
 if(failures.Count>0)throw new Exception($"{failures.Count} parser audit failures");
 Console.WriteLine($"PASS: {count} actual-engine expression, argument and quoted-template syntax checks with execution disabled.");
@@ -76,7 +75,6 @@ if(Eval("listfilter[listcreate[1,2],`listcontains[listcreate[1],$1]==0`]")!="[2]
 if(Eval("maraecachepickup[1]")!="0")throw new Exception("Unbound cache pickup was not refused");
 Console.WriteLine("PASS: actual-engine task/timer selection in all three camps and cache exclusion semantics; in-memory fixtures only.");
 
-if(Eval("maraecachepickup[1]")!="0")throw new Exception("Cache move accepted without a world cache");
 foreach(var tuple in new[]{("FAR_EAST","mm_mesh_far",1,60),("FAR_EAST","mm_mesh_far",999,180),("CLOSE_EAST","mm_mesh_close",1,10),("CLOSE_EAST","mm_mesh_close",999,60)}) {
  string Find(JsonElement r) {
   if(r.GetProperty("Action").GetInt32()==7&&r.GetProperty("ActionData").GetString()!.StartsWith("setvar[tm_mesh_step,"))return r.GetProperty("ActionData").GetString()!;
