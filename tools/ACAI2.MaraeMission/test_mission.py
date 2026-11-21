@@ -261,7 +261,7 @@ check(w.v['ml_use_maps']==0 and 'Talk_NPC' not in w.route,'hunt-only recovery re
 print(f"PASS: {ns['checks']} simulations including independent per-area continuous hunting and overnight loops.")
 
 # Optional mesh steps use clue bearings; raw movement is not issued when enabled.
-for clue,heading,step in (('FAR_NORTH',0,24),('FAR_EAST',90,24),('CLOSE_SOUTHWEST',225,8)):
+for clue,heading,step in (('FAR_NORTH',0,60),('FAR_EAST',90,60),('CLOSE_SOUTHWEST',225,10)):
  w=World();w.p['ml_mesh_maps']=1;s=Sim(w,clue);s.until('MAP_MESH_WAIT')
  check(w.v['tm_mesh_heading']==heading and w.v['tm_mesh_step']==step,'clue selects bounded mesh step '+clue)
  check(not any('setmotion' in m for m in w.messages),'enabled mesh clue never issues raw forward motion '+clue)
@@ -323,7 +323,7 @@ check(w.p['mm_deadline_225']==w.now+7200 and w.p['mm_deadline_180']==7200,'next 
 print(f"PASS: {ns['checks']} total mission simulations with optional camp budgets and bounded partial turn-in.")
 
 # Live stride preferences are read at each new clue; active retry legs keep their own step.
-for configured,expected in ((30,30),(72,72),(1000,120),(-1,24)):
+for configured,expected in ((30,60),(72,72),(1000,180),(-1,60)):
  w=World();w.p.update(ml_mesh_maps=1,mm_mesh_far=configured);s=Sim(w,'FAR_EAST');s.until('MAP_MESH_WAIT')
  check(w.v['tm_mesh_step']==expected,'far stride preference is bounded and used by the next clue '+str(configured))
 w=World();w.p.update(ml_mesh_maps=1,mm_mesh_far=80,mm_mesh_close=20);s=Sim(w,'CLOSE_NORTH');s.until('MAP_MESH_WAIT')
@@ -336,3 +336,8 @@ print(f"PASS: {ns['checks']} simulations including live far/close stride prefere
 
 w=World();w.p.update(ml_mesh_maps=1,mm_mesh_far=80,mm_mesh_close=60);s=Sim(w,'CLOSE_EAST');s.until('MAP_MESH_WAIT')
 check(w.v['tm_mesh_step']==60,'close stride can also be tuned beyond the original short-distance range')
+
+for far,near,expectedFar,expectedNear in ((1,1,60,10),(999,999,180,60),(120,30,120,30)):
+ w=World();w.p.update(ml_mesh_maps=1,mm_mesh_far=far,mm_mesh_close=near)
+ s=Sim(w,'FAR_NORTH');s.until('MAP_MESH_WAIT');check(w.v['tm_mesh_step']==expectedFar,'far travel respects 60-180 range')
+ s.state='CLOSE_NORTH';s.fired.clear();s.until('MAP_MESH_WAIT');check(w.v['tm_mesh_step']==expectedNear,'close travel respects 10-60 range')

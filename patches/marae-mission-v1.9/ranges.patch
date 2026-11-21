@@ -1,0 +1,11 @@
+--- a/Plugins/RynthCore.Plugin.RynthAi/Meta/ExpressionEngine.cs
++++ b/Plugins/RynthCore.Plugin.RynthAi/Meta/ExpressionEngine.cs
+@@ -594,7 +594,7 @@
+             "rasetmetastate" or "vtsetmetastate" or "setmetastate" => EvalVtSetMetaState(Text(0)),
+             "ragetmetastate" or "vtgetmetastate" or "getmetastate" => _settings?.CurrentState ?? "",
+             // UB vtgetmeta[]: the loaded meta's name (file name without extension).
+-            "maraemissionapi" => "4",
++            "maraemissionapi" => "5",
+             "maraemapwalk" => EvalMaraeMapWalk(A(0), A(1)),
+             "maraenavsave" => EvalMaraeNavSave(),
+             "maraenavrestore" => EvalMaraeNavRestore(),

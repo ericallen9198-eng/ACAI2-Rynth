@@ -45,8 +45,8 @@ for i,k in ipairs(keys) do checkpointReads[i]='getpvar['..k..']' end
 local function save() storage.Character.Set('mission_v1',journal) end
 local function saveSettings() storage.Character.Set('mission_options_v1',settings) end
 local function normalizeStride()
- settings.meshFar=math.max(8,math.min(120,math.floor(tonumber(settings.meshFar) or 24)))
- settings.meshClose=math.max(4,math.min(120,settings.meshFar,math.floor(tonumber(settings.meshClose) or 8)))
+ settings.meshFar=math.max(60,math.min(180,math.floor(tonumber(settings.meshFar) or 60)))
+ settings.meshClose=math.max(10,math.min(60,math.floor(tonumber(settings.meshClose) or 10)))
 end
 local function applyStride()
  normalizeStride()
@@ -102,7 +102,7 @@ end
 local function begin(fresh,automatic)
  if not selected() then feedback='Select at least one area.';return end
  if number('maraemissionapi[]')<2 then feedback='Install the mission-compatible RynthAi DLL from this package first.';return end
- if settings.meshMaps and number('maraemissionapi[]')<4 then feedback='Install the new mission DLL before enabling Mesh map steps.';return end
+ if settings.meshMaps and number('maraemissionapi[]')<5 then feedback='Install the new mission DLL before enabling Mesh map steps.';return end
  if automatic and ai.MacroRunning and not owns() then
   feedback='Saved mission waiting: another macro is running. Stop it, then press Resume run.';return
  end
@@ -356,8 +356,8 @@ hud.OnRender.Add(function()
   end
  end
  if settings.meshMaps then
-  local farChanged,farValue=ImGui.SliderInt('Far clue travel',settings.meshFar,8,120,'%d yd')
-  local closeChanged,closeValue=ImGui.SliderInt('Close clue travel',settings.meshClose,4,math.min(120,settings.meshFar),'%d yd')
+  local farChanged,farValue=ImGui.SliderInt('Far clue travel',settings.meshFar,60,180,'%d yd')
+  local closeChanged,closeValue=ImGui.SliderInt('Close clue travel',settings.meshClose,10,60,'%d yd')
   if farChanged or closeChanged then
    settings.meshFar=farValue;settings.meshClose=closeValue;normalizeStride()
    saveSettings();strideDirty=true

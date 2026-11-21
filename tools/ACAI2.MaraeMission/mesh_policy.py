@@ -1,8 +1,8 @@
 """Opt-in replacement of timed forward clue runs with bounded mesh-planned steps."""
 import re
 def apply(states,state,action,expr):
- far='iif[getpvar[mm_mesh_far]>0,max[8,min[120,getpvar[mm_mesh_far]]],24]'
- close='iif[getpvar[mm_mesh_close]>0,max[4,min[120,getpvar[mm_mesh_close],'+far+']],8]'
+ far='iif[getpvar[mm_mesh_far]>0,max[60,min[180,getpvar[mm_mesh_far]]],60]'
+ close='iif[getpvar[mm_mesh_close]>0,max[10,min[60,getpvar[mm_mesh_close]]],10]'
  for n,b in list(states.items()):
   if not n.startswith(('FAR_','CLOSE_')):continue
   heading=re.search(r'Chat \{/ub face (\d+)\}',b);length=re.search(r'setvar\[tm_run_length,(\d+)\]',b)

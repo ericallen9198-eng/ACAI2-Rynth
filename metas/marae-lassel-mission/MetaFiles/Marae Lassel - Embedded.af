@@ -7535,7 +7535,7 @@ STATE: {FAR_NORTH} ~~ {
 	IF: Expr {getpvar[ml_mesh_maps]==1}
 		DO: DoAll
 				DoExpr {setvar[tm_mesh_heading,0]}
-				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_far]>0,max[8,min[120,getpvar[mm_mesh_far]]],24]]}
+				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_far]>0,max[60,min[180,getpvar[mm_mesh_far]]],60]]}
 				SetState {MAP_MESH_PREP}
 	IF:	Always
 		DO:	DoAll
@@ -7727,7 +7727,7 @@ STATE: {FAR_NORTHEAST} ~~ {
 	IF: Expr {getpvar[ml_mesh_maps]==1}
 		DO: DoAll
 				DoExpr {setvar[tm_mesh_heading,45]}
-				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_far]>0,max[8,min[120,getpvar[mm_mesh_far]]],24]]}
+				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_far]>0,max[60,min[180,getpvar[mm_mesh_far]]],60]]}
 				SetState {MAP_MESH_PREP}
 	IF:	Always
 		DO:	DoAll
@@ -7919,7 +7919,7 @@ STATE: {FAR_EAST} ~~ {
 	IF: Expr {getpvar[ml_mesh_maps]==1}
 		DO: DoAll
 				DoExpr {setvar[tm_mesh_heading,90]}
-				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_far]>0,max[8,min[120,getpvar[mm_mesh_far]]],24]]}
+				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_far]>0,max[60,min[180,getpvar[mm_mesh_far]]],60]]}
 				SetState {MAP_MESH_PREP}
 	IF:	Always
 		DO:	DoAll
@@ -8111,7 +8111,7 @@ STATE: {FAR_SOUTHEAST} ~~ {
 	IF: Expr {getpvar[ml_mesh_maps]==1}
 		DO: DoAll
 				DoExpr {setvar[tm_mesh_heading,135]}
-				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_far]>0,max[8,min[120,getpvar[mm_mesh_far]]],24]]}
+				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_far]>0,max[60,min[180,getpvar[mm_mesh_far]]],60]]}
 				SetState {MAP_MESH_PREP}
 	IF:	Always
 		DO:	DoAll
@@ -8303,7 +8303,7 @@ STATE: {FAR_SOUTH} ~~ {
 	IF: Expr {getpvar[ml_mesh_maps]==1}
 		DO: DoAll
 				DoExpr {setvar[tm_mesh_heading,180]}
-				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_far]>0,max[8,min[120,getpvar[mm_mesh_far]]],24]]}
+				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_far]>0,max[60,min[180,getpvar[mm_mesh_far]]],60]]}
 				SetState {MAP_MESH_PREP}
 	IF:	Always
 		DO:	DoAll
@@ -8495,7 +8495,7 @@ STATE: {FAR_SOUTHWEST} ~~ {
 	IF: Expr {getpvar[ml_mesh_maps]==1}
 		DO: DoAll
 				DoExpr {setvar[tm_mesh_heading,225]}
-				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_far]>0,max[8,min[120,getpvar[mm_mesh_far]]],24]]}
+				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_far]>0,max[60,min[180,getpvar[mm_mesh_far]]],60]]}
 				SetState {MAP_MESH_PREP}
 	IF:	Always
 		DO:	DoAll
@@ -8687,7 +8687,7 @@ STATE: {FAR_WEST} ~~ {
 	IF: Expr {getpvar[ml_mesh_maps]==1}
 		DO: DoAll
 				DoExpr {setvar[tm_mesh_heading,270]}
-				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_far]>0,max[8,min[120,getpvar[mm_mesh_far]]],24]]}
+				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_far]>0,max[60,min[180,getpvar[mm_mesh_far]]],60]]}
 				SetState {MAP_MESH_PREP}
 	IF:	Always
 		DO:	DoAll
@@ -8879,7 +8879,7 @@ STATE: {FAR_NORTHWEST} ~~ {
 	IF: Expr {getpvar[ml_mesh_maps]==1}
 		DO: DoAll
 				DoExpr {setvar[tm_mesh_heading,315]}
-				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_far]>0,max[8,min[120,getpvar[mm_mesh_far]]],24]]}
+				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_far]>0,max[60,min[180,getpvar[mm_mesh_far]]],60]]}
 				SetState {MAP_MESH_PREP}
 	IF:	Always
 		DO:	DoAll
@@ -9071,7 +9071,7 @@ STATE: {CLOSE_NORTH} ~~ {
 	IF: Expr {getpvar[ml_mesh_maps]==1}
 		DO: DoAll
 				DoExpr {setvar[tm_mesh_heading,0]}
-				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_close]>0,max[4,min[120,getpvar[mm_mesh_close],iif[getpvar[mm_mesh_far]>0,max[8,min[120,getpvar[mm_mesh_far]]],24]]],8]]}
+				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_close]>0,max[10,min[60,getpvar[mm_mesh_close]]],10]]}
 				SetState {MAP_MESH_PREP}
 	IF:	Always
 		DO:	DoAll
@@ -9263,7 +9263,7 @@ STATE: {CLOSE_NORTHEAST} ~~ {
 	IF: Expr {getpvar[ml_mesh_maps]==1}
 		DO: DoAll
 				DoExpr {setvar[tm_mesh_heading,45]}
-				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_close]>0,max[4,min[120,getpvar[mm_mesh_close],iif[getpvar[mm_mesh_far]>0,max[8,min[120,getpvar[mm_mesh_far]]],24]]],8]]}
+				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_close]>0,max[10,min[60,getpvar[mm_mesh_close]]],10]]}
 				SetState {MAP_MESH_PREP}
 	IF:	Always
 		DO:	DoAll
@@ -9455,7 +9455,7 @@ STATE: {CLOSE_EAST} ~~ {
 	IF: Expr {getpvar[ml_mesh_maps]==1}
 		DO: DoAll
 				DoExpr {setvar[tm_mesh_heading,90]}
-				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_close]>0,max[4,min[120,getpvar[mm_mesh_close],iif[getpvar[mm_mesh_far]>0,max[8,min[120,getpvar[mm_mesh_far]]],24]]],8]]}
+				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_close]>0,max[10,min[60,getpvar[mm_mesh_close]]],10]]}
 				SetState {MAP_MESH_PREP}
 	IF:	Always
 		DO:	DoAll
@@ -9647,7 +9647,7 @@ STATE: {CLOSE_SOUTHEAST} ~~ {
 	IF: Expr {getpvar[ml_mesh_maps]==1}
 		DO: DoAll
 				DoExpr {setvar[tm_mesh_heading,135]}
-				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_close]>0,max[4,min[120,getpvar[mm_mesh_close],iif[getpvar[mm_mesh_far]>0,max[8,min[120,getpvar[mm_mesh_far]]],24]]],8]]}
+				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_close]>0,max[10,min[60,getpvar[mm_mesh_close]]],10]]}
 				SetState {MAP_MESH_PREP}
 	IF:	Always
 		DO:	DoAll
@@ -9839,7 +9839,7 @@ STATE: {CLOSE_SOUTH} ~~ {
 	IF: Expr {getpvar[ml_mesh_maps]==1}
 		DO: DoAll
 				DoExpr {setvar[tm_mesh_heading,180]}
-				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_close]>0,max[4,min[120,getpvar[mm_mesh_close],iif[getpvar[mm_mesh_far]>0,max[8,min[120,getpvar[mm_mesh_far]]],24]]],8]]}
+				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_close]>0,max[10,min[60,getpvar[mm_mesh_close]]],10]]}
 				SetState {MAP_MESH_PREP}
 	IF:	Always
 		DO:	DoAll
@@ -10031,7 +10031,7 @@ STATE: {CLOSE_SOUTHWEST} ~~ {
 	IF: Expr {getpvar[ml_mesh_maps]==1}
 		DO: DoAll
 				DoExpr {setvar[tm_mesh_heading,225]}
-				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_close]>0,max[4,min[120,getpvar[mm_mesh_close],iif[getpvar[mm_mesh_far]>0,max[8,min[120,getpvar[mm_mesh_far]]],24]]],8]]}
+				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_close]>0,max[10,min[60,getpvar[mm_mesh_close]]],10]]}
 				SetState {MAP_MESH_PREP}
 	IF:	Always
 		DO:	DoAll
@@ -10223,7 +10223,7 @@ STATE: {CLOSE_WEST} ~~ {
 	IF: Expr {getpvar[ml_mesh_maps]==1}
 		DO: DoAll
 				DoExpr {setvar[tm_mesh_heading,270]}
-				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_close]>0,max[4,min[120,getpvar[mm_mesh_close],iif[getpvar[mm_mesh_far]>0,max[8,min[120,getpvar[mm_mesh_far]]],24]]],8]]}
+				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_close]>0,max[10,min[60,getpvar[mm_mesh_close]]],10]]}
 				SetState {MAP_MESH_PREP}
 	IF:	Always
 		DO:	DoAll
@@ -10415,7 +10415,7 @@ STATE: {CLOSE_NORTHWEST} ~~ {
 	IF: Expr {getpvar[ml_mesh_maps]==1}
 		DO: DoAll
 				DoExpr {setvar[tm_mesh_heading,315]}
-				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_close]>0,max[4,min[120,getpvar[mm_mesh_close],iif[getpvar[mm_mesh_far]>0,max[8,min[120,getpvar[mm_mesh_far]]],24]]],8]]}
+				DoExpr {setvar[tm_mesh_step,iif[getpvar[mm_mesh_close]>0,max[10,min[60,getpvar[mm_mesh_close]]],10]]}
 				SetState {MAP_MESH_PREP}
 	IF:	Always
 		DO:	DoAll
