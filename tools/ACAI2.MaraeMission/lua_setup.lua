@@ -11,6 +11,7 @@ function clock() return sim.time*1000 end
 function expr(s)
  sim.exprSeen=sim.exprSeen or {};sim.exprSeen[s]=true
  sim.exprCalls=(sim.exprCalls or 0)+1
+ if s=='getplayercoordinates[]' then return sim.playerCoords or '51.1|-84.0|0.2' end
  if s=='getunixtime[]' then return math.floor(sim.time) end
  if s=='maraemissionapi[]' then return 6 end
  if s:match('^maraemapwalk%[') then sim.meshWalks=(sim.meshWalks or 0)+1;return sim.meshFailure and 0 or 1 end

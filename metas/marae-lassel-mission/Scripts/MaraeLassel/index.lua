@@ -272,7 +272,7 @@ game.OnTick.Add(function()
   local ours=owns()
   local state=ours and value('vtgetmetastate[]') or ''
   if ours and journal.active and ai.MacroRunning and not startup and
-    (state=='CACHE_RETURN_WAIT' or state=='CACHE_APPROACH_WAIT' or state=='MAP_MESH_WAIT') then
+    (state=='CACHE_RETURN_WAIT' or state=='CACHE_APPROACH_WAIT' or state=='MAP_MESH_WAIT' or state=='DIGSITE_RETURN_WAIT') then
    local generation=number('getvar[tm_walk_generation]')
    if generation~=walkGeneration and number('getcharvital_current[1]')>0 and number('maraerecoverybusy[]')==0 then
     walkGeneration=generation
@@ -283,6 +283,17 @@ game.OnTick.Add(function()
     local coords=value('getvar[tm_walk_target]')
     local ns,ew=coords:match('^([^|]+)|([^|]+)|')
     ns,ew=tonumber(ns),tonumber(ew)
+    if state=='CACHE_APPROACH_WAIT' and ns and ew then
+     -- Keep the route target 2.5 yards short of the object center. Native use handles final reach.
+     local here=value('getplayercoordinates[]')
+     local pn,pe=here:match('^([^|]+)|([^|]+)|')
+     pn,pe=tonumber(pn),tonumber(pe)
+     if pn and pe then
+      local dn,de=pn-ns,pe-ew;local yards=math.sqrt(dn*dn+de*de)*240
+      if yards>3 then ns,ew=ns+dn*(2.5/yards),ew+de*(2.5/yards)
+      else ns,ew=nil,nil end -- already within native-use approach range
+     else ns,ew=nil,nil end
+    end
     local accepted=ns and ew and number('maraenavsave[]')==1 and ai.GoTo(ns,ew) and number('maraenavmark[]')==1
     expr('setvar[tm_walk_ack,'..(accepted and 1 or -1)..']')
     end

@@ -104,6 +104,8 @@ from hunt_policy import apply as apply_hunt_policy
 apply_hunt_policy(states,navs,state,action,expr)
 from mesh_policy import apply as apply_mesh_policy
 apply_mesh_policy(states,state,action,expr)
+from encounter_policy import apply as apply_encounter_policy
+apply_encounter_policy(states,state,action,expr)
 from budget_policy import apply as apply_budget_policy
 apply_budget_policy(states,state,action,expr)
 from recovery_policy import apply as apply_recovery_policy

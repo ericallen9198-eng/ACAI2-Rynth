@@ -152,4 +152,12 @@ sim.vars.ml_zone=225;sim.vars.pt_unavailable_1=1;sim.pvars.mm_225_done_1=1
 sim.chat({Message='Hea Hineroa the Golem Hunter tells you, "You have defeated 4 of 50 A New Golem. The hunt is not yet finished."'})
 check(sim.vars.pt_unavailable_1==0 and sim.pvars.mm_225_done_1==0 and sim.stores.A.mission_v1.progress.mm_225_done_1==0,'live unfinished task overrides stale saved completion in native and controller checkpoints')
 click('Stop run');step(25)
+click('Resume run');step(40)
+sim.playerCoords='51.1|-84|0.2';sim.metaState='CACHE_APPROACH_WAIT';sim.vars.tm_walk_target='51.2|-84|0.2';sim.vars.tm_walk_generation=100
+step(25)
+check(math.abs((51.2-sim.walkNS)*240-2.5)<.000001,'cache navigation target stands 2.5 yards short instead of occupying the object center')
+sim.metaState='DIGSITE_RETURN_WAIT';sim.vars.tm_walk_target='51.1|-84|0.2';sim.vars.tm_walk_generation=101
+step(25)
+check(math.abs(sim.walkNS-51.1)<.000001,'encounter return dispatches the preserved digsite anchor through native navigation')
+click('Stop run');step(25)
 return checks

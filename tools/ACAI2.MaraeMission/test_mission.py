@@ -23,6 +23,9 @@ class World(BaseWorld):
    if getattr(self,'denyCacheMetadata',False) and f in ('wobjectgettemplatetype','wobjectfindalllandscapebytemplatetype'):
     raise AssertionError('cache discovery must not require template metadata')
    if f=='maraenavrestore':return 1
+   if f=='setcombatstate':return 1
+   if f=='ratargetcount':return getattr(self,'targets',0)
+   if f=='getbusystate':return getattr(self,'actionBusy',0)
    if f=='min':return min(self.ev(x,scope) for x in t[2])
    if f=='getplayercoordinates':return 'player'
    if f=='getitemcountininventorybyname':return getattr(self,'mapCount',0)
@@ -62,6 +65,7 @@ class World(BaseWorld):
   return super().ev(t,scope)
 class Sim(BaseSim):
  def cond(self,r):
+  if r['Condition']==28:return getattr(self.w,'navEmpty',False)
   if r['Condition']==4:return bool(self.w.chat and re.search(r['ConditionData'],self.w.chat))
   return super().cond(r)
  def act(self,r):
@@ -429,3 +433,59 @@ w=World();w.busy=True;w.p['mm_pickup_unresolved']=1;s=Sim(w,'T180_DEATH_RETURN_W
 check(s.state=='T180_DEATH_RETURN_WAIT','inventory review does not interrupt active native corpse recovery')
 w.busy=False;s.until('HOLD',30)
 check(w.p['mm_pickup_unresolved']==1,'death recovery cannot erase a previously issued unconfirmed pickup')
+
+# A melee chase can finish far from the event; return only once combat is clear.
+w=World();w.v.update(tm_cache_anchor='dig',tm_event_deadline=1800);w.p['tm_dig_active']=1;w.digDistance=24;w.targets=1
+s=Sim(w,'ENCOUNTER');s.tick(3)
+check(s.state=='ENCOUNTER','active melee targets do not get interrupted by the digsite return')
+w.targets=0;w.actionBusy=1;s.tick()
+check(s.state=='ENCOUNTER','active native item/cast actions settle before returning')
+w.actionBusy=0;s.until('DIGSITE_RETURN_WAIT',20)
+check(w.v['tm_walk_target']=='dig','idle melee drift returns to the recorded digsite during the event')
+w.targets=1;s.until('ENCOUNTER',20)
+check(w.options['EnableNav']==0 and w.options['EnableCombat']==1,'new combat targets interrupt the return and retain combat ownership')
+w.targets=0;w.now+=6;s.until('DIGSITE_RETURN_WAIT',20);w.digDistance=2;s.until('ENCOUNTER',20)
+check(w.v['tm_cache_anchor']=='dig' and w.v['tm_event_deadline']==1800,'return preserves both the original anchor and absolute event timeout')
+# Completion and corpse rewards must not be lost while returning.
+w=World();w.v.update(tm_cache_anchor='dig',tm_event_deadline=1800);w.p['tm_dig_active']=1;w.digDistance=24
+s=Sim(w,'ENCOUNTER');s.until('DIGSITE_RETURN_WAIT',20)
+w.chat='Something buried at the dig gives way, and a cache settles into the loose earth. It answers only to you.';s.until('CACHE_PREP',10)
+check(w.v['tm_cache_anchor']=='dig','event completion while returning enters the existing cache collection flow')
+w=World();w.v.update(tm_cache_anchor='dig',tm_event_deadline=1800,tm_doubloon_before=0);w.p['tm_dig_active']=1;w.inv[1004101]=7
+s=Sim(w,'DIGSITE_RETURN_WAIT');s.until('CACHE_FINISH',10)
+check(not w.used,'corpse payout during return completes without requiring a cache')
+# Reachable cache use is not gated on occupying its center.
+w=World(items=[item(10)]);w.open=0;w.caches={1:{'distance':2.5,'openable':True}}
+s=Sim(w,'CACHE_PREP');s.until('CACHE_CONFIRM',100)
+check(w.used==[1] and w.v.get('tm_walk_generation',0)==0,'a cache 2.5 yards away is used directly without center-coordinate navigation')
+w=World();w.v.update(tm_cache_anchor='old failed dig');s=Sim(w,'ENCOUNTER_INIT');s.until('ENCOUNTER',10)
+check(w.v['tm_cache_anchor']=='player','actual encounter start replaces the coordinate of an earlier unsuccessful dig')
+print(f"PASS: {ns['checks']} total mission simulations.")
+
+w=World();w.v.update(tm_cache_anchor='dig',tm_event_deadline=1800);w.p['tm_dig_active']=1;w.digDistance=54;w.targets=1
+s=Sim(w,'ENCOUNTER');s.tick()
+check(s.state=='ENCOUNTER','combat inside the 55-yard boundary continues normally')
+w.digDistance=56;s.until('DIGSITE_RETURN_WAIT',20)
+check(w.options['EnableCombat']==0 and w.v['tm_anchor_forced']==1,'crossing 55 yards yields distant non-event combat and returns to digsite')
+w.v['tm_walk_ack']=1;s.tick(5)
+check(s.state=='DIGSITE_RETURN_WAIT','new far targets cannot interrupt a forced return')
+w.digDistance=2;s.until('ENCOUNTER',20)
+check(w.options['EnableCombat']==1 and w.v['tm_anchor_forced']==0,'combat is restored after forced return reaches the digsite')
+w=World();w.v.update(tm_cache_anchor='dig',tm_event_deadline=1800);w.p['tm_dig_active']=1;w.digDistance=56;w.targets=1
+s=Sim(w,'ENCOUNTER');s.until('DIGSITE_RETURN_WAIT',20);w.v['tm_walk_ack']=-1;s.until('DIGSITE_RETURN_RETRY',20)
+check(w.options['EnableCombat']==0 and w.v['tm_anchor_retry_at']>w.now,'failed forced path retries with backoff instead of chasing farther')
+print(f"PASS: {ns['checks']} total mission simulations including the 55-yard digsite boundary.")
+
+w=World(items=[item(10)]);w.open=0;w.caches={1:{'distance':22,'openable':True}}
+s=Sim(w,'CACHE_PREP');s.until('CACHE_APPROACH_WAIT',100);w.open=1;w.caches[1]['distance']=2.5
+s.until('CACHE_CONFIRM',30)
+check(not w.used and len(w.moves)==1,'an opening acknowledgment during approach ends navigation without double-using the cache')
+print(f"PASS: {ns['checks']} total mission simulations.")
+
+w=World(items=[item(10)]);w.open=0;w.caches={1:{'distance':4.5,'openable':True}}
+s=Sim(w,'CACHE_PREP');s.until('CACHE_APPROACH_WAIT',100);w.v['tm_walk_ack']=1;w.navEmpty=True;s.until('CACHE_CONFIRM',30)
+check(w.used==[1],'native approach completion hands off to use even when arrival tolerance stops short of three yards')
+w=World();w.v.update(tm_cache_anchor='dig',tm_event_deadline=1800,tm_anchor_forced=1,tm_walk_ack=1);w.p['tm_dig_active']=1;w.digDistance=4;w.navEmpty=True
+s=Sim(w,'DIGSITE_RETURN_WAIT');s.until('ENCOUNTER',20)
+check(w.v['tm_anchor_forced']==0 and w.options['EnableCombat']==1,'native route completion near the digsite restores combat despite a wider nav arrival tolerance')
+print(f"PASS: {ns['checks']} total mission simulations.")
