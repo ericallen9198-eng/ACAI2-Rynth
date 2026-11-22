@@ -9,7 +9,7 @@ namespace ACAI2.Rynth.Plugin;
 
 public sealed partial class PilotPlugin : RynthPluginBase
 {
-    public const string Version = "0.3.3";
+    public const string Version = "0.3.4";
     private readonly object sessionGate=new();
     private KeyferSession? keyfer;
     private KeyferSettings keyferSettings=new();
@@ -31,7 +31,7 @@ public sealed partial class PilotPlugin : RynthPluginBase
         settings = PilotSettings.Load(Path.Combine(DataRoot, "pilot.json"));
         keyferSettings=KeyferSettings.Load(KeyferPath);keyferSettings.DataRoot=DataRoot;
         observations = new(settings); bridge = new(settings);
-        Host.Log("[ACAI2.Rynth] v0.3.3 Keyfer adapter. Combat UI excluded. Keyfer "+(keyferSettings.keyferEnabled?"enabled for "+keyferSettings.keyferServer+" / "+keyferSettings.keyferCharacter:"disabled; configure keyfer.json"));
+        Host.Log("[ACAI2.Rynth] v0.3.4 Keyfer adapter. Combat UI excluded. Keyfer "+(keyferSettings.keyferEnabled?"enabled for "+keyferSettings.keyferServer+" / "+keyferSettings.keyferCharacter:"disabled; configure keyfer.json"));
         return 0;
     }
     // Lifecycle callbacks only signal state changes. Native reads and local UI writes happen on the pump.
@@ -107,7 +107,14 @@ public sealed partial class PilotPlugin : RynthPluginBase
             else if(command.StartsWith("/acai2r keyfer",StringComparison.Ordinal))
             {
                 string option=command.Length>14?command[14..].Trim():"status";if(option.Length==0)option="status";
-                if(option=="reload")
+                if(option is "chest key" or "chest set" or "chest start" or "chest stop" or "chest status")
+                {
+                    var active=observations.Current;
+                    if(!AcceptCallbacks||active==null||!keyferSettings.Matches(active.Identity)||keyfer==null||!Host.HasInvokeChatParser)
+                        Local("[ACAI2.Rynth] Chest setup is available only on the configured Keyfer client.");
+                    else Host.InvokeChatParser("/ra itemtool "+option);
+                }
+                else if(option=="reload")
                 {
                     try {var updated=KeyferSettings.Load(KeyferPath);updated.DataRoot=DataRoot;lock(sessionGate){keyfer?.Dispose();keyfer=null;keyferSettings=updated;StartKeyfer();}Local("[ACAI2.Rynth] Keyfer settings reloaded. "+keyferStatus);}
                     catch(Exception ex){Local("[ACAI2.Rynth] Keyfer reload failed: "+ex.GetType().Name+". Existing files preserved.");}
@@ -119,6 +126,7 @@ public sealed partial class PilotPlugin : RynthPluginBase
     }
     private void EndSession()
     {
+        while(commands.TryDequeue(out _))Interlocked.Decrement(ref commandCount);
         ResetChestObservation();
         lock(sessionGate){keyfer?.Dispose();keyfer=null;observations?.End();keyferStatus="Waiting for Keyfer login";}
     }

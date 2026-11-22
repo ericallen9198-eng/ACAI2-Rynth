@@ -70,7 +70,7 @@ public sealed class ThreadWorker : IDisposable
                             roll.Forecast=ThreadGemPrediction.Build(capture.Data.Rolls,roll,input.Utc);roll.Forecast.BeforeOutcome=true;
                         }
                     }
-                    else if(input.Kind=="prep-recipe"){if(input.StartingLevel is 300 or 325 or 350 or 375){prepRecipes[input.ObjectId]=input;if(prepRecipes.Count>64)prepRecipes.Remove(prepRecipes.Keys.First());}}
+                    else if(input.Kind=="prep-recipe"){if(PrepPlan.BlankLevels.Contains(input.StartingLevel)){prepRecipes[input.ObjectId]=input;if(prepRecipes.Count>64)prepRecipes.Remove(prepRecipes.Keys.First());}}
                     else if(input.Kind=="fragment")
                     {
                         var level=ThreadFragmentInspection.Read(input.Name,[input.Text],null);

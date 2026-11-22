@@ -1,4 +1,4 @@
-# ACAI2 Threads v0.1.5 — standalone gem maker and journal
+# ACAI2 Threads v0.1.6 — standalone gem maker and journal
 
 This is an independent managed x86 Rynth plugin, not a replacement for RynthCore,
 RynthAi, Soot's installation, or Keyfer. Requires CoreCLR RynthCore API 92+ and
@@ -20,10 +20,10 @@ preparation rather than guessing. No Bridge or AI subscription is needed.
 ## Random recipe mode
 
 In **Gem Maker**, enable **Random recipe per gem**, choose **Blank level**
-(300/325/350/375) and **Scarab (fixed)**, then set the gem count and start normally.
+(300/325/350/375/400/450/500) and **Scarab (fixed)**, then set the gem count and start normally.
 The level is the starting blank, not a promised final dungeon level. Every new gem
-gets an independent random herb, powder, reagent, talisman and taper color. There
-are four doses of that taper, for nine known doses total. Repeats are possible;
+gets an independent random herb, powder, reagent and talisman. Four taper doses
+can use up to two colors, for nine known doses total. Repeats are possible;
 this is varied sampling, not a guarantee of unique recipes or desired modifiers.
 
 With **Buy missing supplies** on, the app first reads the bound reagent vendor's
@@ -83,7 +83,7 @@ together. Native purchase refusals are reported with their reason rather than
 silently waiting for a timeout.
 
 v0.1.1 added exact Start diagnostics, automatic macro pause/resume and selectable
-300/325/350/375 blanks. Start reports refusals directly in game chat and the Gem
+300/325/350/375/400/450/500 blanks. Start reports refusals directly in game chat and the Gem
 Maker tab; `/acai2threads status` includes the latest diagnostic.
 
 Start with tracking only: Current Run records native Thread opening, realm,
@@ -94,7 +94,7 @@ explicit, never an assumption that the latest press opened the dungeon.
 
 For one attended gem-making test, stop other inventory and crafting tools. START
 BATCH pauses RynthAi automatically and waits up to 15 seconds for idle. Stand still in peace mode immediately beside one
-Fragment Press. Choose blank level 300, 325, 350 or 375 (the vendor cap). Supply an untouched
+Fragment Press. Choose blank level 300, 325, 350, 375, 400, 450 or 500. Supply an untouched
 Raw Fragment of that level and the exact selected
 components. In Gem Maker select one new gem, leave buying OFF, review the recipe,
 and click START BATCH. Do not use other inventory tools during the batch.
@@ -135,3 +135,12 @@ not automatically deleted; back up this folder before manually managing records.
 This first release has automated fake-world checks and a genuine SDK build;
 these cannot establish live server message behavior. Test one gem attended before
 larger batches. No combat meter or Keyfer binaries are included.
+
+## Mixed manual tapers
+
+Set the first taper and its count, then optionally a second taper and its count.
+The combined count is at most four (2+2, 3+1, or four of one type). Reduce the
+first count to make room for the second. Zero second doses preserves old recipes.
+Shopping reserves the quantities across the entire batch before dosing. Exact
+mixed recipes are retained in research records. New blank levels are 400/450/500;
+the native vendor must actually stock the selected Raw Fragment (Level N).

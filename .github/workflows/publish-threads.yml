@@ -8,7 +8,7 @@ on:
       version:
         description: Package version (e.g. 0.1.5)
         required: true
-        default: '0.1.5'
+        default: '0.1.6'
       commit_sha:
         description: Full tested source commit SHA
         required: true
@@ -63,7 +63,7 @@ jobs:
           cat > release-notes.md <<NOTES
           Standalone Thread journal, research and explicitly started gem-preparation plugin. Built from $SOURCE_SHA using the genuine Rynth SDK and Windows manifest tooling.
 
-          Requires managed CoreCLR RynthCore API 92+; preparation additionally requires the stock RynthAi Script/Activity interfaces. No Rynth engine replacement, Keyfer update or combat plugin is included. Extract all DLLs together and follow THREADS-SETUP.md. v0.1.5 adds a saved random-recipe mode: choose blank level and scarab, then each gem independently samples herb/powder/reagent/talisman/taper color from recognized native spell-component supplies. Nine known doses are frozen per recipe before purchases/crafting; shopping totals the whole batch. Exact recipes, modifier outcomes and compact randomized-selection/batch metadata are recorded separately from server-random slots. Native recipe evidence is queued before pressing. Existing manual recipes, owned macro pause/resume, quoted budgets and optional exact-shortage note withdrawals are preserved.
+          Requires managed CoreCLR RynthCore API 92+; preparation additionally requires the stock RynthAi Script/Activity interfaces. No Rynth engine replacement, Keyfer update or combat plugin is included. Extract all DLLs together and follow THREADS-SETUP.md. v0.1.6 adds 400/450/500 blanks, manual two-taper recipes sharing a maximum of four doses, mixed random tapers, full-batch shopping and research provenance for the new levels. Existing saved recipes remain compatible. Native pause/resume, vendor budgets, optional exact-shortage withdrawals and uncertain-action handling remain.
 
           Automated tests use fake world snapshots; live in-game verification remains. All gems are retained. Interrupted/uncertain actions never automatically resume or retry.
           NOTES

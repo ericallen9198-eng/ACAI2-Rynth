@@ -1,4 +1,4 @@
-# Keyfer on Rynth — v0.3.3
+# Keyfer on Rynth — v0.3.4
 
 This release restores the existing Keyfer services through a Rynth client adapter.
 It does not ship combat rendering, combat parsing, DPS, floating text, attack power,
@@ -48,7 +48,7 @@ Windows installation. No native Windows/game run is claimed from those tests.
 1. Keep the current Bridge process/config/data. Stop the old Decal Keyfer responder
    before enabling the new one. The Rynth ownership lock prevents duplicate Rynth
    responders on this PC, but the old Decal adapter does not share that lock.
-2. Download [the compiled Windows ZIP](https://github.com/ericallen9198-eng/ACAI2-Rynth/releases/download/keyfer-v0.3.3/ACAI2-Rynth-Keyfer-v0.3.3-Windows.zip) from the normal GitHub release. No source rebuild is needed. The same verified package is also available as **ACAI2-Rynth-Keyfer-Windows** in its successful verification Actions run (requires GitHub sign-in). Alternatively build on Windows with the .NET 10 SDK:
+2. Download [the compiled Windows ZIP](https://github.com/ericallen9198-eng/ACAI2-Rynth/releases/download/keyfer-v0.3.4/ACAI2-Rynth-Keyfer-v0.3.4-Windows.zip) from the normal GitHub release. No source rebuild is needed. The same verified package is also available as **ACAI2-Rynth-Keyfer-Windows** in its successful verification Actions run (requires GitHub sign-in). Alternatively build on Windows with the .NET 10 SDK:
    `scripts\Bootstrap-RynthCore.ps1` (GitHub source ZIP only), then
    `scripts\Publish.ps1`. It runs controlled tests and writes `artifacts\keyfer-managed`.
 3. Extract the entire package into its own directory, keeping its dependencies
@@ -218,3 +218,35 @@ The Bridge receives findings only with a question, and creates no second loot lo
 
 The new package does not alter your loot profile. Select the corrected v2 mule
 UTL separately to stop RynthAi's old salvage rules. Combat and Threads are unchanged.
+
+## v0.3.4: Keyfer chest setup and owner chat controls
+
+Update the Keyfer plugin and its accompanying DLLs together while AC is closed.
+Keep your existing keyfer.json and secrets. This change needs no Bridge update.
+Copy `Lua/KeyferChest` from this ZIP into
+`C:\Games\RynthSuite\RynthLua\Scripts\KeyferChest` (index.lua inside that folder).
+Then run `/lua start KeyferChest`. `/keyferchest` shows its small setup panel.
+
+On the configured Keyfer client: select a key, click **Set selected key**, select
+a chest, click **Set selected chest**, and check the native confirmations in chat.
+The panel's names show requested selections, not a fabricated native acknowledgment.
+Use **Show native status in chat** to verify setup. Load the no-salvage mule profile.
+Chest/key binding remains owned by Rynth's Item Tool; the script does not run a
+second looter or automatically restore a selected world object after relogging.
+
+Only Toe and Samm can send these exact phrases in tells or allegiance:
+- `Keyfer pull keys`
+- `Keyfer stop pulling`
+- `Keyfer pull status`
+
+They bypass AI interpretation and dispatch only fixed start/stop commands. The
+actual sender and outer chat envelope are checked; General/local chat and quoted
+or extended instructions cannot trigger them. Starts require a fresh native
+snapshot with a configured chest and key; duplicate starts settle before retry.
+Requests expire after five seconds and cannot replay across sessions. Replies use
+the requesting channel. Start acknowledgments mean requested, not proof of success;
+ask for pull status to read Rynth's result. Native key shortages and reset waits
+remain Rynth-owned. The adapter needs its usual active Bridge registration, but
+these commands never ask the AI. The local setup panel does not need a model call.
+
+Optional: `/lua autostart KeyferChest character` enables this panel for Keyfer on future logins.

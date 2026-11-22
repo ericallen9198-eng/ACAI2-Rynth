@@ -11,6 +11,8 @@ try {
     dotnet publish src\ACAI2.Rynth.Bridge\ACAI2.Rynth.Bridge.csproj -c Release -r win-x64 --self-contained true -o (Join-Path $Output 'Bridge')
     if ($LASTEXITCODE -ne 0) { throw 'Bridge publish failed.' }
     Copy-Item scripts\Start-Keyfer-Bridge.cmd (Join-Path $Output 'Start-Keyfer-Bridge.cmd')
+    New-Item -ItemType Directory (Join-Path $Output 'Lua') -Force | Out-Null
+    Copy-Item lua/* (Join-Path $Output 'Lua') -Recurse -Force
     Copy-Item keyfer.example.json $Output
     Copy-Item docs\KEYFER-SETUP.md $Output
     Copy-Item external\RynthCore\LICENSE (Join-Path $Output 'RynthCore-LICENSE.txt')

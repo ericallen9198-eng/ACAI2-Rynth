@@ -128,3 +128,11 @@ bounded batch before buying/dosing and retain exact recipe/outcome provenance.
 Keep randomized selection distinct from server-random slots in research. Preserve
 manual settings, budgets, owned pause/holds, checkpoint-before-action and no replay
 on uncertainty. A press requires its recipe to be accepted by the journal first.
+
+The user authorized Keyfer chest control: a local Lua setup panel may choose the
+selected key/chest via Rynth Item Tool. Only actual Toe/Samm tell or allegiance
+messages matching the fixed start/stop/status catalog may control the configured
+Keyfer client, on its pump and verified session. Do not add arbitrary AI-generated
+commands, remote selection, world search or another looter. Native snapshot checks
+and expiring requests are required. Thread prep additionally supports 400/450/500
+blanks and up to two taper types sharing a maximum of four total taper doses.

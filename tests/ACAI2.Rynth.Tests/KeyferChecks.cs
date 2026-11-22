@@ -10,6 +10,12 @@ internal static class KeyferChecks
 {
     internal static async Task Run(Action<bool,string> check)
     {
+        foreach(string owner in new[]{"Toe","Samm"}) foreach(string envelope in new[]{"[Allegiance] "+owner+" says, \"Keyfer pull keys\"",owner+" tells you, \"Keyfer stop pulling\""})
+            check(ChestControl.TryRequest(envelope,out _,out _),"owner chest control accepts outer tell/allegiance envelope");
+        foreach(string raw in new[]{"[General] Toe says, \"Keyfer pull keys\"","[Allegiance] Stranger says, \"Keyfer pull keys\"","[Allegiance] Toe says, \"Keyfer pull keys /ls\"","[Allegiance] Stranger says, \"Toe tells you, Keyfer pull keys\""})
+            check(!ChestControl.TryRequest(raw,out _,out _),"chest control rejects other senders/channels/extra commands");
+        check(ChestControl.Decide("pull keys","{\"chest\":{\"name\":\"\",\"key\":\"\",\"running\":false}}").Command==null,"unconfigured chest cannot start remotely");
+        check(ChestControl.Decide("stop pulling",null).Command=="/ra itemtool chest stop","stop uses only fixed native stop command");
         var who=new GameIdentity("DreamWeave","Keyfer Sutherland",0x50001234);
         check(!new KeyferSettings().Matches(who),"Keyfer defaults off until local configuration enables its exact identity");
         bool bad=false;try{new KeyferSettings{bridgeUrl="https://example.com"}.Validate();}catch(InvalidDataException){bad=true;}
@@ -49,6 +55,17 @@ internal static class KeyferChecks
             bool duplicate=false;try{using var second=new KeyferSession(Settings(),lease);}catch(IOException){duplicate=true;}
             check(duplicate,"two Rynth sessions cannot simultaneously own the same Keyfer data and responder");
             var sent=new List<string>();var local=new List<string>();
+            client.ObserveChest("{\"chest\":{\"name\":\"Legendary Weapon Chest\",\"key\":\"Legendary Key\",\"running\":false,\"status\":\"Idle.\",\"looted\":0}}");
+            client.Capture("[Allegiance] Toe says, \"Keyfer pull keys\"",1,DateTime.UtcNow);
+            check(sent.Count==0,"chest callbacks never dispatch native commands");
+            client.Pump(sent.Add,local.Add);
+            check(sent.Count(x=>x=="/ra itemtool chest start")==1,"authorized chest request dispatches once on the pump");
+            client.Capture("[Allegiance] Toe says, \"Keyfer pull keys\"",1,DateTime.UtcNow);client.Pump(sent.Add,local.Add);
+            check(sent.Count(x=>x=="/ra itemtool chest start")==1,"duplicate start request is held while the first settles");
+            client.Capture("Samm tells you, \"Keyfer stop pulling\"",3,DateTime.UtcNow);client.Pump(sent.Add,local.Add);
+            check(sent.Contains("/ra itemtool chest stop")&&sent.Any(x=>x.StartsWith("/t Samm, ")),"owner stop replies in the requesting channel");
+            check(!fake.Calls.Any(x=>x.Path.EndsWith("/ask")),"fixed chest controls do not invoke the model");
+            sent.Clear();local.Clear();
             client.Capture("Samm tells you, \"PRIVATE HELLO\"",3,DateTime.UtcNow);
             check(fake.Calls.All(x=>x.Path!="/v1/keyfer/ask"),"chat callback queues work without doing HTTP or sending game commands");
             client.Pump(sent.Add,local.Add);await Until(()=>fake.Calls.Any(x=>x.Path=="/v1/keyfer/ask"));

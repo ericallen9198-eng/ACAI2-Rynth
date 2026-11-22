@@ -91,7 +91,7 @@ internal sealed class ThreadPanel
                         else
                         {
                             bool random=plan.RandomRecipes;if(ImGui.Checkbox("Random recipe per gem",ref random)){plan.RandomRecipes=random;Dirty=true;}
-                            if(ImGui.BeginCombo("Blank level",plan.Level.ToString())){foreach(int level in new[]{300,325,350,375})if(ImGui.Selectable(level.ToString(),plan.Level==level)){plan.Level=level;Dirty=true;}ImGui.EndCombo();}
+                            if(ImGui.BeginCombo("Blank level",plan.Level.ToString())){foreach(int level in PrepPlan.BlankLevels)if(ImGui.Selectable(level.ToString(),plan.Level==level)){plan.Level=level;Dirty=true;}ImGui.EndCombo();}
                             int target=plan.Target;if(ImGui.InputInt("Gems",ref target)){plan.Target=Math.Clamp(target,1,50);Dirty=true;}
                             bool topup=plan.TopUp;if(ImGui.Checkbox("Top up usable stock",ref topup)){plan.TopUp=topup;Dirty=true;}
                             bool buy=plan.BuyMissing;if(ImGui.Checkbox("Buy missing supplies",ref buy)){plan.BuyMissing=buy;Dirty=true;}
@@ -114,7 +114,10 @@ internal sealed class ThreadPanel
                                 value=plan.Reagent;if(ImGui.InputText("Reagent (optional)",ref value,100)){plan.Reagent=value;Dirty=true;}
                                 value=plan.Talisman;if(ImGui.InputText("Talisman (optional)",ref value,100)){plan.Talisman=value;Dirty=true;}
                                 value=plan.Taper;if(ImGui.InputText("Taper",ref value,100)){plan.Taper=value;Dirty=true;}
-                                int count=plan.TaperCount;if(ImGui.SliderInt("Taper doses",ref count,0,4)){plan.TaperCount=count;Dirty=true;}
+                                int count=plan.TaperCount;if(ImGui.SliderInt("First taper doses",ref count,0,4)){plan.TaperCount=count;plan.SecondTaperCount=Math.Min(plan.SecondTaperCount,4-count);Dirty=true;}
+                                value=plan.SecondTaper;if(ImGui.InputText("Second taper (optional)",ref value,100)){plan.SecondTaper=value;Dirty=true;}
+                                int second=plan.SecondTaperCount;if(ImGui.SliderInt("Second taper doses",ref second,0,4-plan.TaperCount)){plan.SecondTaperCount=second;Dirty=true;}
+                                ImGui.TextDisabled($"Tapers: {plan.TaperCount+plan.SecondTaperCount}/4");
                                 ImGui.TextWrapped("Recipe: "+Summary(plan.Doses()));
                             }
                             ImGui.TextDisabled("Keeps every result. No automatic gem destruction.");

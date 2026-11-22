@@ -22,18 +22,21 @@ public sealed class PrepPlan
     public string Talisman {get;set;}="";
     public string Taper {get;set;}="Brown Taper";
     public int TaperCount {get;set;}=4;
-    public string[] Doses()=>new[]{Scarab,Herb,Powder,Reagent,Talisman}.Where(s=>s.Length>0).Concat(Enumerable.Repeat(Taper,TaperCount)).ToArray();
+    public string SecondTaper {get;set;}="";
+    public int SecondTaperCount {get;set;}
+    public static readonly int[] BlankLevels=[300,325,350,375,400,450,500];
+    public string[] Doses()=>new[]{Scarab,Herb,Powder,Reagent,Talisman}.Where(s=>s.Length>0).Concat(Enumerable.Repeat(Taper,TaperCount)).Concat(Enumerable.Repeat(SecondTaper,SecondTaperCount)).ToArray();
     public void Validate()
     {
-        if(Level is not (300 or 325 or 350 or 375))throw new InvalidDataException("Choose blank level 300, 325, 350 or 375.");
-        if(Target is <1 or >50||Budget is <0 or >10000000||TaperCount is <0 or >4)throw new InvalidDataException("Batch 1..50, tapers 0..4, budget 0..10,000,000.");
+        if(!BlankLevels.Contains(Level))throw new InvalidDataException("Choose blank level 300, 325, 350, 375, 400, 450 or 500.");
+        if(Target is <1 or >50||Budget is <0 or >10000000||TaperCount is <0 or >4||SecondTaperCount is <0 or >4||TaperCount+SecondTaperCount>4)throw new InvalidDataException("Batch 1..50, total tapers 0..4, budget 0..10,000,000.");
         if(RandomRecipes)
         {
             if(!ThreadComponentCatalog.Scarabs.Contains(Scarab,StringComparer.Ordinal))throw new InvalidDataException("Choose a supported scarab for random recipes.");
             return;
         }
         var doses=Doses();
-        if(doses.Length is <1 or >9||new[]{Scarab,Herb,Powder,Reagent,Talisman,Taper}.Any(n=>n.Length>100||n.Any(char.IsControl)||n.Contains(',')||n.Contains('`'))||Scarab.Length==0||TaperCount>0&&Taper.Length==0)
+        if(doses.Length is <1 or >9||new[]{Scarab,Herb,Powder,Reagent,Talisman,Taper,SecondTaper}.Any(n=>n.Length>100||n.Any(char.IsControl)||n.Contains(',')||n.Contains('`'))||Scarab.Length==0||TaperCount>0&&Taper.Length==0||SecondTaperCount>0&&SecondTaper.Length==0)
             throw new InvalidDataException("Use 1..9 exact component doses and a scarab; component names must be plain item names.");
     }
 }

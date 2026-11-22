@@ -54,7 +54,7 @@ var top=new PrepMachine();top.Start(new(){TopUp=true,Target=1},World(gem),"Dream
 var buy=new PrepMachine();var shopping=plan;shopping.BuyMissing=true;buy.Start(shopping,World(),"DreamWeave","Toe",now,0);var openVendor=buy.Step(World(),0);Check(openVendor is{Kind:"Open vendor",Source:22}||openVendor is{Kind:"Open vendor",Source:21},"missing supplies open only the required known vendor");
 var expensive=World() with{OpenVendor=openVendor!.Source,Stock=[new(99,openVendor.Source==21?"Raw Fragment (Level 325)":"Lead Scarab",100,9999999)]};buy.Step(expensive,.1);Check(buy.Step(expensive,.2)==null&&buy.Data.State=="Needs review","purchase cap rejects excessive quotes before any buy request");
 
-foreach(int level in new[]{300,325,350,375})
+foreach(int level in PrepPlan.BlankLevels)
 {
  var levelPlan=new PrepPlan{Level=level,Reagent="",TaperCount=0};
  var matching=blank with{Id=(uint)level,Name="Raw Fragment (Level "+level+")",Description=blank.Description.Replace("325",level.ToString())};
@@ -67,7 +67,7 @@ foreach(int level in new[]{300,325,350,375})
  levelBuyer.Step(vendorWorld,.1);
  Check(levelBuyer.Step(vendorWorld,.2) is{Kind:"Buy",Source:999,Amount:1},"vendor shortages buy the chosen level "+level+" blank");
 }
-try{new PrepPlan{Level=400}.Validate();Check(false,"unsupported level rejected");}catch(InvalidDataException){Check(true,"vendor level cap rejects unsupported 400 blanks");}
+try{new PrepPlan{Level=425}.Validate();Check(false,"unsupported level rejected");}catch(InvalidDataException){Check(true,"unlisted level 425 is rejected");}
 bool macro=true;var macroCalls=new List<bool>();int releases=0;
 var lease=new BotPauseLease(()=>macro,v=>{macro=v;macroCalls.Add(v);},()=>releases++);
 lease.Acquire();Check(!macro&&lease.OwnsResume,"acquiring the batch lease pauses a running macro");
@@ -132,7 +132,7 @@ var componentBag=names.Select((n,i)=>new PrepItem((uint)(500+i),n,100,"",true,It
 var randomPlan=new PrepPlan{RandomRecipes=true,Level=375,Scarab="Mana Scarab",Target=10};randomPlan.Validate();
 var randomWorld=World(componentBag);
 var chosen=RandomRecipes.Build(randomPlan,randomWorld,10,new Random(27));
-Check(chosen.Count==10&&chosen.All(r=>r.Length==9&&r[0]=="Mana Scarab"&&r.Skip(5).Distinct().Count()==1&&r.Skip(5).Count()==4),"every random gem keeps the selected scarab and has nine known doses with four of one taper color");
+Check(chosen.Count==10&&chosen.All(r=>r.Length==9&&r[0]=="Mana Scarab"&&r.Skip(5).Distinct().Count()<=2&&r.Skip(5).Count()==4),"every random gem keeps the selected scarab and has nine known doses with four taper doses across at most two colors");
 Check(chosen.Select(r=>string.Join("|",r)).Distinct().Count()>1,"a random batch draws fresh recipes across the different ingredient families");
 Check(chosen.SelectMany(r=>r).GroupBy(n=>n).All(g=>g.Count()<=componentBag.Single(i=>i.Name==g.Key).Count),"inventory-only random recipes reserve finite supplies across the complete batch");
 var recipeCapture=new ThreadGemCapture(new ThreadGemJournal());
@@ -201,14 +201,39 @@ try
  var worker=new ThreadWorker(who,root);
  for(int i=0;!worker.Ready&&i<300;i++)await Task.Delay(10);
  Check(worker.Ready,"standalone managed journal starts without Bridge or Keyfer");
- worker.Submit(new("prep-recipe",recipe,now,321,StartingLevel:375,RecipeSelection:"Randomized",BatchId:new string('a',32),BatchIndex:2,RecipePool:"Carried spell components only"));worker.Submit(new("chat","Pressed. It holds.",now,321));
+ worker.Submit(new("prep-recipe",recipe,now,321,StartingLevel:500,RecipeSelection:"Randomized",BatchId:new string('a',32),BatchIndex:2,RecipePool:"Carried spell components only"));worker.Submit(new("chat","Pressed. It holds.",now,321));
  worker.Submit(new("chat",open,now));worker.Submit(new("chat","[REALM] id=0 inst=99 eph=1 name=Base World",now.AddSeconds(1)));
  for(int i=0;worker.View.Runs==0&&i<300;i++)await Task.Delay(10);
  worker.Dispose();await worker.Completion;
  Check(worker.View.Runs==1,"background worker records a scoped run and flushes on shutdown");
  var scoped=new ThreadGemStore(who.Folder(root),who.Server,who.Character,v=>JsonSerializer.Serialize(v),(t,type)=>JsonSerializer.Deserialize(t,type)!);
- Check(scoped.Load().Rolls.Any(r=>r.FragmentLevel==375&&r.PrepRecipeConfirmed),"native prep records the actual selected starting level rather than hardcoding 325");
+ Check(scoped.Load().Rolls.Any(r=>r.FragmentLevel==500&&r.PrepRecipeConfirmed),"native prep records the actual selected starting level rather than hardcoding 325");
  Check(scoped.Load().Rolls.Any(r=>r.RecipeSelection=="Randomized"&&r.PrepBatchIndex==2&&r.PrepBatchId==new string('a',32)&&!r.RandomSlots&&r.RecipeControl=="Fully Controlled"),"confirmed random-recipe selection and batch metadata persist separately from server-random slots");
 }
 finally{Directory.Delete(root,true);}
+
+
+foreach(int level in new[]{400,450,500}) {
+ var planNew=new PrepPlan{Level=level,TaperCount=2,SecondTaper="Yellow Taper",SecondTaperCount=2};planNew.Validate();
+ Check(planNew.Doses().Count(n=>n=="Brown Taper")==2&&planNew.Doses().Count(n=>n=="Yellow Taper")==2,"mixed taper doses retained at new blank level "+level);
+ var round=JsonSerializer.Deserialize<PrepPlan>(JsonSerializer.Serialize(planNew))!;
+ Check(round.Level==level&&round.Doses().SequenceEqual(planNew.Doses()),"mixed recipe settings round trip at level "+level);
+}
+try {new PrepPlan{TaperCount=3,SecondTaper="Yellow Taper",SecondTaperCount=2}.Validate();Check(false,"five tapers rejected");}catch(InvalidDataException){Check(true,"combined taper count cannot exceed four");}
+Check(oldPlan.SecondTaperCount==0,"old single-taper settings retain their recipe");
+
+
+
+var splitOnly=componentBag.Select(i=>i.Name.EndsWith(" Taper")?i with{Count=2}:i).ToArray();
+Check(RandomRecipes.Build(randomPlan,World(splitOnly),1,new Random(2)).Single().Skip(5).GroupBy(n=>n).All(g=>g.Count()==2),"random recipes can use two plus two when neither taper has four available");
+var mixPlan=new PrepPlan{Target=10,Level=500,BuyMissing=true,Reagent="",TaperCount=2,SecondTaper="Yellow Taper",SecondTaperCount=2};
+var mixInventory=new List<PrepItem>{scarab with{Count=10},herb with{Count=10},powder with{Count=10},blank with{Name=mixPlan.BlankName,Count=10}};
+var mixBuyer=new PrepMachine();mixBuyer.Start(mixPlan,World(mixInventory.ToArray()),"DreamWeave","Toe",now,0);
+var mixBuys=new List<PrepAction>();
+for(int step=1;step<100&&mixBuys.Count<2;step++) {
+ var world=World(mixInventory.ToArray()) with{OpenVendor=22,Stock=[new(880,"Brown Taper",100,1),new(881,"Yellow Taper",100,1)]};
+ var action=mixBuyer.Step(world,step*.25);
+ if(action is{Kind:"Buy"}){mixBuys.Add(action);mixInventory.Add(new(action.Source,action.Detail,action.Amount,"",true));}
+}
+Check(mixBuys.Count==2&&mixBuys.All(a=>a.Amount==20)&&mixBuys.Select(a=>a.Detail).ToHashSet().SetEquals(new[]{"Brown Taper","Yellow Taper"}),"ten mixed gems buy twenty of each taper, preserving both configured counts");
 Console.WriteLine($"All {count} Thread checks passed; no native game actions or network calls were made.");

@@ -53,8 +53,17 @@ public static class RandomRecipes
         List<string[]> result=[];
         for(int i=0;i<count;i++)
         {
-            string herb=Pick("Herb",1),powder=Pick("Powder",1),reagent=Pick("Reagent",1),talisman=Pick("Talisman",1),taper=Pick("Taper",4);
-            result.Add([plan.Scarab,herb,powder,reagent,talisman,taper,taper,taper,taper]);
+            string herb=Pick("Herb",1),powder=Pick("Powder",1),reagent=Pick("Reagent",1),talisman=Pick("Talisman",1);
+            var colors=available.Where(p=>p.Value>0&&Role(p.Key)=="Taper").Select(p=>p.Key).Order(StringComparer.Ordinal).ToArray();
+            var firstPool=colors.Where(n=>available[n]+colors.Where(k=>k!=n).Select(k=>available[k]).DefaultIfEmpty(0).Max()>=4).ToArray();
+            if(firstPool.Length==0)throw new InvalidOperationException("Need four taper doses available across at most two colors.");
+            string first=firstPool[random.Next(firstPool.Length)];
+            var secondPool=colors.Where(n=>n==first?available[first]>=4:available[first]+available[n]>=4).ToArray();
+            string second=secondPool[random.Next(secondPool.Length)];
+            int firstCount=second==first?4:random.Next(Math.Max(1,4-(int)Math.Min(available[second],4)),Math.Min(3,(int)Math.Min(available[first],4))+1);
+            Reserve(first,firstCount);if(firstCount<4)Reserve(second,4-firstCount);
+            var tapers=Enumerable.Repeat(first,firstCount).Concat(Enumerable.Repeat(second,4-firstCount));
+            result.Add([plan.Scarab,herb,powder,reagent,talisman,..tapers]);
         }
         return result;
     }

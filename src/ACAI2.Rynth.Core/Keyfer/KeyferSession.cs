@@ -21,6 +21,8 @@ public sealed class KeyferSession : IDisposable
     public Task Shutdown { get; private set; }=Task.CompletedTask;
     private TelemetryFrame? perception;
     public void UpdatePerception(TelemetryFrame frame){if(frame.Session==lease&&!lease.Token.IsCancellationRequested)Volatile.Write(ref perception,frame);}
+    private string? chestControlJson;
+    private DateTime nextChestStart,chestControlAt;
     private string connectionStatus="Registering with Bridge";
     public bool Ready=>Volatile.Read(ref ready)!=0&&!stop.IsCancellationRequested;
     public string Status=>connectionStatus+" | queued "+Volatile.Read(ref queued);
@@ -75,6 +77,20 @@ public sealed class KeyferSession : IDisposable
         {
             Interlocked.Decrement(ref queued);
             if(DateTime.UtcNow-line.Utc>TimeSpan.FromSeconds(60))continue;
+            if(ChestControl.TryRequest(line.Raw,out var owner,out var verb))
+            {
+                if(DateTime.UtcNow-line.Utc>TimeSpan.FromSeconds(5))continue;
+                var decision=ChestControl.Decide(verb,DateTime.UtcNow-chestControlAt<TimeSpan.FromSeconds(2)?chestControlJson:null);
+                if(verb=="pull keys"&&DateTime.UtcNow<nextChestStart)decision=(null,"A recent start request is still settling; ask for pull status.");
+                if(decision.Command!=null)
+                {
+                    if(!Ready||lease.Token.IsCancellationRequested)continue;
+                    send(decision.Command);
+                    if(verb=="pull keys")nextChestStart=DateTime.UtcNow.AddSeconds(2);
+                }
+                foreach(string reply in ACAI2.Protocol.GameChat.ReplyCommands(owner.Channel,owner.Speaker,decision.Reply))send(reply);
+                continue;
+            }
             conversation.Capture(line.Raw,lease.InstanceId,lease.Identity.Server,lease.Identity.Character);
         }
         conversation.Drain(lease.Identity.Server,lease.Identity.Character,lease.InstanceId,command=>
@@ -83,7 +99,7 @@ public sealed class KeyferSession : IDisposable
             send(command);
         },local);
     }
-    public void ObserveChest(string? json){if(!stop.IsCancellationRequested&&json!=null)conversation.ChestSnapshot(json);}
+    public void ObserveChest(string? json){chestControlJson=json;chestControlAt=DateTime.UtcNow;if(!stop.IsCancellationRequested&&json!=null)conversation.ChestSnapshot(json);}
     public void ObserveChestReceipt(uint id,string name,string chest){if(!stop.IsCancellationRequested)conversation.ChestReceipt(id,name,chest);}
     public string Control(string option)
     {

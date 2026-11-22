@@ -7,4 +7,6 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Plugin build failed.' }
     dotnet run --project tests\ACAI2.Rynth.Tests -c Release -- src\ACAI2.Rynth.Plugin\bin\Release\net10.0-windows\win-x86\ACAI2.Rynth.Plugin.dll
     if ($LASTEXITCODE -ne 0) { throw 'Controlled tests failed.' }
+    dotnet run --project tests\ACAI2.KeyferChest.Lua.Tests -c Release -- lua\KeyferChest\index.lua
+    if ($LASTEXITCODE -ne 0) { throw 'Keyfer chest Lua checks failed.' }
 } finally { Pop-Location }
