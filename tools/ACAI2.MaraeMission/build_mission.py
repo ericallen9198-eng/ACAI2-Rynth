@@ -106,6 +106,8 @@ from mesh_policy import apply as apply_mesh_policy
 apply_mesh_policy(states,state,action,expr)
 from budget_policy import apply as apply_budget_policy
 apply_budget_policy(states,state,action,expr)
+from recovery_policy import apply as apply_recovery_policy
+apply_recovery_policy(states,state,action,expr,restore)
 # Task completions can arrive during a treasure fight, not just the hunting state.
 completion_rules=[]
 for zone in (180,225,275):

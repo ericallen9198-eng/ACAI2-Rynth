@@ -47,7 +47,9 @@ class World(BaseWorld):
     return getattr(self,'digDistance',0)
    if f in ('actiontrymove','maraecachepickup'):
     a=[self.ev(x,scope) for x in t[2]]
-    if f=='maraecachepickup':a += [999,0,self.v.get('tm_cache_stackmode',0)]
+    if f=='maraecachepickup':
+     assert self.p.get('mm_pickup_unresolved')==1,'persistent marker must precede dispatch'
+     a += [999,0,self.v.get('tm_cache_stackmode',0)]
     assert self.open==self.v['tm_cache_id'] and self.open in self.caches
     assert int(a[0]) in self.container(self.open) and a[1:3]==[999,0]
     self.moves.append(tuple(a));return self.dispatch
@@ -363,3 +365,67 @@ w.caches={i:{'distance':0,'openable':i==4} for i in range(1,5)}
 w.v.update(tm_cache_id=1,tm_cache_probe_id=1,tm_cache_tried=[1],tm_cache_rejected=[],tm_cache_pending=0,tm_cache_pickups=0,tm_cache_bound_at=0,tm_cache_probe_until=0,tm_cache_deadline=300)
 s=Sim(w,'CACHE_SEARCH');s.until('CACHE_CONFIRM',150)
 check(w.v['tm_cache_id']==4 and 4 in w.used,'stale bound cache releases and four visible candidates are considered')
+
+# Recoverable timeout keeps the run alive, without claiming a reward.
+w=World();w.v.update(ml_zone=180,ml_hunt_only=1,ml_use_maps=1,tm_cache_deadline=1)
+s=Sim(w,'CACHE_SEARCH');s.until('T180_FARM_RUN',120)
+check(w.p['mm_last_failure_state']=='CACHE_SEARCH' and w.p['mm_map_retry_after_180']>w.now,'cache timeout records cause and applies a bounded map cooldown')
+check(w.v.get('ml_outcome')=='Running' and w.p.get('tm_stat_success_search',0)==0,'failed reward search resumes hunting without fabricated cache success')
+w.mapCount=1
+for _ in range(10):s.tick()
+check(w.v.get('tm_map_id',0)==0 and s.state=='T180_FARM_RUN','map entry is gated during recovery cooldown')
+# Uncertain inventory dispatch is a real blocker, and survives a fresh meta load.
+w=World(items=[item(10)]);w.v.update(ml_zone=180)
+s=Sim(w,'CACHE_PREP');s.until('CACHE_CONFIRM')
+check(w.p['mm_pickup_unresolved']==1 and len(w.moves)==1,'pickup is checkpointed before native dispatch')
+s.until('HOLD',80)
+check(w.p['mm_pickup_unresolved']==1 and len(w.moves)==1 and w.v['ml_outcome']=='Needs attention','unconfirmed pickup pauses with persistent review marker and no second move')
+s=Sim(w,'Default');s.until('HOLD',40)
+check(len(w.moves)==1 and w.p['mm_pickup_unresolved']==1,'reloading the meta cannot erase an uncertain item move')
+w=World(items=[item(10)]);s=Sim(w,'CACHE_PREP');s.until('CACHE_CONFIRM');w.ack(10);s.tick()
+check(w.p['mm_pickup_unresolved']==0,'confirmed inventory acknowledgment clears the review marker')
+# Travel retries are bounded, then another camp is eligible; continuous work backs off.
+w=World();w.v.update(ml_zone=225,ml_run_mode=1,ml_hunt_only=0,mm_route_retries_225=0)
+s=Sim(w,'T225_ROUTE_HOLD');s.until('T225_START_LOCATION',40)
+check(w.v['mm_route_retries_225']==1,'travel failure retries after backoff')
+w.v['mm_route_retries_225']=2;s=Sim(w,'T225_ROUTE_HOLD');s.until('AREA_DEFERRED',40)
+check(w.p.get('mm_area_225',0)==0,'exhausted travel attempts defer rather than complete a camp')
+w=World();w.v.update(ml_zone=180,ml_hunt_only=1,mm_route_retries_180=2)
+s=Sim(w,'T180_ROUTE_HOLD');s.until('T180_TRAVEL_BACKOFF');s.tick(100)
+check(s.state=='T180_TRAVEL_BACKOFF','continuous fallback uses a slow retry instead of a recall loop or permanent stop')
+s.tick(210);s.until('T180_START_LOCATION',10)
+check(w.v['mm_route_retries_180']==0,'continuous travel restarts its bounded retry burst after cooldown')
+print(f"PASS: {ns['checks']} mission simulations including recovery/fallback and persistent inventory review.")
+
+# Fresh server progress wins over stale saved completion; never immediately recall again.
+w=World();w.v.update(ml_zone=180,pt_npc_end=1)
+for k in range(9):w.v['pt_pickup_'+str(k)]=1;w.v['pt_unavailable_'+str(k)]=1;w.p['mm_180_done_'+str(k)]=1
+w.chat='Hea Tarekeh the Carenzi Hunter tells you, "Slay 50 A New Carenzi. Return when the work is done."'
+s=Sim(w,'T180_NPC_TALK_WAIT');s.tick();w.chat='';s.until('T180_HUNT',50)
+check(w.p['mm_180_done_0']==0 and w.v['pt_unavailable_0']==0 and w.v.get('pt_turnin',0)==0,'fresh NPC assignment overrides saved completion without triggering turn-in recall')
+w=World();w.v.update(ml_zone=180,pt_turnin=1,mm_npc_retry=1,pt_npc_end=1)
+w.chat='Hea Tarekeh the Carenzi Hunter tells you, "You have defeated 4 of 50 A New Carenzi. The hunt is not yet finished."'
+s=Sim(w,'T180_TURNIN_WAIT');s.tick();w.chat='';s.until('T180_HUNT',100)
+check(w.v['pt_turnin']==0 and '/ls' not in w.messages,'unfinished turn-in resumes actual hunting without repeating NPC/recall loop')
+
+w=World();w.v.update(ml_zone=180,ml_hunt_only=1,tm_cache_pending=123,tm_cache_sent=1);w.p['mm_pickup_unresolved']=0
+s=Sim(w,'MISSION_ERROR');s.until('T180_FARM_RUN',100)
+check(w.v['ml_outcome']=='Running','an unsent selected item cannot be mistaken for a new unconfirmed pickup using stale session flags')
+# No-fallback users still retry unresolved work instead of claiming completion.
+w=World();w.p.update(mm_fallback_180=0,mm_attempted_180=1,mm_attempted_225=1,mm_attempted_275=1)
+s=Sim(w,'Default');s.until('RECOVERY_RETRY_AREAS',50)
+check(w.v['ml_outcome']=='Running','unresolved camps do not become false Finished when Lowlands fallback is disabled')
+s.tick(301);s.until('T180_START_LOCATION',50)
+check(w.p['mm_attempted_180']==0 and w.p['mm_attempted_225']==0,'camp retry backoff clears attempt flags while retaining completion flags')
+# A map cooldown is temporary, not a permanent disable or saved-preference edit.
+w=World();w.v.update(ml_zone=180,ml_hunt_only=1,ml_use_maps=1);w.mapCount=1
+s=Sim(w,'MISSION_ERROR');s.until('T180_FARM_RUN',100)
+check(w.v['ml_use_maps']==1,'recoverable map failure does not turn off the map selection')
+w.now=w.p['mm_map_retry_after_180']+1;s.until('MAP_LOCK',50)
+check(s.state=='MAP_LOCK','map hunting becomes eligible again after the recovery cooldown')
+print(f"PASS: {ns['checks']} total mission simulations.")
+
+w=World();w.busy=True;w.p['mm_pickup_unresolved']=1;s=Sim(w,'T180_DEATH_RETURN_WAIT');s.tick(10)
+check(s.state=='T180_DEATH_RETURN_WAIT','inventory review does not interrupt active native corpse recovery')
+w.busy=False;s.until('HOLD',30)
+check(w.p['mm_pickup_unresolved']==1,'death recovery cannot erase a previously issued unconfirmed pickup')

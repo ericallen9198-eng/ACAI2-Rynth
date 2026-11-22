@@ -12,6 +12,17 @@ def apply(states,keys,state,action,expr):
    pattern='^'+re.escape(name)+r' tells you, "(?:Slay \d+ [^"]+\. Return when the work is done\.|You have defeated \d+ of \d+ [^"]+\. The hunt is not yet finished\.)"$'
    rx=r'(ChatMatch \{)\^'+re.escape(name)+r' tells you, [^\n]+(\}\n\s*DO: (?:DoAll\s+DoExpr|DoExpr) \{setvar\[pt_pickup_'+re.escape(key)+r',1\]\})'
    body,n=re.subn(rx,lambda m:m[1]+pattern+m[2],body,count=1);assert n==1,(z,key)
+  # A fresh server in-progress reply overrides a saved completion/cooldown flag.
+  for key in keys[z]:
+   chunks=re.split(r'(?=^\tIF:)',body,flags=re.M);count=0
+   token=expr('setvar[pt_pickup_'+key+',1]')
+   for i,c in enumerate(chunks):
+    if 'ChatMatch' not in c or 'Slay' not in c or token not in c:continue
+    c=c.replace('DO: '+token,'DO: DoAll\n\t\t\t\t'+token,1)
+    c=c.replace(token,token+'\n\t\t\t\t'+expr('setvar[pt_unavailable_'+key+',0]')+'\n\t\t\t\t'+expr(f'setpvar[mm_{z}_done_{key},0]'),1)
+    chunks[i]=c;count+=1
+   assert count==1,(z,key)
+   body=''.join(chunks)
   states[p+'NPC_TALK_WAIT']=body
   def log(turnin):
    # Snapshot missing identities before another area's init can clear temporary flags.
@@ -37,6 +48,10 @@ def apply(states,keys,state,action,expr):
    else:
     active=' || '.join(f'(getvar[pt_pickup_{k}]==1 && getvar[pt_unavailable_{k}]!=1 && getpvar[mm_{z}_done_{k}]!=1)' for k in keys[z])
     state(target,'\tIF: Expr {'+active+'}\n\t\tDO: DoAll\n'+''.join('\t\t\t\t'+x+'\n' for x in log(False)+[expr('setvar[ml_status,`Continuing confirmed tasks; unresolved hunters logged`]'),'SetState {'+p+('HUNT_INIT' if z==275 else 'HUNT_LOAD')+'}'])+'\tIF: Always\n\t\tDO: DoAll\n'+''.join('\t\t\t\t'+x+'\n' for x in log(False)+['SetState {AREA_DEFERRED}']))
+  # In-progress replies during turn-in can contradict stale completion flags too.
+  active_rules=[c.split('~~ }')[0] for c in re.split(r'(?=^\tIF:)',states[p+'NPC_TALK_WAIT'],flags=re.M) if c.startswith('\tIF:') and 'ChatMatch' in c and 'Slay' in c and 'pt_pickup_' in c]
+  pos=states[p+'TURNIN_WAIT'].index('\tIF:')
+  states[p+'TURNIN_WAIT']=states[p+'TURNIN_WAIT'][:pos]+''.join(active_rules)+states[p+'TURNIN_WAIT'][pos:]
   # Unconfirmed tasks are excluded from this pass, never written as completed.
   for n in (p+'HUNT',p+'HUNT_INIT'):
    if n not in states:continue

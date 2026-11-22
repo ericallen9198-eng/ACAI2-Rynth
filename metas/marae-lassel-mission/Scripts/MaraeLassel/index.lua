@@ -178,7 +178,11 @@ local function observeNpc(e)
  expr('setvar[pt_pickup_'..key..',1]')
  if status=='cooldown' or status=='rewarded' then
   expr('setvar[pt_unavailable_'..key..',1]');expr('setpvar[mm_'..zone..'_done_'..key..',1]')
- elseif status=='completed' then expr('setpvar[mm_'..zone..'_done_'..key..',1]') end
+ elseif status=='completed' then expr('setpvar[mm_'..zone..'_done_'..key..',1]')
+ elseif status=='in progress' then
+  expr('setvar[pt_unavailable_'..key..',0]');expr('setpvar[mm_'..zone..'_done_'..key..',0]')
+  journal.progress=journal.progress or {};journal.progress['mm_'..zone..'_done_'..key]=0
+ end
  save()
 end
 game.World.OnChatText.Add(function(e)
@@ -242,6 +246,8 @@ game.OnTick.Add(function()
    checkpoint();journal.active=false;journal.resumable=true;save();startup=nil
    if owns() then restorePickup();command('/ra stop');command('/ub clearmotion') end
    feedback='Stopped. Progress saved; Resume run continues this mission.'
+  elseif r=='reviewed' then
+   expr('setpvar[mm_pickup_unresolved,0]');begin(false,false)
   elseif r=='start' or r=='new' then
    command('/lua autostart MaraeLassel character')
    begin(r=='new',false)
@@ -310,6 +316,9 @@ game.OnTick.Add(function()
   end
   snapshot.mode=ours and (number('getvar[mm_budget_fallback]')==1 and 'Lowlands fallback' or number('getvar[ml_hunt_only]')==1 and 'Hunt only' or 'Tasks') or 'Stopped'
   snapshot.maps=ours and number('getvar[ml_use_maps]')==1
+  snapshot.pickupHold=number('getpvar[mm_pickup_unresolved]')==1
+  snapshot.mapCooldown=ours and math.max(0,math.ceil((number('getpvar[mm_map_retry_after_'..snapshot.zone..']')-t)/60)) or 0
+  snapshot.failure=value('getpvar[mm_last_failure_state]')
   snapshot.loaded=value('vtgetmeta[]');snapshot.recovery=ours and number('maraerecoverybusy[]')==1
   if startup then nextPoll=math.min(nextPoll,ms+200) end
  end)
@@ -327,6 +336,7 @@ hud.OnRender.Add(function()
  if snapshot.running or startup then
   ImGui.Text('Area: '..tostring(snapshot.zone~=0 and snapshot.zone or 'choosing'))
   ImGui.TextWrapped(snapshot.recovery and 'Waiting for respawn / corpse recovery' or snapshot.state)
+  if snapshot.mapCooldown>0 then ImGui.TextWrapped('Map retry in '..snapshot.mapCooldown..' min; previous failure: '..snapshot.failure) end
   if snapshot.budgetMinutes then ImGui.Text('Camp hunt limit: '..snapshot.budgetMinutes..' min remaining') end
   ImGui.Text('Mode: '..snapshot.mode..(snapshot.maps and ' + maps' or ' (maps off)'))
   if snapshot.detail~='0' then ImGui.TextWrapped(snapshot.detail) end
@@ -352,8 +362,11 @@ hud.OnRender.Add(function()
   if fallbackChanged then settings.fallback180=fallbackValue;saveSettings() end
   end
   if snapshot.other then ImGui.TextWrapped('Start will stop the current RynthAi macro before loading this mission.') end
-  if selected() and ImGui.Button(journal.resumable and not journal.finished and 'Resume run' or 'Start run') then request='start' end
-  if journal.resumable and not journal.finished then
+  if snapshot.pickupHold then
+   ImGui.TextWrapped('A cache pickup was issued without confirmation. Inspect the pack/cache before resuming; this hold survives reconnect.')
+   if ImGui.Button('Resume after reviewing pickup') then request='reviewed' end
+  elseif selected() and ImGui.Button(journal.resumable and not journal.finished and 'Resume run' or 'Start run') then request='start' end
+  if not snapshot.pickupHold and journal.resumable and not journal.finished then
    ImGui.SameLine();if ImGui.Button('New run') then request='new' end
   end
  end

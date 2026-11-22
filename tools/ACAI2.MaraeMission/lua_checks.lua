@@ -134,4 +134,22 @@ sim.state='CharacterSelect';step();sim.pvars={};sim.vars={};sim.meta=nil;sim.sta
 click('Resume run');step(40)
 check(sim.pvars.mm_mesh_far==90 and sim.pvars.mm_mesh_close==40,'both travel distances persist per character through reconnect')
 click('Stop run');step(25)
+-- Recoverable native states stay active and therefore recover on the next login.
+click('Resume run');step(40)
+sim.metaState='RECOVERY_WAIT';sim.vars.ml_outcome='Running';sim.vars.ml_status='Recovering from CACHE_SEARCH'
+step(25);check(sim.stores.A.mission_v1.active,'recoverable native failure keeps the reconnect checkpoint active')
+sim.state='CharacterSelect';ai.MacroRunning=false;step();sim.state='InGame';step(40)
+check(ai.MacroRunning and sim.stores.A.mission_v1.active,'reconnect resumes a recovering run automatically')
+-- A real unconfirmed inventory action remains blocked until explicit local review.
+sim.metaState='HOLD';sim.vars.ml_outcome='Needs attention';sim.vars.ml_status='Unconfirmed cache pickup'
+sim.pvars.mm_pickup_unresolved=1;step(25)
+check(not ai.MacroRunning and not sim.stores.A.mission_v1.active,'inventory review HOLD deactivates automatic restart')
+sim.state='CharacterSelect';step();sim.state='InGame';step(30)
+check(not ai.MacroRunning and sim.pvars.mm_pickup_unresolved==1,'logout does not clear the inventory review marker')
+click('Resume after reviewing pickup');step(40)
+check(ai.MacroRunning and sim.pvars.mm_pickup_unresolved==0,'explicit reviewed resume clears the pickup hold and retains task progress')
+sim.vars.ml_zone=225;sim.vars.pt_unavailable_1=1;sim.pvars.mm_225_done_1=1
+sim.chat({Message='Hea Hineroa the Golem Hunter tells you, "You have defeated 4 of 50 A New Golem. The hunt is not yet finished."'})
+check(sim.vars.pt_unavailable_1==0 and sim.pvars.mm_225_done_1==0 and sim.stores.A.mission_v1.progress.mm_225_done_1==0,'live unfinished task overrides stale saved completion in native and controller checkpoints')
+click('Stop run');step(25)
 return checks
