@@ -1,6 +1,6 @@
 # ACAI2-Rynth
 
-**Independent Rynth plugins: Keyfer v0.3.3, Threads v0.1.5 and Combat v0.1.10.**
+**Independent Rynth plugins: Keyfer v0.3.4, Threads v0.1.6 and Combat v0.1.10.**
 Each has its own Windows package and setup guide. The Keyfer package excludes
 combat; the standalone Combat app is described below.
 
@@ -14,14 +14,14 @@ project and installed ACAI2 files are not modified.
 
 ## Standalone Threads app
 
-The separate **ACAI2.Threads v0.1.5** plugin combines a compact Thread journal,
+The separate **ACAI2.Threads v0.1.6** plugin combines a compact Thread journal,
 recipe research and an explicitly started native gem maker. It does not replace
-RynthCore/RynthAi or require Keyfer/Bridge. Choose 300/325/350/375 blanks; Start temporarily pauses RynthAi and reports exact
+RynthCore/RynthAi or require Keyfer/Bridge. Choose 300/325/350/375/400/450/500 blanks; Start temporarily pauses RynthAi and reports exact
 blockers. All results are retained; uncertain
 actions never automatically retry. See [Thread setup and first test](docs/THREADS-SETUP.md).
-v0.1.5 adds random recipes: fix the blank level/scarab and independently sample the
-other component families per gem, recording all nine doses and their outcomes.
-[Download Threads v0.1.5 for Windows](https://github.com/ericallen9198-eng/ACAI2-Rynth/releases/download/threads-v0.1.5/ACAI2-Threads-v0.1.5-Windows.zip).
+v0.1.6 adds new blank levels and up to two taper types sharing four doses, including
+mixed random tapers. Shopping and research preserve the complete recipe per gem.
+[Download Threads v0.1.6 for Windows](https://github.com/ericallen9198-eng/ACAI2-Rynth/releases/download/threads-v0.1.6/ACAI2-Threads-v0.1.6-Windows.zip).
 Build on Windows with `scripts/Publish-Threads.ps1`; pure checks use
 `scripts/test-threads.sh`. The independent package excludes combat and Keyfer.
 
@@ -45,10 +45,14 @@ preferences remain available.
 
 ## Package and runtime
 
+v0.3.4 adds the KeyferChest setup panel and fixed Toe/Samm tell/allegiance
+start, stop and status requests. Configure the key/chest locally first. This update
+needs no Bridge change. Follow the Keyfer setup guide above for the Lua folder.
+
 v0.3.3 adds own chest-loot awareness and includes Bridge v0.18; update both parts
 while retaining existing keys/configuration/data. v0.3.1 fixed the registration `MissingMethodException` caused by the host's private JSON assembly context.
 
-Download [the compiled Keyfer Windows ZIP](https://github.com/ericallen9198-eng/ACAI2-Rynth/releases/download/keyfer-v0.3.3/ACAI2-Rynth-Keyfer-v0.3.3-Windows.zip). No source rebuild is needed. The package is also available in its successful verification Actions run as **ACAI2-Rynth-Keyfer-Windows** (GitHub sign-in required). Or build on Windows with .NET 10:
+Download [the compiled Keyfer Windows ZIP](https://github.com/ericallen9198-eng/ACAI2-Rynth/releases/download/keyfer-v0.3.4/ACAI2-Rynth-Keyfer-v0.3.4-Windows.zip). No source rebuild is needed. The package is also available in its successful verification Actions run as **ACAI2-Rynth-Keyfer-Windows** (GitHub sign-in required). Or build on Windows with .NET 10:
 
 ```powershell
 git clone --recurse-submodules https://github.com/ericallen9198-eng/ACAI2-Rynth.git
