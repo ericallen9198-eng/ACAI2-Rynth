@@ -43,6 +43,7 @@ namespace ACAI2.Rynth.Core.Keyfer
         public void ChestSnapshot(string json)=>ownLoot.Poll(json,config.UtcNow);
         public void ChestReceipt(uint id,string name,string chest)=>ownLoot.NativeReceipt(id,name,chest,config.UtcNow);
         private readonly System.Collections.Generic.HashSet<string> publicNames = new(StringComparer.OrdinalIgnoreCase);
+        private readonly System.Collections.Generic.Dictionary<string,DateTime> insultAddressUntil=new(StringComparer.OrdinalIgnoreCase);
         private DateTime nextAmbientUtc;
         private DateTime arenaQuietUntil;
         private int ambientSample;
@@ -55,6 +56,7 @@ namespace ACAI2.Rynth.Core.Keyfer
             string prefix=server+"::"+character+"::";
             state.Timeouts=playerTimeouts.Where(x=>x.Key.StartsWith(prefix,StringComparison.Ordinal)&&x.Value>config.UtcNow)
                 .Take(256).ToDictionary(x=>x.Key.Substring(prefix.Length),x=>x.Value,StringComparer.OrdinalIgnoreCase);
+            state.InsultTimeouts=state.InsultTimeouts.Where(x=>x.Value>config.UtcNow).OrderByDescending(x=>x.Value).Take(256).ToDictionary(x=>x.Key,x=>x.Value,StringComparer.OrdinalIgnoreCase);
             state.Strikes=state.Strikes.Where(x=>config.UtcNow-x.Value.LastUtc<TimeSpan.FromDays(30)).OrderByDescending(x=>x.Value.LastUtc).Take(256).ToDictionary(x=>x.Key,x=>x.Value,StringComparer.OrdinalIgnoreCase);
             string path=StatePath(server,character);Directory.CreateDirectory(Path.GetDirectoryName(path));
             File.WriteAllText(path+".tmp",new KeyferJson().Serialize(state));File.Move(path+".tmp",path,true);
@@ -115,7 +117,7 @@ namespace ACAI2.Rynth.Core.Keyfer
             state.Character = character;
             if (state.Excluded == null) state.Excluded = new System.Collections.Generic.List<string> { "Wooty" };
             if (state.Owners == null) state.Owners = new System.Collections.Generic.List<string> { "Samm" };
-            state.Timeouts ??= new(); state.Strikes ??= new();
+            state.Timeouts ??= new(); state.Strikes ??= new(); state.InsultTimeouts ??= new();
             foreach(var entry in state.Timeouts.Where(x=>x.Value>config.UtcNow).Take(256))playerTimeouts[TimeoutKey(server,character,entry.Key)]=entry.Value;
             publicNames.Clear();nextAmbientUtc=config.UtcNow.AddMinutes(1);
             quiet = state.Quiet;
@@ -211,6 +213,24 @@ namespace ACAI2.Rynth.Core.Keyfer
             string arenaText=ArenaCommands.Parse(chat.Message);
             if(arenaText!=null&&ArenaCommands.Names(arenaText.StartsWith("preview ",StringComparison.OrdinalIgnoreCase)?arenaText.Substring(8):arenaText,out var first,out var second)){ObserveName(first);ObserveName(second);}
 
+            string insultKey=chat.Speaker.ToLowerInvariant();
+            bool recentAddress=insultAddressUntil.TryGetValue(insultKey,out var addressedUntil)&&addressedUntil>config.UtcNow;
+            if(chat.Channel=="Tell"||GameChat.IsAddressed(chat.Message))
+            {
+                insultAddressUntil[insultKey]=config.UtcNow.AddSeconds(45);
+                foreach(var old in insultAddressUntil.OrderByDescending(x=>x.Value).Skip(256).Select(x=>x.Key).ToArray())insultAddressUntil.Remove(old);
+            }
+            if(!InsultPolicy.Exempt(chat.Speaker,chat.Channel)&&InsultPolicy.Directed(chat.Message,chat.Channel,recentAddress)&&
+                (!state.InsultTimeouts.TryGetValue(insultKey,out var insultUntil)||insultUntil<=config.UtcNow))
+            {
+                var until=config.UtcNow.AddHours(24);
+                state.InsultTimeouts[insultKey]=until;playerTimeouts[TimeoutKey(server,character,chat.Speaker)]=until;
+                try{SaveState(server,character);}catch{timeoutStateDirty=true;deliveries.Enqueue(new Delivery{Server=server,Character=character,LocalOnly=true,Text="[ACAI2] Insult timeout active; persistence failed."});}
+                nextTimeoutNotice[TimeoutKey(server,character,chat.Speaker)]=config.UtcNow.AddMinutes(1);
+                deliveries.Enqueue(new Delivery{Server=server,Character=character,Channel=chat.Channel,Speaker=chat.Speaker,
+                    Text=InsultPolicy.Notice(Random.Shared.Next(3)),TimeoutExplanation=true,Direct=true});
+                return;
+            }
             DateTime existingTimeout;
             if (TimedOut(server, character, chat.Speaker, out existingTimeout))
             {
@@ -340,7 +360,7 @@ namespace ACAI2.Rynth.Core.Keyfer
                         Speaker = chat.Speaker, Text = reply != null && reply.Ok ? reply.Answer : "[ACAI2] Keyfer: " + (reply == null ? "Empty Bridge response." : reply.Error),
                         LocalOnly = reply == null || !reply.Ok, Direct = direct,
                         Emote = reply != null && reply.Ok ? reply.ConversationEmote : null,
-                        TimeoutExplanation = reply != null && !string.IsNullOrWhiteSpace(reply.TimeoutUntilUtc) && chat.Channel == "Tell" });
+                        TimeoutExplanation = reply != null && !string.IsNullOrWhiteSpace(reply.TimeoutUntilUtc)  });
                 }
                 catch (Exception ex)
                 {
@@ -407,7 +427,7 @@ namespace ACAI2.Rynth.Core.Keyfer
                     (item.EmoteOnly && (!state.EmotesEnabled || config.UtcNow > item.EmoteExpires)) ||
                     (!string.IsNullOrEmpty(item.ArenaId) && (config.UtcNow > item.ArenaExpires || cancelledArena.ContainsKey(item.ArenaId))) ||
                     (!item.Control && !item.TimeoutExplanation && playerBlocked) || item.Server != server || item.Character != character ||
-                    (state.GeneralQuiet && item.Channel == "General" && !ConversationSafety.Familiar(item.Speaker??"")) ||
+                    (state.GeneralQuiet && item.Channel == "General" && !item.TimeoutExplanation && !ConversationSafety.Familiar(item.Speaker??"")) ||
                     (quiet && item.Channel != "Tell" && !item.Control && !item.Direct)) continue;
                 string outgoing = item.Text;
                 if (item.ArenaFinal && item.Channel == "General" && item.GeneralNextUtc != DateTime.MinValue)
@@ -451,6 +471,7 @@ namespace ACAI2.Rynth.Core.Keyfer
             public bool EmotesEnabled { get; set; } = true;
             public bool GeneralQuiet { get; set; }
             public System.Collections.Generic.Dictionary<string,DateTime> Timeouts {get;set;}=new();
+            public System.Collections.Generic.Dictionary<string,DateTime> InsultTimeouts {get;set;}=new();
             public System.Collections.Generic.Dictionary<string,SafetyStrike> Strikes {get;set;}=new();
             public System.Collections.Generic.List<string> Excluded { get; set; } = new System.Collections.Generic.List<string> { "Wooty" };
             public System.Collections.Generic.List<string> Owners { get; set; } = new System.Collections.Generic.List<string> { "Samm" };

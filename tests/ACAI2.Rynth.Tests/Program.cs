@@ -192,6 +192,7 @@ if(Directory.Exists(sourceRoot)) {
 }
 await IsolatedBridgeChecks.Run(Check);
 await KeyferChecks.Run(Check);
+InsultChecks.Run(Check);
 OwnLootChecks.Run(Check);
 await BridgeLootChecks.Run(Check);
 Console.WriteLine($"All {count} checks passed. Only fake HTTP handlers were used; no AI, game chat or production Bridge calls.");

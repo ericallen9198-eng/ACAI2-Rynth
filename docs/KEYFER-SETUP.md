@@ -1,4 +1,4 @@
-# Keyfer on Rynth — v0.3.4
+# Keyfer on Rynth — v0.3.5
 
 This release restores the existing Keyfer services through a Rynth client adapter.
 It does not ship combat rendering, combat parsing, DPS, floating text, attack power,
@@ -24,8 +24,8 @@ are excluded from the published plugin/dependency graph.
 - Verified nearby player names (native player bit 0x8) in sampled perception,
   without guessing object kinds from names or distances from coordinates.
 
-This version includes Bridge v0.18 and requires it for loot awareness. Stop the old
-Bridge v0.17 before launching the included Bridge\ACAI2.Bridge.exe. Existing AI keys, memory, behavior, wiki reference,
+This version includes Bridge v0.19 and requires it for the complete new moderation behavior. Stop the old
+Bridge before launching the included Bridge\ACAI2.Bridge.exe. Existing AI keys, memory, behavior, wiki reference,
 character sheets, arena settings and treasure ledger stay with that Bridge and its
 existing data directory. Do not create a new empty Bridge data folder for cutover.
 No API key goes in the Rynth plugin settings.
@@ -45,10 +45,10 @@ Windows installation. No native Windows/game run is claimed from those tests.
 
 ## Install
 
-1. Keep the current Bridge process/config/data. Stop the old Decal Keyfer responder
+1. Close the game and stop the current Bridge process. Keep its configuration/data. Stop the old Decal Keyfer responder
    before enabling the new one. The Rynth ownership lock prevents duplicate Rynth
    responders on this PC, but the old Decal adapter does not share that lock.
-2. Download [the compiled Windows ZIP](https://github.com/ericallen9198-eng/ACAI2-Rynth/releases/download/keyfer-v0.3.4/ACAI2-Rynth-Keyfer-v0.3.4-Windows.zip) from the normal GitHub release. No source rebuild is needed. The same verified package is also available as **ACAI2-Rynth-Keyfer-Windows** in its successful verification Actions run (requires GitHub sign-in). Alternatively build on Windows with the .NET 10 SDK:
+2. Download [the compiled Windows ZIP](https://github.com/ericallen9198-eng/ACAI2-Rynth/releases/download/keyfer-v0.3.5/ACAI2-Rynth-Keyfer-v0.3.5-Windows.zip) from the normal GitHub release. No source rebuild is needed. The same verified package is also available as **ACAI2-Rynth-Keyfer-Windows** in its successful verification Actions run (requires GitHub sign-in). Alternatively build on Windows with the .NET 10 SDK:
    `scripts\Bootstrap-RynthCore.ps1` (GitHub source ZIP only), then
    `scripts\Publish.ps1`. It runs controlled tests and writes `artifacts\keyfer-managed`.
 3. Extract the entire package into its own directory, keeping its dependencies
@@ -63,7 +63,7 @@ Windows installation. No native Windows/game run is claimed from those tests.
 5. Leave `treasurePrizeCommand` empty during the first conversation check. To
    restore the same automatic one-MMD payout afterward, set it to exactly
    `/b t p 250000 {winner}` and reload. The amount/prefix cannot come from AI text.
-6. Start the existing Bridge using your normal shortcut, then log in on Keyfer.
+6. Start the included Bridge\ACAI2.Bridge.exe (console must show v0.19), then log in on Keyfer. Your shortcut may still be used if it points at this updated copy.
    `/acai2r keyfer status` should report **Bridge registered** after a valid world
    identity is found. Other characters do not run a responder.
 
@@ -250,3 +250,38 @@ remain Rynth-owned. The adapter needs its usual active Bridge registration, but
 these commands never ask the AI. The local setup panel does not need a model call.
 
 Optional: `/lua autostart KeyferChest character` enables this panel for Keyfer on future logins.
+
+## v0.3.5: direct insults and original-channel boundaries
+
+Close AC and the old Bridge. Extract package files together into your existing
+Keyfer folder, replacing matching files. Update the Bridge subfolder too. Keep
+keyfer.json, API keys, environment variables, behavior files and the original Data
+folder; do not replace configuration with the example. Start the updated
+Start-Keyfer-Bridge.cmd (Bridge v0.19), then launch AC. No source build is required.
+
+Direct insults and derogatory renaming now get an immediate 24-hour reply timeout
+and one curated first-person notice in the channel where they happened. This is
+Keyfer ignoring the player, not a server or Discord moderator action. In-game
+Samm and Toe are exempt only from this new insult rule. Ordinary command/secret
+protections remain. Repeated insults neither extend the deadline nor repeat the
+public notice. Normal questions, quoted/reported speech and identity labels are
+not classified as insults. The matcher is deliberately conservative; it does not
+claim to understand every possible insult. Notices work without an AI call.
+
+See KEYFER-BEHAVIOR.md for the full current behavior guide and preserved settings.
+
+
+## v0.3.5: same-channel direct-insult timeout
+
+Update **both parts** this time: close the game, stop the old Bridge, then replace
+all package files together in your existing Keyfer folder. Preserve your existing
+keyfer.json, API key/environment settings, behavior files and Data directory.
+Start the included Start-Keyfer-Bridge.cmd (or a shortcut to it); its console
+should say **ACAI2 Bridge v0.19**. Then launch the game. No source build is needed.
+
+Recognized direct insults from anyone except in-game Samm/Toe trigger a persistent
+24-hour reply timeout and one first-person notice in the original channel.
+Repeated insults do not renew the deadline or repeat public notices. This is
+Keyfer ignoring messages, not server moderation. Existing command protections,
+chest controls and loot awareness remain. Read **KEYFER-BEHAVIOR.md** in the ZIP
+for the existing and new behavior parameters, exceptions and limitations.

@@ -15,6 +15,7 @@ try {
     Copy-Item lua/* (Join-Path $Output 'Lua') -Recurse -Force
     Copy-Item keyfer.example.json $Output
     Copy-Item docs\KEYFER-SETUP.md $Output
+    Copy-Item docs\KEYFER-BEHAVIOR.md $Output
     Copy-Item external\RynthCore\LICENSE (Join-Path $Output 'RynthCore-LICENSE.txt')
     Copy-Item THIRD-PARTY-NOTICES.md $Output
     Copy-Item THIRD-PARTY-NOTICES (Join-Path $Output 'THIRD-PARTY-NOTICES') -Recurse -Force

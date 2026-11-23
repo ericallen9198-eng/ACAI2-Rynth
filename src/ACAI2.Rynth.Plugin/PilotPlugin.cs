@@ -9,7 +9,7 @@ namespace ACAI2.Rynth.Plugin;
 
 public sealed partial class PilotPlugin : RynthPluginBase
 {
-    public const string Version = "0.3.4";
+    public const string Version = "0.3.5";
     private readonly object sessionGate=new();
     private KeyferSession? keyfer;
     private KeyferSettings keyferSettings=new();
@@ -31,7 +31,7 @@ public sealed partial class PilotPlugin : RynthPluginBase
         settings = PilotSettings.Load(Path.Combine(DataRoot, "pilot.json"));
         keyferSettings=KeyferSettings.Load(KeyferPath);keyferSettings.DataRoot=DataRoot;
         observations = new(settings); bridge = new(settings);
-        Host.Log("[ACAI2.Rynth] v0.3.4 Keyfer adapter. Combat UI excluded. Keyfer "+(keyferSettings.keyferEnabled?"enabled for "+keyferSettings.keyferServer+" / "+keyferSettings.keyferCharacter:"disabled; configure keyfer.json"));
+        Host.Log("[ACAI2.Rynth] v0.3.5 Keyfer adapter. Combat UI excluded. Keyfer "+(keyferSettings.keyferEnabled?"enabled for "+keyferSettings.keyferServer+" / "+keyferSettings.keyferCharacter:"disabled; configure keyfer.json"));
         return 0;
     }
     // Lifecycle callbacks only signal state changes. Native reads and local UI writes happen on the pump.

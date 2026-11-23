@@ -202,6 +202,10 @@ internal sealed class KeyferService : IDisposable
             var gauge = publicChat.Gauge(ask, DateTime.UtcNow);
             if (gauge.Blocked)
             {
+                if(gauge.Insult)
+                    return new KeyferAnswer { Ok=true,Answer=gauge.Threshold?InsultPolicy.Notice(Random.Shared.Next(3)):
+                        gauge.TellNotice?PublicChatPolicy.TimeoutText(gauge.Until,DateTime.UtcNow):"",
+                        ReplyChannel=ask.Channel,TimedOutPlayer=ask.Speaker,TimeoutUntilUtc=gauge.Until.ToString("O") };
                 string duration = gauge.Strikes == 1 ? "5 minutes" : gauge.Strikes == 2 ? "30 minutes" : "24 hours";
                 string notice = gauge.Threshold ? "[ACAI2 Keyfer] Timeout: " + ask.Speaker + " (" + gauge.Reason + "), offense " + gauge.Strikes + ", " + duration + "." : "";
                 if (gauge.Threshold) Console.WriteLine(notice);

@@ -6,13 +6,14 @@ using ACAI2.Protocol;
 
 namespace ACAI2.Bridge;
 
-// Public conversation only. Silence is a successful empty answer, never a public warning.
+// Shared conversation moderation. Silence is a successful empty answer.
+// Direct insults receive one boundary notice in their originating channel.
 internal sealed class PublicChatPolicy
 {
     private sealed record Attempt(DateTime Utc, string Scope, string Channel, string Player, string Question);
     private readonly List<Attempt> recent = new();
     private readonly object sync = new();
-    internal sealed record ModerationDecision(bool Blocked, bool Threshold, int Score, string Reason, DateTime Until = default, int Strikes = 0, bool TellNotice = false);
+    internal sealed record ModerationDecision(bool Blocked, bool Threshold, int Score, string Reason, DateTime Until = default, int Strikes = 0, bool TellNotice = false, bool Insult = false);
     private readonly string? storageRoot;
     internal PublicChatPolicy(string? storageRoot = null) { this.storageRoot = storageRoot; }
     private sealed class Meter
@@ -23,7 +24,7 @@ internal sealed class PublicChatPolicy
         public string Key = "";
         public string Name = "";
         public List<string> Summaries = new();
-        public DateTime LastTellNotice;
+        public DateTime LastTellNotice, InsultUntil;
         public DateTime LastUtc, DecayUtc, Until;
         public string Previous = "";
     }
@@ -61,21 +62,31 @@ internal sealed class PublicChatPolicy
         lock (sync)
         {
             var meter = Get(key, now);
+            bool insult=InsultPolicy.Directed(ask.Question,ask.Channel,true);
+            bool exempt=InsultPolicy.Exempt(ask.Speaker,ask.Channel);
+            if(insult&&!exempt&&meter.InsultUntil<=now)
+            {
+                meter.Score=4;meter.Until=now.AddHours(24);meter.InsultUntil=meter.Until;
+                meter.Name=ask.Speaker;meter.LastUtc=now;meter.LastTellNotice=now;
+                Save(meter);
+                return new(true,true,meter.Score,"direct insult",meter.Until,meter.Strikes,true,true);
+            }
             if (now < meter.Until)
             {
                 bool tell = ask.Channel == "Tell" && now - meter.LastTellNotice >= TimeSpan.FromMinutes(1);
                 if (tell) meter.LastTellNotice = now;
-                return new(true, false, meter.Score, "cooldown", meter.Until, meter.Strikes, tell);
+                return new(true, false, meter.Score, "cooldown", meter.Until, meter.Strikes, tell, meter.InsultUntil>now);
             }
             if (meter.Until != default) { meter.Score = 0; meter.Until = default; meter.DecayUtc = now; }
             int decay = (int)Math.Max(0, (now - meter.DecayUtc).TotalSeconds / 90);
             if (decay > 0) { meter.Score = Math.Max(0, meter.Score - decay); meter.DecayUtc = meter.DecayUtc.AddSeconds(decay * 90); }
+            if(insult&&exempt&&ConversationSafety.Violation(ask.Question).Length==0)return new(false,false,meter.Score,"");
             int points = 0; string reason = "";
             if (IsRoleplayRequest(ask.Question)) { points = 3; reason = "roleplay bait"; }
             else if (Regex.IsMatch(q, @"\b(?:override|ignore|forget)\b.{0,50}\b(?:instructions|rules|settings)\b|\b(?:from now on|every response|respond to everyone|scream everything)\b|\b(?:play|roleplay|rehearsal)\b.{0,100}\b(?:top|leaderboard|insult|everyone|scream|instructions)\b"))
             { points = 3; reason = "persona or result manipulation"; }
-            else if (Regex.IsMatch(q, @"\b(?:you|ur|you re|you are)\s+(?:so\s+)?(?:gay|stupid|idiot|useless|trash|a bitch|a dick|an idiot|a moron)\b|\b(?:shut (?:the fuck )?up|fuck you|you suck|big dick|your dick|your cock)\b"))
-            { points = 4; reason = "direct insult or abuse"; }
+            else if (Regex.IsMatch(q, @"^(?:your dick|your cock|big dick)$"))
+            { points = 4; reason = "explicit sexual bait"; }
             else if (q.Length == 0 || Regex.IsMatch(q, @"^(?:the thing|your thing)$"))
             { points = 1; reason = "repeated low-content pings"; }
             meter.Previous = q; meter.LastUtc = now;

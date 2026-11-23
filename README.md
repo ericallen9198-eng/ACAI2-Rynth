@@ -1,6 +1,6 @@
 # ACAI2-Rynth
 
-**Independent Rynth plugins: Keyfer v0.3.4, Threads v0.1.6 and Combat v0.1.10.**
+**Independent Rynth plugins: Keyfer v0.3.5, Threads v0.1.6 and Combat v0.1.10.**
 Each has its own Windows package and setup guide. The Keyfer package excludes
 combat; the standalone Combat app is described below.
 
@@ -45,6 +45,14 @@ preferences remain available.
 
 ## Package and runtime
 
+v0.3.5 adds immediate 24-hour direct-insult reply timeouts, same-channel notices
+and the in-game Samm/Toe exemption. Includes Bridge v0.19: update both parts.
+[Existing and new Keyfer behavior parameters](docs/KEYFER-BEHAVIOR.md).
+
+v0.3.5 adds persistent 24-hour direct-insult reply timeouts, same-channel notices
+and the Samm/Toe exemption. Update both plugin and included Bridge v0.19.
+[Keyfer behavior parameters](docs/KEYFER-BEHAVIOR.md) documents existing and new rules.
+
 v0.3.4 adds the KeyferChest setup panel and fixed Toe/Samm tell/allegiance
 start, stop and status requests. Configure the key/chest locally first. This update
 needs no Bridge change. Follow the Keyfer setup guide above for the Lua folder.
@@ -52,7 +60,7 @@ needs no Bridge change. Follow the Keyfer setup guide above for the Lua folder.
 v0.3.3 adds own chest-loot awareness and includes Bridge v0.18; update both parts
 while retaining existing keys/configuration/data. v0.3.1 fixed the registration `MissingMethodException` caused by the host's private JSON assembly context.
 
-Download [the compiled Keyfer Windows ZIP](https://github.com/ericallen9198-eng/ACAI2-Rynth/releases/download/keyfer-v0.3.4/ACAI2-Rynth-Keyfer-v0.3.4-Windows.zip). No source rebuild is needed. The package is also available in its successful verification Actions run as **ACAI2-Rynth-Keyfer-Windows** (GitHub sign-in required). Or build on Windows with .NET 10:
+Download [the compiled Keyfer Windows ZIP](https://github.com/ericallen9198-eng/ACAI2-Rynth/releases/download/keyfer-v0.3.5/ACAI2-Rynth-Keyfer-v0.3.5-Windows.zip). No source rebuild is needed. The package is also available in its successful verification Actions run as **ACAI2-Rynth-Keyfer-Windows** (GitHub sign-in required). Or build on Windows with .NET 10:
 
 ```powershell
 git clone --recurse-submodules https://github.com/ericallen9198-eng/ACAI2-Rynth.git

@@ -8,7 +8,7 @@ on:
       version:
         description: Package version (e.g. 0.3.1)
         required: true
-        default: '0.3.4'
+        default: '0.3.5'
       commit_sha:
         description: Full tested source commit SHA
         required: true
@@ -51,6 +51,7 @@ jobs:
           set -euo pipefail
           test -f package/ACAI2.Rynth.Plugin.dll
           test -f package/Lua/KeyferChest/index.lua
+          test -f package/KEYFER-BEHAVIOR.md
           test -f package/keyfer.example.json
           test -f package/Bridge/ACAI2.Bridge.exe
           test ! -e package/ImGui.NET.dll
@@ -62,15 +63,15 @@ jobs:
           cd "$RUNNER_TEMP"
           sha256sum "$zip_name" > "$zip_name.sha256"
           cat > release-notes.md <<NOTES
-          v0.3.4 adds the KeyferChest Lua setup panel and exact Toe/Samm tell/allegiance chest start/stop/status controls. Fixed owner commands use native Rynth Item Tool and never the AI command path. Bridge behavior is unchanged.
+          v0.3.5 adds immediate persistent 24-hour reply timeouts for direct insults or derogatory renaming, with a firm first-person notice in the original channel. In-game Samm/Toe are exempt from this new rule. Repeated insults do not refresh the deadline or repeat public notices. Includes Bridge v0.19 and KEYFER-BEHAVIOR.md; update both plugin and Bridge. Existing chest controls and loot awareness remain.
 
           Keyfer-only Windows package, built and tested from source commit $SOURCE_SHA. No live game/AI calls were used in testing; in-game verification remains.
 
           Download **$zip_name** below. It includes the compiled plugin, dependencies, example configuration and setup guide; no source rebuild is required.
 
-          v0.3.3 adds own chest-loot awareness, completed-cycle vs confirmed-Keep tracking, native chest-to-inventory source confirmation and a capped notable-find journal. Includes Bridge v0.18 so typed findings reach the conversation model. No AI call per pull. Salvage messages and rule previews are excluded.
+          v0.3.3 adds own chest-loot awareness, completed-cycle vs confirmed-Keep tracking, native chest-to-inventory source confirmation and a capped notable-find journal. Typed findings reach the conversation model. No AI call per pull. Salvage messages and rule previews are excluded.
 
-          Requires RynthCore CoreCLR managed x86 support, API 92+. Keep your existing keyfer.json, API keys, environment settings and Data folder. Stop Bridge v0.17 and run the included Bridge/ACAI2.Bridge.exe (v0.18) in its place. Do not run both listeners. Combat is excluded. Close the game before replacing all package DLLs together; do not overwrite your existing keyfer.json with the example. See KEYFER-SETUP.md in the ZIP.
+          Requires RynthCore CoreCLR managed x86 support, API 92+. Keep your existing keyfer.json, API keys, environment settings and Data folder. Stop your old Bridge and run the included Bridge/ACAI2.Bridge.exe (v0.19) in its place. Do not run both listeners. Combat is excluded. Close the game before replacing all package DLLs together; do not overwrite your existing keyfer.json with the example. See KEYFER-SETUP.md in the ZIP.
           NOTES
           if gh release view "$tag" >/dev/null 2>&1; then
             gh release upload "$tag" "$zip_name" "$zip_name.sha256" --clobber

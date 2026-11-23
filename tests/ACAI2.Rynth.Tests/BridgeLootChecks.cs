@@ -28,6 +28,12 @@ internal static class BridgeLootChecks
             check(reply.Ok&&fake.Calls==1&&fake.Body.Contains("ownChestLoot")&&fake.Body.Contains("Dolabra")&&fake.Body.Contains("ReportedCompletedCycles"),"real Bridge service supplies typed own chest findings to the fake model even without a nearby-world event");
             check(fake.Body.Contains("No-match")||fake.Body.Contains("nothing matched"),"model context explicitly distinguishes profile rejection from empty chests");
             check(reply.ReplyChannel!="Tell"&&string.IsNullOrEmpty(reply.GeneralNotice),"Bridge itself preserves Toe's asking channel without a public-to-private handoff");
+            foreach(var channel in new[]{"General","Allegiance","Tell"})
+            {
+                int calls=fake.Calls;
+                var insult=await service.AskAsync(new(){InstanceId="loot-test",Server="DreamWeave",Character="Keyfer Sutherland",Speaker="Baiter"+channel,SpeakerId="baiter-"+channel,Channel=channel,Question="Keyfer, you are an idiot"});
+                check(insult.Ok&&insult.ReplyChannel==channel&&insult.Answer.Contains("24 hours")&&string.IsNullOrEmpty(insult.AllegianceNotice)&&fake.Calls==calls,"real Bridge service keeps insult notice in original "+channel+" without model call or cross-posting");
+            }
             check(!Directory.GetFiles(root,"*",SearchOption.AllDirectories).Any(f=>Path.GetFileName(f)=="notable-loot.json"),"Bridge context is not duplicated into a separate per-poll loot history file");
         }
         finally
