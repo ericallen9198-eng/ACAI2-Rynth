@@ -8,6 +8,7 @@ internal sealed class MaraePanel
 {
     private int frame=-1;private bool placed,advanced;private float x,y;private string folder="";
     public void Reset(){placed=false;}
+    private static void Wrapped(string text){ImGui.PushTextWrapPos(0);ImGui.TextUnformatted(text);ImGui.PopTextWrapPos();}
     public void Draw(MaraeView v,Action<PanelRequest> send)
     {
         if(!v.Visible||ImGui.GetCurrentContext()==IntPtr.Zero||frame==ImGui.GetFrameCount())return;frame=ImGui.GetFrameCount();
@@ -22,7 +23,7 @@ internal sealed class MaraePanel
             {
                 var pos=ImGui.GetWindowPos();if(x!=pos.X||y!=pos.Y||visible!=v.Visible){x=pos.X;y=pos.Y;send(new("appearance",Visible:visible,X:x,Y:y));}
                 if(!expanded)return;
-                ImGui.TextColored(new(.38f,.9f,.77f,1),v.Phase);ImGui.TextWrapped(v.Detail);ImGui.Separator();
+                ImGui.PushStyleColor(ImGuiCol.Text,new Vector4(.38f,.9f,.77f,1));ImGui.TextUnformatted(v.Phase);ImGui.PopStyleColor();Wrapped(v.Detail);ImGui.Separator();
                 var p=v.Options;var areas=p.Areas.ToArray();bool changed=false;
                 ImGui.BeginDisabled(v.Running);
                 if(ImGui.BeginTable("areas",3,ImGuiTableFlags.SizingStretchProp))
@@ -37,7 +38,7 @@ internal sealed class MaraePanel
                     }
                     ImGui.EndTable();
                 }
-                ImGui.TextWrapped("Hunt only skips NPC tasks and repeats the route. Maps are optional in either mode.");
+                Wrapped("Hunt only skips NPC tasks and repeats the route. Maps are optional in either mode.");
                 bool mesh=p.Mesh,cap=p.CampLimit,fallback=p.Fallback;
                 changed|=ImGui.Checkbox("Mesh map travel (RynthNav)",ref mesh);changed|=ImGui.Checkbox("2-hour task limit per camp",ref cap);
                 changed|=ImGui.Checkbox("Fallback to 180 after tasks",ref fallback);ImGui.EndDisabled();
@@ -46,9 +47,9 @@ internal sealed class MaraePanel
                 if(changed)send(new("options",new(areas,mesh,close,far,cap,fallback)));
                 ImGui.BeginDisabled(v.Running||v.Review);if(ImGui.Button("Start / Resume"))send(new("start"));ImGui.SameLine();if(ImGui.Button("New run"))send(new("new"));ImGui.EndDisabled();
                 ImGui.SameLine();if(ImGui.Button("Stop"))send(new("stop"));
-                if(v.Review){ImGui.TextWrapped("An item move was not confirmed. Check your inventory/cache before resuming.");if(ImGui.Button("I reviewed the pickup — resume"))send(new("review"));}
+                if(v.Review){Wrapped("An item move was not confirmed. Check your inventory/cache before resuming.");if(ImGui.Button("I reviewed the pickup — resume"))send(new("review"));}
                 if(ImGui.SmallButton(advanced?"Hide advanced":"Advanced"))advanced=!advanced;
-                if(advanced){ImGui.BeginDisabled(v.Running);if(ImGui.InputText("RynthAi folder",ref folder,1024))send(new("folder",Folder:folder));ImGui.EndDisabled();ImGui.TextWrapped("Uses the normal RynthAi DLL. Stop and disable autostart for the old MaraeLassel Lua script before using this app.");}
+                if(advanced){ImGui.BeginDisabled(v.Running);if(ImGui.InputText("RynthAi folder",ref folder,1024))send(new("folder",Folder:folder));ImGui.EndDisabled();Wrapped("Uses the normal RynthAi DLL. Stop and disable autostart for the old MaraeLassel Lua script before using this app.");}
             }
             finally{ImGui.End();}
         }

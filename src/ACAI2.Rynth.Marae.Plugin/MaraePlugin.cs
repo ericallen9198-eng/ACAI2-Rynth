@@ -75,8 +75,8 @@ public sealed class MaraePlugin:RynthPluginBase
             if(time>=nextProbe)
             {
                 nextProbe=time+1;uint id=Host.GetPlayerId();
-                if(id==0||!Host.TryGetWorldName(out string world)||!Host.TryGetObjectName(id,out string name))return;
-                if(!world.Equals("DreamWeave",StringComparison.OrdinalIgnoreCase))return;
+                if(id==0||!Host.TryGetWorldName(out string world)||!Host.TryGetObjectName(id,out string name)){if(player!=0)Reset();return;}
+                if(!world.Equals("DreamWeave",StringComparison.OrdinalIgnoreCase)){if(player!=0)Reset();return;}
                 if(player!=id||profile?.Character!=name||profile.Server!=world)
                 {
                     Reset();player=id;fileKey=Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(world+"\n"+name)))[..16];
