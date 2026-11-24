@@ -29,3 +29,7 @@ try {
  & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $testScript -PluginPath $dll -NoPause
  Check ($LASTEXITCODE -ne 0 -and (Get-FileHash $dll).Hash -eq (Get-FileHash $source).Hash) 'tampered support package is refused without modifying the active DLL'
 } finally {$env:LOCALAPPDATA=$oldLocal;if(Test-Path $root){Remove-Item $root -Recurse -Force}}
+
+# The final child process deliberately rejects a tampered package. All checks above
+# have passed; do not leak that expected native exit code into the publishing job.
+$global:LASTEXITCODE=0
