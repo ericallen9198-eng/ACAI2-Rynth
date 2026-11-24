@@ -3,7 +3,14 @@ import sys,re
 from pathlib import Path
 lib=Path(__file__).resolve().parents[1]/'ACAI2.MaraeMission/test_mission.py'
 ns={'__file__':str(lib),'sys':sys};exec(compile(lib.read_text().split('for zone,cell in ')[0],str(lib),'exec'),ns)
-LegacyWorld,Sim,check,item=ns['World'],ns['Sim'],ns['check'],ns['item']
+LegacyWorld,LegacySim,check,item=ns['World'],ns['Sim'],ns['check'],ns['item']
+class Sim(LegacySim):
+ def cond(self,r):
+  if r['Condition']==25:return getattr(self.w,'navValid',True)
+  return super().cond(r)
+ def tick(self,seconds=1):
+  if getattr(self.w,'helper',True):self.w.v['mh_heartbeat']=self.w.now+seconds
+  return super().tick(seconds)
 class World(LegacyWorld):
  def __init__(self,items=(),opened=1):
   super().__init__(items=items);self.open=opened;self.v.update(tm_walk_generation=0,mh_walk_token=0,tm_resume_needed=0,tm_map_gate_until=0,tm_map_id=0,tm_cache_pending=0,tm_cache_pickup_retry_at=0)
@@ -22,8 +29,9 @@ class World(LegacyWorld):
 w=World();s=Sim(w,'Default');s.until('HUNT_VERIFY')
 check(w.p['maphunt_close']==30 and w.p['maphunt_far']==130 and w.p['meshnav']==0,'new-character defaults: measured close 30 / far 130 and mesh off')
 check(w.messages.count('/ra nav load maphunt.nav')==1,'loads only the user-supplied maphunt.nav')
-w.v['mh_route_ack']=1;s.until('HUNT');check(w.options['EnableLooting']==1 and w.options['EnableCombat']==1,'normal hunting uses native looting and combat')
-w=World();s=Sim(w,'HUNT_VERIFY');s.until('HOLD');check(w.options['EnableNav']==0,'missing/empty route never starts wandering')
+w.v['mh_heartbeat']=w.now+1;s.until('HUNT');check(w.options['EnableLooting']==1 and w.options['EnableCombat']==1,'normal hunting uses native looting and combat')
+w=World();w.navValid=False;s=Sim(w,'HUNT_VERIFY');s.until('HOLD');check(w.options['EnableNav']==0,'missing/empty route never starts wandering')
+w=World();w.helper=False;s=Sim(w,'HUNT_VERIFY');s.until('HOLD');check(w.options['EnableNav']==0,'missing Lua heartbeat prevents starting a route without its movement helper')
 for close in (True,False):
  for direction,heading in [('NORTH',0),('NORTHEAST',45),('EAST',90),('SOUTHEAST',135),('SOUTH',180),('SOUTHWEST',225),('WEST',270),('NORTHWEST',315)]:
   for mesh in (0,1):

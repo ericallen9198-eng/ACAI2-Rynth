@@ -1,7 +1,7 @@
 local count=0
 local function check(ok,m)assert(ok,m);count=count+1;print('PASS: '..m)end
 step();click('Start / Resume')
-check(ai.MacroRunning and sim.meta=='MapHunt' and sim.vars.mh_route_ack==1,'staged startup loads the correct meta and validates the real hunt route')
+check(ai.MacroRunning and sim.meta=='MapHunt' and sim.vars.mh_heartbeat>0,'staged startup loads the correct meta and supplies the live helper heartbeat')
 check(sim.stores.run_v1.active,'active intent persists per character')
 sim.metaState='MAP_MESH_WAIT';sim.vars.mh_walk_token=1;sim.vars.tm_mesh_heading=45;sim.vars.tm_mesh_step=130
 step(8);check(sim.meshWalks==1 and sim.vars.tm_walk_ack==1,'one mesh request per distinct generation, never once per tick')

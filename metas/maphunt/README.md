@@ -34,8 +34,8 @@ portals or lifestone recalls. This is a separate meta, not a Rynth engine rewrit
    Press **Start / Resume**. The helper loads MapHunt.af and starts the correct meta.
    Do not run it alongside MaraeLassel or a competing movement script.
 
-Both the AF and Lua helper are required. Loading only the AF will fail route
-verification rather than wander. The installer does not replace your nav, loot
+Both the AF and Lua helper are required. A fresh Lua heartbeat and a nonempty
+route are verified before hunting. The installer does not replace your nav, loot
 profile, other metas, Keyfer, Threads, or saved character preferences.
 
 ## Persistent settings

@@ -1403,6 +1403,7 @@ STATE: {HUNT_LOAD} ~~ {
 		DO: DoAll
 				Chat {/ub clearmotion}
 				DoExpr {maraenavrestore[]}
+				EmbedNav None {once}
 				Chat {/ra nav load maphunt.nav}
 				DoExpr {setvar[mh_route_ack,0]}
 				DoExpr {setvar[mh_status,`Loading maphunt.nav`]}
@@ -1413,7 +1414,10 @@ STATE: {HUNT_LOAD} ~~ {
 STATE: {HUNT_VERIFY} ~~ {
 	IF: Death
 		DO: SetState {MAP_DEATH}
-	IF: Expr {getvar[mh_route_ack]==1}
+	IF: All
+			SecsInStateGE 2
+			DistToRteGE 0
+			Expr {getvar[mh_heartbeat]>0 && getunixtime[]-getvar[mh_heartbeat]<=3}
 		DO: SetState {HUNT_READY}
 	IF: SecsInStateGE 10
 		DO: SetState {NAV_REQUIRED}
@@ -1424,7 +1428,7 @@ STATE: {NAV_REQUIRED} ~~ {
 	IF: Always
 		DO: DoAll
 				SetOpt {EnableNav} {False}
-				DoExpr {setvar[mh_status,`Missing, ambiguous or empty maphunt.nav. Put your route in RynthAi NavProfiles, then Resume.`]}
+				DoExpr {setvar[mh_status,`MapHunt helper or route was not confirmed. Start the Lua helper and check maphunt.nav in NavProfiles, then Resume.`]}
 				DoExpr {echo[getvar[mh_status]]}
 				SetState {HOLD}
 

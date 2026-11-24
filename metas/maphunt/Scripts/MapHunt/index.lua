@@ -1,6 +1,6 @@
 -- MapHunt v0.1.0. One-second bounded pump; drawing never evaluates expressions.
 local ai,views,ImGui=require('rynth.ai'),require('views'),require('imgui')
-local storage,json=require('storage'),require('json')
+local storage=require('storage')
 local meta='MapHunt'
 local hud=views.Huds.CreateHud('MapHunt')
 hud.Title,hud.ShowInBar,hud.Visible='MapHunt',true,true
@@ -15,10 +15,6 @@ local function now()return num('getunixtime[]')end
 local function owns()
  local n=val('vtgetmeta[]'):gsub('\\','/'):match('([^/]+)$') or ''
  return n:gsub('%.[aA][fF]$',''):gsub('%.[mM][eE][tT]$',''):lower()==meta:lower()
-end
-local function nav()
- local ok,v=pcall(json.decode,val('ranav[]'))
- return ok and type(v)=='table' and v or {}
 end
 local function save()storage.Character.Set('run_v1',journal)end
 local function clearMotion()command('/ub clearmotion');direct=nil end
@@ -104,9 +100,7 @@ game.OnTick.Add(function()
   end
   if not owns() then snapshot=nil;return end
   local state=val('vtgetmetastate[]')
-  if state=='HUNT_VERIFY' then
-   local n=nav();expr('setvar[mh_route_ack,'..((n.name or ''):lower()=='maphunt' and (n.points or 0)>0 and 1 or -1)..']')
-  end
+  expr('setvar[mh_heartbeat,'..t..']')
   if startup then return end
   if not ai.MacroRunning then
    if journal.active then cleanup();journal.active=false;save();feedback='Macro stopped. Press Start / Resume to continue.' end
