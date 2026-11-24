@@ -64,7 +64,11 @@ public sealed class MapHuntController(IMapHuntBot bot,MapHuntProfile profile,Act
         if(blocked)return;
         if(startup.Length>0)
         {
-            if(time>deadline){startup="";Notice("Startup not confirmed","Check RynthAi and the app's workflow folder, then press Start / Resume.");}
+            if(time>deadline)
+            {
+                startup="";blocked=true;profile.Active=false;save();Cleanup();if(Owns)bot.Command("/ra stop");
+                Notice("Startup not confirmed","Check RynthAi and the app's workflow folder, then press Start / Resume.");return;
+            }
             else if(startup=="load"&&Owns&&!bot.Running)
             {
                 bot.Evaluate("vtsetsetting[EnableMeta,1]");bot.Evaluate("vtsetmetastate[Default]");bot.Command("/ra start");startup="arm";deadline=time+15;

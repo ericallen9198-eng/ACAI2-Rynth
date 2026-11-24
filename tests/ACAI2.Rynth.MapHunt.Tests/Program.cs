@@ -30,6 +30,12 @@ Check(unsupported.Commands.Count==0&&no.View.Phase=="Compatibility support requi
 var badFolder=new FakeBot();var install=new MapHuntController(badFolder,Profile(),()=>throw new IOException("bad path"),()=>{});
 try{install.Begin(0);}catch(IOException){}
 Check(badFolder.Commands.Count==0,"bad installation folder is detected before stopping any macro");
+var timeoutBot=new FakeBot();var timeoutProfile=Profile();var timeout=new MapHuntController(timeoutBot,timeoutProfile,()=>{},()=>{});
+timeout.Begin(0);timeout.Tick(16);timeout.Tick(17);
+Check(timeout.View.Phase=="Startup not confirmed"&&!timeoutProfile.Active&&timeoutBot.Commands.Count==2,"failed meta load retains a clear explanation and does not stop a different meta");
+var blankBot=new FakeBot();var blankProfile=Profile();var blank=new MapHuntController(blankBot,blankProfile,()=>{},()=>{});
+blank.Begin(0);blankBot.Meta="MapHunt App";blank.Tick(.5);blankBot.Running=true;blank.Tick(16);
+Check(blank.View.Phase=="Startup not confirmed"&&!blankBot.Running&&!blankProfile.Active,"blank/wrong workflow cannot masquerade as a running map hunt");
 var eventBot=new FakeBot();var eventProfile=Profile();eventProfile.Active=true;eventProfile.Event=new("51.1|-84.0|0.2",5000,7,"ENCOUNTER");
 var resume=new MapHuntController(eventBot,eventProfile,()=>{},()=>{});resume.Begin(0,true);eventBot.Meta="MapHunt App";resume.Tick(.5);eventBot.Running=true;eventBot.Vars["mh_schema"]="1";resume.Tick(1);
 Check(eventBot.State=="ENCOUNTER"&&eventBot.Vars["tm_event_deadline"]=="5000"&&eventBot.Commands.Last()=="/ra nav load maphunt.nav","nearby active event resumes after reconnect without extending its deadline");
