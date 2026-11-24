@@ -14,7 +14,7 @@ project and installed ACAI2 files are not modified.
 
 ## Marae Lassel app (stock RynthAi beta)
 
-**ACAI2.Marae v1.15** provides a native ImGui panel for the three-area task hunt,
+**ACAI2.Marae v1.15.1** provides a native ImGui panel for the three-area task hunt,
 continuous route hunting and optional treasure maps. It uses the normal RynthAi DLL:
 confirmed NPC use, temporary route restore and cache pickup live in this separate app.
 No patched RynthAi DLL or Marae Lua panel is required.

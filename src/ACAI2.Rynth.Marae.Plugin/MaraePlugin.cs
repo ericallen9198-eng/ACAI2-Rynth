@@ -115,6 +115,7 @@ public sealed class MaraePlugin:RynthPluginBase
                 else if(r.Command is "start" or "new")Begin(r.Command=="new",false,time);
             }
             if(ResumePolicy.CanStart(autoResumePending,initialized,busy,portal)){autoResumePending=false;Begin(false,true,time);}
+            if(autoResumePending&&busy){phase="Waiting for native recovery";detail="Saved run will resume after native travel or corpse recovery settles.";Publish();return;}
             if(portal){Publish();return;}
             if(deferredStop){deferredStop=false;if(Owns){Cleanup();bot.Command("/ra stop");}}
             if(startup.Length>0)
