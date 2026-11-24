@@ -19,10 +19,14 @@ try {
  if(-not(Test-Path "$dest/ACAI2.Rynth.Marae.Plugin.dll")){throw 'App DLL missing.'}
  $hint=Get-Content "$dest/installation.json" -Raw|ConvertFrom-Json
  $sharedHint=Get-Content (Join-Path $work 'Discovery\installation.json') -Raw|ConvertFrom-Json
- if($sharedHint.PluginFolder -ne $dest -or $sharedHint.RynthAiFolder -ne $ai){throw 'Stable stream-load discovery hint missing.'}
- if($hint.RynthAiFolder -ne $ai){throw 'Custom RynthAi folder not remembered.'}
+ # Windows PowerShell 5.1 expands 8.3 aliases (e.g. RUNNER~1) into long paths.
+ # Verify physical file identity rather than comparing different names for one directory.
+ $marker=[guid]::NewGuid().ToString('N');[IO.File]::WriteAllText((Join-Path $dest 'test-owner.txt'),$marker)
+ if([IO.File]::ReadAllText((Join-Path $sharedHint.PluginFolder 'test-owner.txt')) -ne $marker){throw 'Stable plugin discovery hint points at another directory.'}
+ if((Get-FileHash -LiteralPath (Join-Path $sharedHint.RynthAiFolder 'RynthCore.Plugin.RynthAi.dll')).Hash -ne $before){throw 'Stable RynthAi discovery hint wrong.'}
+ if((Get-FileHash -LiteralPath (Join-Path $hint.RynthAiFolder 'RynthCore.Plugin.RynthAi.dll')).Hash -ne $before){throw 'Custom RynthAi folder not remembered.'}
  if(-not(Test-Path "$dest/Marae-Quick-Start.pdf")){throw 'Installed guide missing.'}
- if([IO.File]::ReadAllText("$dest/PLUGIN-PATH.txt") -ne "$dest\ACAI2.Rynth.Marae.Plugin.dll"){throw 'Saved plugin path wrong.'}
+ if((Get-FileHash -LiteralPath ([IO.File]::ReadAllText("$dest/PLUGIN-PATH.txt"))).Hash -ne (Get-FileHash -LiteralPath "$dest/ACAI2.Rynth.Marae.Plugin.dll").Hash){throw 'Saved plugin path wrong.'}
  if((Get-FileHash -LiteralPath $dll).Hash -ne $before){throw 'Installer changed RynthAi.'}
  if(Test-Path "$dest/RynthCore.Plugin.RynthAi.dll"){throw 'Installer copied the engine into app folder.'}
  # The suite root is also accepted; no typing of a RynthAi suffix is necessary.
