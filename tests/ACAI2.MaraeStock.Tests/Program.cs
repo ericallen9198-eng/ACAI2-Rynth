@@ -20,8 +20,8 @@ Check(NpcDialogue.CompletionTarget("You have killed 50 Virindi Sentries! Your ta
 Check(NpcDialogue.CompletionTarget("Toe says, \"You have killed 50 Virindi Sentries! Your task is complete!\"")==null,"quoted player text cannot complete task");
 Check(NpcDialogue.SameTarget("Virindi Sentries","Virindi Sentry"),"completion plural");
 var points=new[]{new RoutePoint("Point",1,2,.1),new RoutePoint("Point",3,4,.2),new RoutePoint("Chat",3,4,.2,"/ra mexec setvar[pt_travel_end,1]")};
-Check(new RouteSnapshot("hunt",4,1,points).ResumeFile().Contains("\n2\n0\n4\n3\n"),"once restores suffix");
-Check(new RouteSnapshot("hunt",1,2,points).ResumeFile().StartsWith("uTank2 NAV 1.2\n1\n3\n4\n"),"circular rotates without losing points");
+Check(new RouteSnapshot("hunt",4,1,points).ResumeFile().Replace("\r","").Contains("\n2\n0\n4\n3\n"),"once restores suffix");
+Check(new RouteSnapshot("hunt",1,2,points).ResumeFile().Replace("\r","").StartsWith("uTank2 NAV 1.2\n1\n3\n4\n"),"circular rotates without losing points");
 Refuses(()=>new RouteSnapshot("hunt",2,0,points).ResumeFile(),"linear semantics cannot silently change");
 Refuses(()=>RouteSnapshot.Serialize(4,[new("Npc",0,0,0)]),"NPC trailers cannot be fabricated");
 Refuses(()=>RouteSnapshot.Serialize(4,[new("Point",double.NaN,0,0)]),"nonfinite route refused");

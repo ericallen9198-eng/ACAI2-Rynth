@@ -37,7 +37,8 @@ foreach(var name in new[]{"180_-_Hunt_Loop","225_-_Hunt_Loop","275_-_Hunt_East",
     foreach(int active in new[]{0,n.Points.Count/2,n.Points.Count-1})
     {
         var snapshot=new RouteSnapshot(name,(int)n.RouteType,active,n.Points.Select(p=>new RoutePoint(p.Type.ToString(),p.NS,p.EW,p.Z,p.ChatCommand)).ToArray());
-        var restored=NavRouteParser.LoadFromLines(snapshot.ResumeFile().Split('\n',StringSplitOptions.RemoveEmptyEntries).ToList());
+        using var reader=new StringReader(snapshot.ResumeFile());var lines=new List<string>();while(reader.ReadLine() is string line)lines.Add(line);
+        var restored=NavRouteParser.LoadFromLines(lines);
         if(!string.IsNullOrEmpty(restored.LoadWarning)||restored.Points.Count!=(n.RouteType==NavRouteType.Circular?n.Points.Count:n.Points.Count-active)||restored.Points[0].NS!=n.Points[active].NS||restored.Points[^1].ChatCommand!=(n.RouteType==NavRouteType.Circular?n.Points[(active+n.Points.Count-1)%n.Points.Count].ChatCommand:n.Points[^1].ChatCommand))throw new Exception("Resume route lost order or completion action.");
     }
 }
