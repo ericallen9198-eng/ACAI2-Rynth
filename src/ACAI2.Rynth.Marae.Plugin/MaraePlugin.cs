@@ -10,7 +10,7 @@ namespace ACAI2.Rynth.Marae.Plugin;
 
 public sealed class MaraePlugin:RynthPluginBase
 {
-    public const string Version="1.15.0";
+    public const string Version="1.15.1";
     public override uint MinimumApiVersion=>92;
     private static readonly CultureInfo Inv=CultureInfo.InvariantCulture;
     private static readonly Hunter[] Hunters=JsonSerializer.Deserialize<Hunter[]>(Resource("Marae.hunters.json"))!;
@@ -27,7 +27,7 @@ public sealed class MaraePlugin:RynthPluginBase
     private uint player;private long epoch;private int lifecycle;private volatile bool loggedOut;
     private double nextTick,nextCheckpoint,deadline,nextProbe;private string profilePath="",fileKey="",startup="",phase="Ready",detail="",state="",walkPath="",resumePath="";
     private long walkGeneration=-1,restoreGeneration=-1,npcGeneration=-1,pickupGeneration=-1,logGeneration=-1;
-    private NpcGate? npc;private string npcRoute="";private bool busy,initialized,readable=true,renderFailed,deferredStop;
+    private NpcGate? npc;private string npcRoute="";private bool busy,initialized,readable=true,renderFailed,deferredStop,autoResumePending;
     private string savedRoute="",temporarySignature="";private double? oldMin;private bool? oldNearest;private string temporaryRoute="";
     private static double Now=>System.Diagnostics.Stopwatch.GetTimestamp()/(double)System.Diagnostics.Stopwatch.Frequency;
     private static string Resource(string name){using var s=Assembly.GetExecutingAssembly().GetManifestResourceStream(name)??throw new InvalidDataException(name);using var r=new StreamReader(s);return r.ReadToEnd();}
@@ -48,7 +48,7 @@ public sealed class MaraePlugin:RynthPluginBase
     private void Reset()
     {
         Interlocked.Increment(ref epoch);bot=null;profile=null;player=0;initialized=false;readable=true;startup="";npc=null;recovery=new();busy=false;
-        nextTick=nextProbe=nextCheckpoint=0;deferredStop=false;walkGeneration=restoreGeneration=npcGeneration=pickupGeneration=logGeneration=-1;
+        nextTick=nextProbe=nextCheckpoint=0;deferredStop=autoResumePending=false;walkGeneration=restoreGeneration=npcGeneration=pickupGeneration=logGeneration=-1;
         savedRoute=temporaryRoute=temporarySignature="";oldMin=null;oldNearest=null;recent.Clear();mismatch.Clear();panel.Reset();renderFailed=false;
         while(chat.TryDequeue(out _)){}while(requests.TryDequeue(out _)){}
     }
@@ -100,7 +100,7 @@ public sealed class MaraePlugin:RynthPluginBase
             if(!readable){Publish();return;}
             if(!initialized&&!portal)
             {
-                initialized=true;ImportPreferences();if(profile.Active)Begin(false,true,time);
+                initialized=true;ImportPreferences();autoResumePending=profile.Active;
             }
             while(requests.TryDequeue(out var queued))
             {
@@ -109,11 +109,12 @@ public sealed class MaraePlugin:RynthPluginBase
                 if(r.Command=="appearance"){profile.Visible=r.Visible;profile.X=r.X;profile.Y=r.Y;Save();continue;}
                 if(r.Command=="options"&&r.Options!=null){profile.Options=r.Options.Validate();ApplyPreferences(false);Save();continue;}
                 if(r.Command=="folder"&&!bot.Running){profile.Folder=r.Folder??profile.Folder;Save();continue;}
-                if(r.Command=="stop"){profile.Active=false;Save();startup="";if(!portal&&Owns){Cleanup();bot.Command("/ra stop");}else if(portal)deferredStop=true;phase="Stopped";detail="Progress saved. Start / Resume continues the mission.";continue;}
+                if(r.Command=="stop"){autoResumePending=false;if(Owns)Checkpoint();profile.Active=false;Save();startup="";if(!portal&&Owns){Cleanup();bot.Command("/ra stop");}else if(portal)deferredStop=true;phase="Stopped";detail="Progress saved. Start / Resume continues the mission.";continue;}
                 if(portal||busy){phase="Waiting for travel / recovery";detail="Try Start / Resume once native travel or recovery finishes.";continue;}
                 if(r.Command=="review"){PSet("mm_pickup_unresolved",0);PSet("mm_stock_pickup_issued",0);profile.PendingMove=null;Save();Begin(false,false,time);}
                 else if(r.Command is "start" or "new")Begin(r.Command=="new",false,time);
             }
+            if(ResumePolicy.CanStart(autoResumePending,initialized,busy,portal)){autoResumePending=false;Begin(false,true,time);}
             if(portal){Publish();return;}
             if(deferredStop){deferredStop=false;if(Owns){Cleanup();bot.Command("/ra stop");}}
             if(startup.Length>0)
@@ -169,6 +170,7 @@ public sealed class MaraePlugin:RynthPluginBase
     private void Begin(bool fresh,bool automatic,double time)
     {
         if(startup.Length>0)return;
+        autoResumePending=false;
         if(!profile!.Options.Areas.Any(a=>a.Enabled)){phase="Choose an area";detail="Enable at least one area before starting.";return;}
         if(PVar("mm_pickup_unresolved")==1||profile.PendingMove!=null){phase="Review cache pickup";detail="A previous item move was not confirmed. Check the inventory before using the review button.";return;}
         if(automatic&&bot!.Running&&!Owns){phase="Resume available";detail="Another macro is running. Press Start / Resume when ready.";return;}

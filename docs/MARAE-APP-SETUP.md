@@ -1,4 +1,4 @@
-# Marae Lassel app v1.15 — stock RynthAi beta
+# Marae Lassel app v1.15.1 — stock RynthAi beta
 
 This is a separate Rynth app for the 180 Lowlands, 225 High Country and 275 Plateau routes. It uses the normal RynthAi DLL. There is no replacement RynthAi DLL in this download and no Lua panel is required.
 

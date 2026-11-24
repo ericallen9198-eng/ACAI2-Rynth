@@ -65,9 +65,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $pkg="$env:GITHUB_WORKSPACE/work/artifacts/marae-stock"
-          $zip='ACAI2-Marae-App-v1.15-Windows.zip'
+          $zip='ACAI2-Marae-App-v1.15.1-Windows.zip'
           Compress-Archive -Path "$pkg/*" -DestinationPath $zip
           $hash=(Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
           "$hash  $zip"|Set-Content "$zip.sha256" -Encoding ascii
-          gh release create marae-stock-app-v1.15 $zip "$zip.sha256" --repo '${{ github.repository }}' --target '${{ github.sha }}' --title 'Marae app v1.15 — normal RynthAi DLL, native panel' --notes-file work/docs/MARAE-APP-SETUP.md --latest=false
+          gh release create marae-stock-app-v1.15.1 $zip "$zip.sha256" --repo '${{ github.repository }}' --target '${{ github.sha }}' --title 'Marae app v1.15.1 — normal RynthAi DLL, native panel' --notes-file work/docs/MARAE-APP-SETUP.md --latest=false
           if ($LASTEXITCODE) { throw 'Release publication failed' }

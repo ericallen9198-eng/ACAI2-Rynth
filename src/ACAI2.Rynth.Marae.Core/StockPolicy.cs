@@ -99,3 +99,8 @@ public static class CachePickupPolicy
     public static bool CanIssue(bool unresolved,uint item,uint container,uint checkpointItem,uint checkpointContainer,uint openContainer,bool cacheName,bool itemPresent,uint template,bool money,bool nativeMoveAvailable,bool pending)=>(unresolved&&!pending&&item!=0&&container!=0&&item==checkpointItem&&container==checkpointContainer&&container==openContainer&&cacheName&&itemPresent&&(template==1004101||money)&&nativeMoveAvailable);
     public static bool Confirmed(PendingPickup pending,double inventoryNow,bool sourceChanged)=>inventoryNow>pending.InventoryBefore&&sourceChanged;
 }
+
+public static class ResumePolicy
+{
+    public static bool CanStart(bool pending,bool initialized,bool recoveryBusy,bool portaling)=>pending&&initialized&&!recoveryBusy&&!portaling;
+}

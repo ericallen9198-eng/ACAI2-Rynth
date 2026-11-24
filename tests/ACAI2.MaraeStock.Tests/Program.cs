@@ -42,4 +42,8 @@ Check(!CachePickupPolicy.CanIssue(true,2,1,2,1,1,true,true,1004101,false,true,tr
 Check(!CachePickupPolicy.CanIssue(true,2,1,2,1,1,true,true,99,false,true,false),"unrelated item refused");
 Check(!CachePickupPolicy.Confirmed(new(1,2,1004101,10,0),10,false),"inventory growth alone cannot acknowledge move");
 Check(CachePickupPolicy.Confirmed(new(1,2,1004101,10,0),10,true),"inventory and source change acknowledge move");
+Check(!ResumePolicy.CanStart(true,true,true,false),"reconnect cannot interrupt native corpse recovery");
+Check(!ResumePolicy.CanStart(true,true,false,true),"reconnect waits for portal completion");
+Check(!ResumePolicy.CanStart(false,true,false,false),"manual Stop prevents reconnect restart");
+Check(ResumePolicy.CanStart(true,true,false,false),"settled reconnect can resume");
 Console.WriteLine($"PASS: {checks} Marae stock NPC, route, clue, recovery and profile checks (synthetic world data only).");
