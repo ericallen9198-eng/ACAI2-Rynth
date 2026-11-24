@@ -43,6 +43,18 @@ Buffs/Debuffs/Skills scales, per-pack DPS, all three HUD modes and saved charact
 preferences remain available.
 [Download Combat v0.1.10 for Windows](https://github.com/ericallen9198-eng/ACAI2-Rynth/releases/download/combat-v0.1.10/ACAI2-Combat-v0.1.10-Windows.zip).
 
+## Standalone MapHunt app
+
+**ACAI2.MapHunt app v0.1.0 beta** replaces the MapHunt Lua controller with a small
+native ImGui panel. RynthAi owns combat, loot and corpse recovery; the app bundles
+the existing verified AF workflow, prepares its own meta on Start, and preserves
+per-character settings/checkpoints. Strict optional mesh clue travel, 30/130-yard
+defaults, cache rotation and the 55-yard digsite boundary remain.
+[MapHunt app installation](docs/MAPHUNT-APP-SETUP.md).
+[Download the Windows app](https://github.com/ericallen9198-eng/ACAI2-Rynth/releases/download/maphunt-app-v0.1.0/ACAI2-MapHunt-App-v0.1.0-Windows.zip).
+This beta uses maphunt.nav; native Hunt mode awaits an acknowledged area-preserving
+pause/resume interface. The documented mission API 6 support is still required.
+
 ## Generic MapHunt meta
 
 [MapHunt v0.1.0 beta](metas/maphunt/README.md) follows any user-supplied

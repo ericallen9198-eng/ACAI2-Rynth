@@ -147,3 +147,15 @@ optional support installation may reuse the unchanged reviewed mission API 6 DLL
 with a checksum/version guard and backup before any replacement. No arbitrary
 portal/recall destination or unknown engine downgrade. Keep per-character recovery
 context bounded and do not replay an unconfirmed item move after reconnect.
+
+
+The user now authorized a standalone ACAI2.MapHunt plugin with an engine-owned ImGui
+panel replacing its Lua helper, retaining the tested AF as a bundled resource and
+RynthAi as combat/loot owner. Optional strict mesh clue travel remains. All native
+Script interface calls must run on OnTick; render/chat callbacks enqueue bounded,
+identity-bound requests. Normal startup may install only MapHunt App.af under the
+discovered/configured RynthAi MetaFiles folder with a bounded backup. DLL support
+installation is an explicit separate version-guarded backup-first operation.
+Native Hunt mode must remain unavailable until its original area can be paused and
+restored with acknowledgment; /ra hunt start re-anchors from the current position.
+Preserve per-character settings/checkpoints and never replay uncertain currency moves.
