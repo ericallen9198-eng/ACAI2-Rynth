@@ -136,3 +136,14 @@ Keyfer client, on its pump and verified session. Do not add arbitrary AI-generat
 commands, remote selection, world search or another looter. Native snapshot checks
 and expiring requests are required. Thread prep additionally supports 400/450/500
 blanks and up to two taper types sharing a maximum of four total taper doses.
+
+
+The user authorized a separately distributable MapHunt meta and Lua helper for any
+allegiance character: load only maphunt.nav, use measured 30/130-yard clue steps,
+optional persistent meshnav, existing explicit serial cache currency collection,
+55-yard digsite boundary and native corpse recovery. Keep the Marae mission and
+other plugins unchanged. A default installer must not replace the RynthAi DLL;
+optional support installation may reuse the unchanged reviewed mission API 6 DLL
+with a checksum/version guard and backup before any replacement. No arbitrary
+portal/recall destination or unknown engine downgrade. Keep per-character recovery
+context bounded and do not replay an unconfirmed item move after reconnect.

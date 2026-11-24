@@ -43,6 +43,17 @@ Buffs/Debuffs/Skills scales, per-pack DPS, all three HUD modes and saved charact
 preferences remain available.
 [Download Combat v0.1.10 for Windows](https://github.com/ericallen9198-eng/ACAI2-Rynth/releases/download/combat-v0.1.10/ACAI2-Combat-v0.1.10-Windows.zip).
 
+## Generic MapHunt meta
+
+[MapHunt v0.1.0 beta](metas/maphunt/README.md) follows any user-supplied
+`maphunt.nav`, hunts pack maps with measured 30-yard close / 130-yard far steps,
+retains the digsite and 55-yard boundary, rotates cache IDs, confirms currency
+pickup, and restores the hunt route. No NPC tasks, camp levels or recall routes.
+The panel and per-character `meshnav` pvar switch mesh clue travel on/off.
+It uses the documented mission API 6 support already used by Marae v1.14;
+the default installer replaces only this meta/helper. See its guide for the
+optional version-guarded support installer and native corpse recovery limits.
+
 ## Package and runtime
 
 v0.3.5 adds immediate 24-hour direct-insult reply timeouts, same-channel notices

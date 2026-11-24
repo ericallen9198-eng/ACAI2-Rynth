@@ -64,7 +64,8 @@ Console.WriteLine($"PASS: {count} actual-engine expression, argument and quoted-
 var pv=new Dictionary<string,string>();engineType.GetField("_pvars",F)!.SetValue(engine,pv);
 var vars=(Dictionary<string,string>)engineType.GetField("_variables",F)!.GetValue(engine)!;
 string Eval(string s)=>(string)engineType.GetMethod("Evaluate",F)!.Invoke(engine,new object[]{s})!;
-foreach(int z in new[]{180,225,275}) {
+bool genericMapHunt=doc.RootElement.EnumerateArray().Any(r=>r.GetProperty("State").GetString()=="HUNT_VERIFY");
+if(!genericMapHunt) foreach(int z in new[]{180,225,275}) {
  vars[$"ml_area_{z}"]="1";vars[$"ml_hunt_only_{z}"]="0";pv["mm_camp_limit"]="1";
  string expression=doc.RootElement.EnumerateArray().First(r=>r.GetProperty("State").GetString()=="DISPATCH"&&r.GetProperty("ConditionData").GetString()!.Contains($"getpvar[mm_attempted_{z}]")).GetProperty("ConditionData").GetString()!;
  if(Eval(expression)!="1")throw new Exception("Valid task selection failed "+z+": "+Eval(expression));
@@ -73,7 +74,7 @@ foreach(int z in new[]{180,225,275}) {
 }
 if(Eval("listfilter[listcreate[1,2],`listcontains[listcreate[1],$1]==0`]")!="[2]")throw new Exception("Quoted cache exclusion failed");
 if(Eval("maraecachepickup[1]")!="0")throw new Exception("Unbound cache pickup was not refused");
-Console.WriteLine("PASS: actual-engine task/timer selection in all three camps and cache exclusion semantics; in-memory fixtures only.");
+Console.WriteLine("PASS: actual-engine cache exclusion and hostless pickup refusal; in-memory fixtures only.");
 
 foreach(var tuple in new[]{("FAR_EAST","mm_mesh_far",1,60),("FAR_EAST","mm_mesh_far",999,180),("CLOSE_EAST","mm_mesh_close",1,10),("CLOSE_EAST","mm_mesh_close",999,60)}) {
  string Find(JsonElement r) {
@@ -81,7 +82,24 @@ foreach(var tuple in new[]{("FAR_EAST","mm_mesh_far",1,60),("FAR_EAST","mm_mesh_
   foreach(var c in r.GetProperty("ActionChildren").EnumerateArray()){var found=Find(c);if(found!="")return found;}return "";
  }
  string step=doc.RootElement.EnumerateArray().Where(r=>r.GetProperty("State").GetString()==tuple.Item1).Select(Find).First(s=>s!="");
- pv[tuple.Item2]=tuple.Item3.ToString();Eval(step);
+ string key=genericMapHunt?(tuple.Item2=="mm_mesh_far"?"maphunt_far":"maphunt_close"):tuple.Item2;
+ pv[key]=tuple.Item3.ToString();Eval(step);
  if(vars["tm_mesh_step"]!=tuple.Item4.ToString())throw new Exception("Actual-engine travel clamp failed");
 }
 Console.WriteLine("PASS: actual-engine travel range boundaries and hostless currency-action refusal.");
+
+if(genericMapHunt) {
+ pv["meshnav"]="1";
+ Eval("if[testpvar[meshnav]==0,setpvar[meshnav,0]]");
+ if(pv["meshnav"]!="1")throw new Exception("MapHunt startup overwrote saved mesh preference");
+ foreach(var pair in new[]{("FAR_NORTH","maphunt_far",130),("CLOSE_NORTH","maphunt_close",30)}) {
+  pv[pair.Item2]=pair.Item3.ToString();
+  string FindStep(JsonElement r) {
+   if(r.GetProperty("Action").GetInt32()==7&&r.GetProperty("ActionData").GetString()!.StartsWith("setvar[tm_mesh_step,"))return r.GetProperty("ActionData").GetString()!;
+   foreach(var c in r.GetProperty("ActionChildren").EnumerateArray()){var f=FindStep(c);if(f!="")return f;}return "";
+  }
+  var step=doc.RootElement.EnumerateArray().Where(r=>r.GetProperty("State").GetString()==pair.Item1).Select(FindStep).First(s=>s!="");Eval(step);
+  if(vars["tm_mesh_step"]!=pair.Item3.ToString())throw new Exception("MapHunt 30/130 stride was changed");
+ }
+ Console.WriteLine("PASS: actual MapHunt engine pvar preservation and exact 30/130-yard steps.");
+}

@@ -1,0 +1,1543 @@
+STATE: {Default} ~~ {
+	IF: Expr {maraemissionapi[]<6}
+		DO: SetState {SUPPORT_REQUIRED}
+	IF: Expr {getpvar[mh_mm_pickup_unresolved]==1}
+		DO: SetState {INVENTORY_REVIEW}
+	IF: Always
+		DO: DoAll
+				DoExpr {if[getpvar[mh_pt_cache_pickup_held]==1,rasetsetting[`LootChestsMacroOff`,getpvar[mh_pt_cache_old_pickup]]]}
+				DoExpr {setpvar[mh_pt_cache_pickup_held,0]}
+				DoExpr {maraenavrestore[]}
+				DoExpr {setvar[mh_schema,1]}
+				DoExpr {if[testpvar[meshnav]==0,setpvar[meshnav,0]]}
+				DoExpr {if[testpvar[maphunt_close]==0,setpvar[maphunt_close,30]]}
+				DoExpr {if[testpvar[maphunt_far]==0,setpvar[maphunt_far,130]]}
+				DoExpr {setvar[pt_skipped,listcreate[]]}
+				DoExpr {setvar[tm_map_id,0]}
+				DoExpr {setvar[tm_resume_needed,0]}
+				DoExpr {setvar[tm_map_gate_until,getunixtime[]+5]}
+				DoExpr {setpvar[mh_tm_dig_active,0]}
+				DoExpr {setvar[tm_cache_pending,0]}
+				DoExpr {setvar[tm_cache_anchor,0]}
+				DoExpr {setvar[tm_walk_generation,0]}
+				DoExpr {setvar[mh_walk_token,0]}
+				SetOpt {StopMacroOnDeath} {False}
+				SetOpt {DeathRecallMode} {0}
+				SetOpt {LootOwnCorpse} {True}
+				SetOpt {TravelToOwnCorpse} {True}
+				SetOpt {KeepHuntingAfterDeath} {False}
+				Chat {/ub clearmotion}
+				SetOpt {EnableNav} {False}
+				SetOpt {EnableCombat} {True}
+				SetOpt {EnableBuffing} {True}
+				SetOpt {EnableLooting} {True}
+				SetState {HUNT_LOAD}
+
+~~ }
+
+STATE: {MAP_DEATH} ~~ {
+	IF: Always
+		DO: DoAll
+				Chat {/ub clearmotion}
+				DoExpr {maraenavrestore[]}
+				DoExpr {if[getpvar[mh_pt_cache_pickup_held]==1,rasetsetting[`LootChestsMacroOff`,getpvar[mh_pt_cache_old_pickup]]]}
+				DoExpr {setpvar[mh_pt_cache_pickup_held,0]}
+				Chat {/ub clearmotion}
+				SetOpt {EnableNav} {False}
+				SetOpt {EnableCombat} {True}
+				SetOpt {EnableBuffing} {True}
+				SetOpt {EnableLooting} {True}
+				DoExpr {setvar[mh_status,`Waiting for respawn and native corpse recovery`]}
+				SetState {DEATH_WAIT}
+
+~~ }
+
+STATE: {MAP_RETURN} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Always
+		DO: DoAll
+				Chat {/ub clearmotion}
+				DoExpr {maraenavrestore[]}
+				Chat {/ub clearmotion}
+				SetOpt {EnableNav} {False}
+				SetOpt {EnableCombat} {True}
+				SetOpt {EnableBuffing} {True}
+				SetOpt {EnableLooting} {True}
+				SetOpt {EnableNav} {True}
+				DoExpr {setvar[mh_status,`Resuming maphunt.nav`]}
+				SetState {HUNT}
+
+~~ }
+
+STATE: {MAP_LOCK} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF:	Always
+		DO:	DoAll
+				DoExpr {maraenavsave[]}
+				DoExpr {setvar[tm_cache_anchor,0]}
+				DoExpr {setvar[tm_mesh_failures,0]}
+				DoExpr {setpvar[mh_tm_dig_active,0]}
+				DoExpr {setvar[tm_map_id,wobjectgetid[wobjectfindininventorybyname[Treasure Map]]]}
+				DoExpr {setvar[tm_watch_pos,getplayercoordinates[]]}
+				DoExpr {setvar[pt_last_move,getunixtime[]]}
+				DoExpr {setvar[tm_map_gate_until,0]}
+				DoExpr {setvar[pt_rerolled,0]}
+				SetState {MAP_LOCK_CHECK}
+~~ }
+
+STATE: {MAP_LOCK_CHECK} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getvar[tm_map_id]!=0 && isfalse[listcontains[getvar[pt_skipped],getvar[tm_map_id]]]}
+		DO: SetState {MAP_RESUME}
+	IF: Always
+		DO: DoAll
+				DoExpr {setvar[tm_map_id,wobjectgetid[listgetitem[listfilter[wobjectfindallinventorybytemplatetype[1004100],isfalse[listcontains[getvar[pt_skipped],wobjectgetid[$1]]]],0]]]}
+				SetState {MAP_LOCK_FALLBACK}
+~~ }
+
+STATE: {MAP_LOCK_FALLBACK} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getvar[tm_map_id]!=0}
+		DO: SetState {MAP_RESUME}
+	IF: Always
+		DO: DoAll
+				DoExpr {setvar[tm_map_gate_until,getunixtime[]+15]}
+				SetState {MAP_RETURN}
+~~ }
+
+STATE: {MAP_RESUME} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF:	Expr {(listcount[listfilter[wobjectfindallbycontainer[wobjectgetplayer[]],wobjectgetid[$1]==getvar[tm_map_id]]]+listcount[listfilter[wobjectfindallinventorybyobjectclass[10],listcount[listfilter[wobjectfindallbycontainer[$1],wobjectgetid[$1]==getvar[tm_map_id]]]>0]])==0}
+		DO:	SetState {MAP_MISSING}
+	IF:	Always
+		DO:	DoAll
+				Chat {/ub clearmotion}
+				SetOpt {EnableBuffing} {True}
+				SetOpt {EnableNav} {False}
+				SetOpt {EnableCombat} {True}
+
+				SetOpt {EnableLooting} {False}
+				SetState {MAP_USE}
+~~ }
+
+STATE: {MAP_USE} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF:	Expr {(listcount[listfilter[wobjectfindallbycontainer[wobjectgetplayer[]],wobjectgetid[$1]==getvar[tm_map_id]]]+listcount[listfilter[wobjectfindallinventorybyobjectclass[10],listcount[listfilter[wobjectfindallbycontainer[$1],wobjectgetid[$1]==getvar[tm_map_id]]]>0]])==0}
+		DO:	SetState {MAP_MISSING}
+	IF:	Always
+		DO:	DoAll
+				Chat {/ub clearmotion}
+				DoExpr {actiontryuseitem[wobjectfindbyid[getvar[tm_map_id]]]}
+				SetState {MAP_CLUE}
+~~ }
+
+STATE: {MAP_CLUE} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF:	ChatMatch {You dig at the site\. \(1/3\)}
+		DO:	SetState {DIG_FIRST}
+	IF:	ChatMatch {You dig at the site\. \(2/3\)}
+		DO:	SetState {DIG_SECOND}
+	IF:	ChatMatch {(?i)(The earth splits|The ground splits wide|The dig collapses inward|The dig breaks into something hollow|\[Digsite\] (Boss at|Wave |Corrupted))}
+		DO:	SetState {ENCOUNTER_INIT}
+	IF:	ChatMatch {(?i)lies far off to the north\.}
+		DO:	SetState {FAR_NORTH}
+	IF:	ChatMatch {(?i)lies far off to the northeast\.}
+		DO:	SetState {FAR_NORTHEAST}
+	IF:	ChatMatch {(?i)lies far off to the east\.}
+		DO:	SetState {FAR_EAST}
+	IF:	ChatMatch {(?i)lies far off to the southeast\.}
+		DO:	SetState {FAR_SOUTHEAST}
+	IF:	ChatMatch {(?i)lies far off to the south\.}
+		DO:	SetState {FAR_SOUTH}
+	IF:	ChatMatch {(?i)lies far off to the southwest\.}
+		DO:	SetState {FAR_SOUTHWEST}
+	IF:	ChatMatch {(?i)lies far off to the west\.}
+		DO:	SetState {FAR_WEST}
+	IF:	ChatMatch {(?i)lies far off to the northwest\.}
+		DO:	SetState {FAR_NORTHWEST}
+	IF:	ChatMatch {(?i)is to the north\. You are getting close\.}
+		DO:	SetState {CLOSE_NORTH}
+	IF:	ChatMatch {(?i)is to the northeast\. You are getting close\.}
+		DO:	SetState {CLOSE_NORTHEAST}
+	IF:	ChatMatch {(?i)is to the east\. You are getting close\.}
+		DO:	SetState {CLOSE_EAST}
+	IF:	ChatMatch {(?i)is to the southeast\. You are getting close\.}
+		DO:	SetState {CLOSE_SOUTHEAST}
+	IF:	ChatMatch {(?i)is to the south\. You are getting close\.}
+		DO:	SetState {CLOSE_SOUTH}
+	IF:	ChatMatch {(?i)is to the southwest\. You are getting close\.}
+		DO:	SetState {CLOSE_SOUTHWEST}
+	IF:	ChatMatch {(?i)is to the west\. You are getting close\.}
+		DO:	SetState {CLOSE_WEST}
+	IF:	ChatMatch {(?i)is to the northwest\. You are getting close\.}
+		DO:	SetState {CLOSE_NORTHWEST}
+	IF:	Expr {(listcount[listfilter[wobjectfindallbycontainer[wobjectgetplayer[]],wobjectgetid[$1]==getvar[tm_map_id]]]+listcount[listfilter[wobjectfindallinventorybyobjectclass[10],listcount[listfilter[wobjectfindallbycontainer[$1],wobjectgetid[$1]==getvar[tm_map_id]]]>0]])==0}
+		DO:	SetState {MAP_MISSING}
+	IF:	SecsInStateGE 9
+		DO:	SetState {MAP_CLUE_RETRY}
+~~ }
+
+STATE: {MAP_CLUE_RETRY} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF:	Expr {(listcount[listfilter[wobjectfindallbycontainer[wobjectgetplayer[]],wobjectgetid[$1]==getvar[tm_map_id]]]+listcount[listfilter[wobjectfindallinventorybyobjectclass[10],listcount[listfilter[wobjectfindallbycontainer[$1],wobjectgetid[$1]==getvar[tm_map_id]]]>0]])==0}
+		DO:	SetState {MAP_MISSING}
+	IF:	Always
+		DO:	DoAll
+				DoExpr {setvar[tm_resume_needed,1]}
+				DoExpr {setvar[tm_resume_pos,getplayercoordinates[]]}
+				SetState {MAP_RETURN}
+~~ }
+
+STATE: {FAR_NORTH} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Always
+		DO: DoAll
+				DoExpr {setvar[tm_mesh_heading,0]}
+				DoExpr {setvar[tm_mesh_step,iif[getpvar[maphunt_far]<60,60,iif[getpvar[maphunt_far]>180,180,getpvar[maphunt_far]]]]}
+				DoExpr {setvar[tm_step_origin,getplayercoordinates[]]}
+				SetState {CLUE_STEP}
+
+~~ }
+
+STATE: {FAR_NORTHEAST} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Always
+		DO: DoAll
+				DoExpr {setvar[tm_mesh_heading,45]}
+				DoExpr {setvar[tm_mesh_step,iif[getpvar[maphunt_far]<60,60,iif[getpvar[maphunt_far]>180,180,getpvar[maphunt_far]]]]}
+				DoExpr {setvar[tm_step_origin,getplayercoordinates[]]}
+				SetState {CLUE_STEP}
+
+~~ }
+
+STATE: {FAR_EAST} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Always
+		DO: DoAll
+				DoExpr {setvar[tm_mesh_heading,90]}
+				DoExpr {setvar[tm_mesh_step,iif[getpvar[maphunt_far]<60,60,iif[getpvar[maphunt_far]>180,180,getpvar[maphunt_far]]]]}
+				DoExpr {setvar[tm_step_origin,getplayercoordinates[]]}
+				SetState {CLUE_STEP}
+
+~~ }
+
+STATE: {FAR_SOUTHEAST} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Always
+		DO: DoAll
+				DoExpr {setvar[tm_mesh_heading,135]}
+				DoExpr {setvar[tm_mesh_step,iif[getpvar[maphunt_far]<60,60,iif[getpvar[maphunt_far]>180,180,getpvar[maphunt_far]]]]}
+				DoExpr {setvar[tm_step_origin,getplayercoordinates[]]}
+				SetState {CLUE_STEP}
+
+~~ }
+
+STATE: {FAR_SOUTH} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Always
+		DO: DoAll
+				DoExpr {setvar[tm_mesh_heading,180]}
+				DoExpr {setvar[tm_mesh_step,iif[getpvar[maphunt_far]<60,60,iif[getpvar[maphunt_far]>180,180,getpvar[maphunt_far]]]]}
+				DoExpr {setvar[tm_step_origin,getplayercoordinates[]]}
+				SetState {CLUE_STEP}
+
+~~ }
+
+STATE: {FAR_SOUTHWEST} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Always
+		DO: DoAll
+				DoExpr {setvar[tm_mesh_heading,225]}
+				DoExpr {setvar[tm_mesh_step,iif[getpvar[maphunt_far]<60,60,iif[getpvar[maphunt_far]>180,180,getpvar[maphunt_far]]]]}
+				DoExpr {setvar[tm_step_origin,getplayercoordinates[]]}
+				SetState {CLUE_STEP}
+
+~~ }
+
+STATE: {FAR_WEST} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Always
+		DO: DoAll
+				DoExpr {setvar[tm_mesh_heading,270]}
+				DoExpr {setvar[tm_mesh_step,iif[getpvar[maphunt_far]<60,60,iif[getpvar[maphunt_far]>180,180,getpvar[maphunt_far]]]]}
+				DoExpr {setvar[tm_step_origin,getplayercoordinates[]]}
+				SetState {CLUE_STEP}
+
+~~ }
+
+STATE: {FAR_NORTHWEST} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Always
+		DO: DoAll
+				DoExpr {setvar[tm_mesh_heading,315]}
+				DoExpr {setvar[tm_mesh_step,iif[getpvar[maphunt_far]<60,60,iif[getpvar[maphunt_far]>180,180,getpvar[maphunt_far]]]]}
+				DoExpr {setvar[tm_step_origin,getplayercoordinates[]]}
+				SetState {CLUE_STEP}
+
+~~ }
+
+STATE: {CLOSE_NORTH} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Always
+		DO: DoAll
+				DoExpr {setvar[tm_mesh_heading,0]}
+				DoExpr {setvar[tm_mesh_step,iif[getpvar[maphunt_close]<10,10,iif[getpvar[maphunt_close]>60,60,getpvar[maphunt_close]]]]}
+				DoExpr {setvar[tm_step_origin,getplayercoordinates[]]}
+				SetState {CLUE_STEP}
+
+~~ }
+
+STATE: {CLOSE_NORTHEAST} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Always
+		DO: DoAll
+				DoExpr {setvar[tm_mesh_heading,45]}
+				DoExpr {setvar[tm_mesh_step,iif[getpvar[maphunt_close]<10,10,iif[getpvar[maphunt_close]>60,60,getpvar[maphunt_close]]]]}
+				DoExpr {setvar[tm_step_origin,getplayercoordinates[]]}
+				SetState {CLUE_STEP}
+
+~~ }
+
+STATE: {CLOSE_EAST} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Always
+		DO: DoAll
+				DoExpr {setvar[tm_mesh_heading,90]}
+				DoExpr {setvar[tm_mesh_step,iif[getpvar[maphunt_close]<10,10,iif[getpvar[maphunt_close]>60,60,getpvar[maphunt_close]]]]}
+				DoExpr {setvar[tm_step_origin,getplayercoordinates[]]}
+				SetState {CLUE_STEP}
+
+~~ }
+
+STATE: {CLOSE_SOUTHEAST} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Always
+		DO: DoAll
+				DoExpr {setvar[tm_mesh_heading,135]}
+				DoExpr {setvar[tm_mesh_step,iif[getpvar[maphunt_close]<10,10,iif[getpvar[maphunt_close]>60,60,getpvar[maphunt_close]]]]}
+				DoExpr {setvar[tm_step_origin,getplayercoordinates[]]}
+				SetState {CLUE_STEP}
+
+~~ }
+
+STATE: {CLOSE_SOUTH} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Always
+		DO: DoAll
+				DoExpr {setvar[tm_mesh_heading,180]}
+				DoExpr {setvar[tm_mesh_step,iif[getpvar[maphunt_close]<10,10,iif[getpvar[maphunt_close]>60,60,getpvar[maphunt_close]]]]}
+				DoExpr {setvar[tm_step_origin,getplayercoordinates[]]}
+				SetState {CLUE_STEP}
+
+~~ }
+
+STATE: {CLOSE_SOUTHWEST} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Always
+		DO: DoAll
+				DoExpr {setvar[tm_mesh_heading,225]}
+				DoExpr {setvar[tm_mesh_step,iif[getpvar[maphunt_close]<10,10,iif[getpvar[maphunt_close]>60,60,getpvar[maphunt_close]]]]}
+				DoExpr {setvar[tm_step_origin,getplayercoordinates[]]}
+				SetState {CLUE_STEP}
+
+~~ }
+
+STATE: {CLOSE_WEST} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Always
+		DO: DoAll
+				DoExpr {setvar[tm_mesh_heading,270]}
+				DoExpr {setvar[tm_mesh_step,iif[getpvar[maphunt_close]<10,10,iif[getpvar[maphunt_close]>60,60,getpvar[maphunt_close]]]]}
+				DoExpr {setvar[tm_step_origin,getplayercoordinates[]]}
+				SetState {CLUE_STEP}
+
+~~ }
+
+STATE: {CLOSE_NORTHWEST} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Always
+		DO: DoAll
+				DoExpr {setvar[tm_mesh_heading,315]}
+				DoExpr {setvar[tm_mesh_step,iif[getpvar[maphunt_close]<10,10,iif[getpvar[maphunt_close]>60,60,getpvar[maphunt_close]]]]}
+				DoExpr {setvar[tm_step_origin,getplayercoordinates[]]}
+				SetState {CLUE_STEP}
+
+~~ }
+
+STATE: {MAP_COMBAT_RESUME} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Always
+		DO: DoAll
+				Chat {/ub clearmotion}
+				DoExpr {maraenavrestore[]}
+				DoExpr {setpvar[mh_tm_dig_active,0]}
+				DoExpr {setvar[tm_resume_pos,getplayercoordinates[]]}
+				DoExpr {setvar[tm_resume_needed,1]}
+				DoExpr {setvar[tm_map_gate_until,getunixtime[]+60]}
+				DoExpr {echo[`MapHunt: pausing the map to fight and recover.`]}
+				SetState {MAP_RETURN}
+~~ }
+
+STATE: {TEMP_HUNT} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF:	Always
+		DO:	DoAll
+				Chat {/ub clearmotion}
+				DoExpr {setvar[tm_resume_pos,getplayercoordinates[]]}
+				DoExpr {setvar[tm_resume_needed,1]}
+				SetState {MAP_RETURN}
+~~ }
+
+STATE: {DIG_FIRST} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF:	Always
+		DO:	DoAll
+				DoExpr {if[getvar[tm_cache_anchor]==0,setvar[tm_cache_anchor,getplayercoordinates[]]]}
+				DoExpr {setpvar[mh_tm_stat_dig1,getpvar[mh_tm_stat_dig1]+1]}
+				DoExpr {setvar[tm_doubloon_before,getinventorycountbytemplatetype[1004101]]}
+				DoExpr {setpvar[mh_tm_dig_active,1]}
+				Chat {/ub clearmotion}
+				SetState {DIG_1_WAIT}
+~~ }
+
+STATE: {DIG_1_WAIT} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF:	SecsInStateGE 2
+		DO:	SetState {DIG_CLICK_2}
+~~ }
+
+STATE: {DIG_CLICK_2} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF:	Expr {(listcount[listfilter[wobjectfindallbycontainer[wobjectgetplayer[]],wobjectgetid[$1]==getvar[tm_map_id]]]+listcount[listfilter[wobjectfindallinventorybyobjectclass[10],listcount[listfilter[wobjectfindallbycontainer[$1],wobjectgetid[$1]==getvar[tm_map_id]]]>0]])==0}
+		DO:	SetState {MAP_MISSING}
+	IF:	Always
+		DO:	DoAll
+				DoExpr {actiontryuseitem[wobjectfindbyid[getvar[tm_map_id]]]}
+				SetState {DIG_2_RESPONSE}
+~~ }
+
+STATE: {DIG_2_RESPONSE} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF:	ChatMatch {You dig at the site\. \(2/3\)}
+		DO:	SetState {DIG_SECOND}
+	IF:	ChatMatch {(?i)(The earth splits|The ground splits wide|The dig collapses inward|The dig breaks into something hollow)}
+		DO:	SetState {ENCOUNTER_INIT}
+	IF:	SecsInStateGE 9
+		DO:	SetState {DIG_UNCERTAIN}
+~~ }
+
+STATE: {DIG_SECOND} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF:	Always
+		DO:	DoAll
+				DoExpr {setpvar[mh_tm_stat_dig2,getpvar[mh_tm_stat_dig2]+1]}
+				DoExpr {setpvar[mh_tm_dig_active,1]}
+				Chat {/ub clearmotion}
+				SetState {DIG_2_WAIT}
+~~ }
+
+STATE: {DIG_2_WAIT} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF:	SecsInStateGE 2
+		DO:	SetState {DIG_CLICK_3}
+~~ }
+
+STATE: {DIG_CLICK_3} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF:	Expr {(listcount[listfilter[wobjectfindallbycontainer[wobjectgetplayer[]],wobjectgetid[$1]==getvar[tm_map_id]]]+listcount[listfilter[wobjectfindallinventorybyobjectclass[10],listcount[listfilter[wobjectfindallbycontainer[$1],wobjectgetid[$1]==getvar[tm_map_id]]]>0]])==0}
+		DO:	SetState {MAP_MISSING}
+	IF:	Always
+		DO:	DoAll
+				DoExpr {setpvar[mh_tm_stat_dig3_attempt,getpvar[mh_tm_stat_dig3_attempt]+1]}
+				DoExpr {actiontryuseitem[wobjectfindbyid[getvar[tm_map_id]]]}
+				SetState {DIG_3_RESPONSE}
+~~ }
+
+STATE: {DIG_3_RESPONSE} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF:	ChatMatch {(?i)(The earth splits|The ground splits wide|The dig collapses inward|The dig breaks into something hollow|\[Digsite\] (Boss at|Wave |Corrupted))}
+		DO:	SetState {ENCOUNTER_INIT}
+	IF:	SecsInStateGE 15
+		DO:	SetState {DIG_UNCERTAIN}
+~~ }
+
+STATE: {DIG_UNCERTAIN} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF:	Expr {(listcount[listfilter[wobjectfindallbycontainer[wobjectgetplayer[]],wobjectgetid[$1]==getvar[tm_map_id]]]+listcount[listfilter[wobjectfindallinventorybyobjectclass[10],listcount[listfilter[wobjectfindallbycontainer[$1],wobjectgetid[$1]==getvar[tm_map_id]]]>0]])==0}
+		DO:	SetState {ENCOUNTER_INIT}
+	IF:	Always
+		DO:	DoAll
+				DoExpr {setpvar[mh_tm_dig_active,0]}
+				SetState {TEMP_HUNT}
+~~ }
+
+STATE: {ENCOUNTER_INIT} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF:	Always
+		DO:	DoAll
+				DoExpr {setvar[tm_cache_anchor,getplayercoordinates[]]}
+				DoExpr {setvar[tm_event_deadline,getunixtime[]+1800]}
+				DoExpr {setvar[tm_anchor_forced,0]}
+				DoExpr {setvar[tm_anchor_retry_at,0]}
+				DoExpr {setvar[tm_anchor_failures,0]}
+				DoExpr {setpvar[mh_tm_stat_encounter,getpvar[mh_tm_stat_encounter]+1]}
+				DoExpr {setvar[tm_cache_retry_at,0]}
+				DoExpr {setvar[tm_aun_loot_active,0]}
+				Chat {/ub clearmotion}
+				SetOpt {EnableNav} {False}
+				SetOpt {EnableBuffing} {True}
+				SetOpt {EnableCombat} {True}
+				DoExpr {setcombatstate[magic]}
+				SetOpt {EnableLooting} {False}
+
+				SetState {ENCOUNTER}
+~~ }
+
+STATE: {ENCOUNTER} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF:	Expr {getvar[tm_aun_loot_active]==0 && listcount[wobjectfindalllandscapebynamerx[`(?i)Corpse of .*Aun Relaria.*`]]>0}
+		DO:	DoAll
+				SetOpt {EnableLooting} {True}
+				DoExpr {setvar[tm_aun_loot_active,1]}
+	IF:	Expr {getvar[tm_aun_loot_active]==1 && listcount[wobjectfindalllandscapebynamerx[`(?i)Corpse of .*Aun Relaria.*`]]==0}
+		DO:	DoAll
+				SetOpt {EnableLooting} {False}
+				DoExpr {setvar[tm_aun_loot_active,0]}
+	IF:	Expr {getpvar[mh_tm_dig_active]==1 && getinventorycountbytemplatetype[1004101]>getvar[tm_doubloon_before]}
+		DO:	DoAll
+				DoExpr {setpvar[mh_tm_stat_success_encounter,getpvar[mh_tm_stat_success_encounter]+1]}
+				DoExpr {echo[`MapHunt: +`+(getinventorycountbytemplatetype[1004101]-getvar[tm_doubloon_before])+` Marae Lassel Doubloons (corpse)`]}
+				SetState {CACHE_FINISH}
+	IF:	ChatMatch {(?i)(Something buried at the dig gives way|smaller cache settles into the loose earth|The last of them falls\. Wave 8 is cleared|The last of the corruption is put down)}
+		DO:	DoAll
+				DoExpr {setpvar[mh_tm_stat_completion,getpvar[mh_tm_stat_completion]+1]}
+				DoExpr {setpvar[mh_tm_stat_cache_search,getpvar[mh_tm_stat_cache_search]+1]}
+				Chat {/ub clearmotion}
+				SetOpt {EnableNav} {False}
+				SetOpt {EnableCombat} {False}
+				SetOpt {EnableBuffing} {False}
+				SetOpt {EnableLooting} {False}
+				DoExpr {setvar[tm_aun_loot_active,0]}
+				DoExpr {setvar[tm_cache_deadline,getunixtime[]+300]}
+				SetState {CACHE_PREP}
+	IF:	Expr {getvar[tm_event_deadline]>0 && getunixtime[]>=getvar[tm_event_deadline]}
+		DO:	DoAll
+				DoExpr {setpvar[mh_tm_stat_timeout_encounter,getpvar[mh_tm_stat_timeout_encounter]+1]}
+				SetState {ENCOUNTER_TIMEOUT}
+	IF: Expr {getpvar[mh_tm_dig_active]==1 && getvar[tm_cache_anchor]!=0 && coordinatedistanceflat[getplayercoordinates[],getvar[tm_cache_anchor]]>=55 && getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {DIGSITE_FORCE_RETURN}
+	IF: Expr {getpvar[mh_tm_dig_active]==1 && getvar[tm_cache_anchor]!=0 && strlen[getvar[tm_cache_anchor]]>0 && coordinatedistanceflat[getplayercoordinates[],getvar[tm_cache_anchor]]>10 && ratargetcount[]==0 && getbusystate[]==0 && getvar[tm_aun_loot_active]!=1 && maraerecoverybusy[]==0 && getunixtime[]>=getvar[tm_anchor_retry_at]}
+		DO: DoAll
+				DoExpr {setvar[tm_anchor_forced,0]}
+				SetState {DIGSITE_RETURN}
+~~ }
+
+STATE: {CACHE_SEARCH} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getunixtime[]>=getvar[tm_cache_deadline]}
+		DO: DoAll
+				DoExpr {echo[`MapHunt: cache collection timed out; resuming hunting with a map backoff.`]}
+				SetState {MISSION_ERROR}
+	IF: Expr {getpvar[mh_tm_dig_active]==1 && getvar[tm_cache_id]==0 && getvar[tm_cache_pending]==0 && getinventorycountbytemplatetype[1004101]>getvar[tm_doubloon_before]}
+		DO: SetState {CACHE_FINISH}
+	IF: Expr {getvar[tm_cache_id]!=0 && getvar[tm_cache_pending]==0 && getvar[tm_cache_pickups]==0 && getunixtime[]>=getvar[tm_cache_bound_at]+8 && (getvar[tm_cache_probe_id]==0 || getunixtime[]>=getvar[tm_cache_probe_until]) && (wobjectgetid[wobjectgetopencontainer[]]!=getvar[tm_cache_id] || listcount[listfilter[wobjectfindallbycontainer[wobjectgetopencontainer[]],`wobjectgetintprop[$1,218103808]==1004101 || wobjectgetobjectclass[$1]==15`]]==0)}
+		DO: SetState {CACHE_RELEASE_EMPTY}
+	IF: Expr {wobjectgetname[wobjectgetopencontainer[]]==`Unearthed Cache` && getvar[tm_cache_id]==0 && listcontains[getvar[tm_cache_rejected],wobjectgetid[wobjectgetopencontainer[]]]==0}
+		DO: DoAll
+				DoExpr {setvar[tm_cache_id,wobjectgetid[wobjectgetopencontainer[]]]}
+				DoExpr {setvar[tm_cache_bound_at,getunixtime[]]}
+				DoExpr {setvar[tm_cache_probe_id,0]}
+				SetState {CACHE_SEARCH}
+	IF: Expr {wobjectgetname[wobjectgetopencontainer[]]==`Unearthed Cache` && getvar[tm_cache_id]!=0 && wobjectgetid[wobjectgetopencontainer[]]==getvar[tm_cache_id] && listcount[listfilter[wobjectfindallbycontainer[wobjectgetopencontainer[]], `wobjectgetintprop[$1,218103808]==1004101 || wobjectgetobjectclass[$1]==15`]]>0 && getunixtime[]>=getvar[tm_cache_pickup_retry_at]}
+		DO: DoAll
+				DoExpr {setvar[tm_cache_pending,wobjectgetid[listgetitem[listfilter[wobjectfindallbycontainer[wobjectgetopencontainer[]], `wobjectgetintprop[$1,218103808]==1004101 || wobjectgetobjectclass[$1]==15`],0]]]}
+				DoExpr {setvar[tm_cache_pending_template,wobjectgetintprop[wobjectfindbyid[getvar[tm_cache_pending]],218103808]]}
+				DoExpr {setvar[tm_cache_pending_amount,iif[wobjectgetintprop[wobjectfindbyid[getvar[tm_cache_pending]],12]>1,wobjectgetintprop[wobjectfindbyid[getvar[tm_cache_pending]],12],1]]}
+				DoExpr {setvar[tm_cache_before_count,getinventorycountbytemplatetype[getvar[tm_cache_pending_template]]]}
+				SetState {CACHE_PICKUP}
+	IF: Expr {wobjectgetname[wobjectgetopencontainer[]]==`Unearthed Cache` && getvar[tm_cache_id]!=0 && wobjectgetid[wobjectgetopencontainer[]]==getvar[tm_cache_id] && listcount[listfilter[wobjectfindallbycontainer[wobjectgetopencontainer[]], `wobjectgetintprop[$1,218103808]==1004101 || wobjectgetobjectclass[$1]==15`]]==0 && getvar[tm_cache_pickups]>0}
+		DO: DoAll
+				SetState {CACHE_SETTLE}
+	IF: Expr {getvar[tm_cache_probe_id]!=0 && getunixtime[]>=getvar[tm_cache_probe_until]}
+		DO: DoAll
+				DoExpr {setvar[tm_cache_probe_id,0]}
+				SetState {CACHE_SEARCH}
+	IF: Expr {getvar[tm_cache_id]!=0 && wobjectgetid[wobjectgetopencontainer[]]!=getvar[tm_cache_id] && getvar[tm_cache_probe_id]==0}
+		DO: SetState {CACHE_REOPEN_BOUND}
+	IF: All
+			SecsInStateGE 2
+			Expr {getvar[tm_cache_id]==0 && getvar[tm_cache_probe_id]==0 && getunixtime[]>=getvar[tm_cache_retry_at]}
+		DO: SetState {CACHE_SCAN}
+~~ }
+
+STATE: {CACHE_FINISH} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF:	Always
+		DO:	DoAll
+				DoExpr {if[getpvar[mh_pt_cache_pickup_held]==1,rasetsetting[`LootChestsMacroOff`,getpvar[mh_pt_cache_old_pickup]]]}
+				DoExpr {setpvar[mh_pt_cache_pickup_held,0]}
+				DoExpr {maraenavrestore[]}
+				DoExpr {setpvar[mh_tm_dig_active,0]}
+				DoExpr {setvar[tm_map_id,0]}
+				DoExpr {setvar[tm_cache_probe_id,0]}
+				DoExpr {setvar[tm_cache_anchor,0]}
+				DoExpr {setvar[tm_cache_preexisting,listcreate[]]}
+				DoExpr {setvar[tm_cache_deadline,0]}
+				DoExpr {setvar[tm_cache_retry_at,0]}
+				DoExpr {setvar[tm_doubloon_before,0]}
+				SetState {MAP_RETURN}
+~~ }
+
+STATE: {ENCOUNTER_TIMEOUT} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Always
+		DO: DoAll
+				SetState {MISSION_ERROR}
+
+~~ }
+
+STATE: {MAP_MISSING} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF:	Death
+		DO:	SetState {MAP_DEATH}
+	IF:	ChatMatch {(?i)(The earth splits|The ground splits wide|The dig collapses inward|The dig breaks into something hollow|\[Digsite\])}
+		DO:	SetState {ENCOUNTER_INIT}
+	IF:	SecsInStateGE 12
+		DO:	DoAll
+				DoExpr {setpvar[mh_tm_stat_map_missing,getpvar[mh_tm_stat_map_missing]+1]}
+				DoExpr {setpvar[mh_tm_dig_active,0]}
+				DoExpr {setvar[tm_map_id,0]}
+				SetState {MAP_RETURN}
+~~ }
+STATE: {CACHE_PREP} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Always
+		DO: DoAll
+				DoExpr {if[getpvar[mh_pt_cache_pickup_held]==1,rasetsetting[`LootChestsMacroOff`,getpvar[mh_pt_cache_old_pickup]]]}
+				DoExpr {setpvar[mh_pt_cache_pickup_held,0]}
+				DoExpr {setpvar[mh_pt_cache_old_pickup,ragetsetting[`LootChestsMacroOff`]]}
+				DoExpr {setpvar[mh_pt_cache_pickup_held,1]}
+				DoExpr {rasetsetting[`LootChestsMacroOff`,0]}
+				SetOpt {EnableLooting} {False}
+				SetOpt {EnableNav} {False}
+				SetOpt {EnableCombat} {False}
+				DoExpr {setvar[tm_cache_id,0]}
+				DoExpr {if[getvar[tm_cache_anchor]==0,setvar[tm_cache_anchor,getplayercoordinates[]]]}
+				DoExpr {setvar[tm_cache_tried,listcreate[]]}
+				DoExpr {setvar[tm_cache_rejected,listcreate[]]}
+				DoExpr {setvar[tm_cache_probe_id,0]}
+				DoExpr {setvar[tm_cache_probe_until,0]}
+				DoExpr {setvar[tm_cache_candidates,listcreate[]]}
+				DoExpr {setvar[tm_cache_sent,0]}
+				DoExpr {setvar[tm_cache_pending,0]}
+				DoExpr {setvar[tm_cache_pickup_retry_at,0]}
+				DoExpr {setvar[tm_cache_pickups,0]}
+				DoExpr {setvar[tm_cache_stackmode,1]}
+				DoExpr {setvar[tm_cache_retry_at,0]}
+				DoExpr {setvar[tm_walk_generation,0]}
+				DoExpr {setvar[tm_walk_ack,0]}
+				SetState {CACHE_RETURN_CHECK}
+~~ }
+
+STATE: {CACHE_PICKUP} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getvar[tm_cache_pending_template]<=0 || getvar[tm_cache_pending]<=0}
+		DO: DoAll
+				DoExpr {echo[`MapHunt: missing cache item identity; holding without moving it.`]}
+				SetState {MISSION_ERROR}
+	IF: Expr {wobjectgetname[wobjectgetopencontainer[]]==`Unearthed Cache` && getvar[tm_cache_id]!=0 && wobjectgetid[wobjectgetopencontainer[]]==getvar[tm_cache_id] && listcount[listfilter[wobjectfindallbycontainer[wobjectgetopencontainer[]], `wobjectgetid[$1]==getvar[tm_cache_pending]`]]>0}
+		DO: DoAll
+				DoExpr {setvar[mh_status,`Collecting currency from the opened cache`]}
+				DoExpr {setpvar[mh_mm_pickup_unresolved,1]}
+				DoExpr {setpvar[mh_mm_pickup_item,getvar[tm_cache_pending]]}
+				DoExpr {setpvar[mh_mm_pickup_container,getvar[tm_cache_id]]}
+				DoExpr {setvar[tm_cache_sent,maraecachepickup[wobjectfindbyid[getvar[tm_cache_pending]]]]}
+				SetState {CACHE_CONFIRM}
+	IF: Always
+		DO: DoAll
+				SetState {CACHE_SEARCH}
+~~ }
+
+STATE: {CACHE_CONFIRM} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getvar[tm_cache_sent]==1 && getinventorycountbytemplatetype[getvar[tm_cache_pending_template]]>getvar[tm_cache_before_count] && (listcount[listfilter[wobjectfindallbycontainer[wobjectgetopencontainer[]], `wobjectgetid[$1]==getvar[tm_cache_pending]`]]==0 || wobjectgetintprop[wobjectfindbyid[getvar[tm_cache_pending]],12]<getvar[tm_cache_pending_amount])}
+		DO: DoAll
+				DoExpr {setvar[tm_cache_pickups,getvar[tm_cache_pickups]+1]}
+				DoExpr {setvar[tm_cache_stackmode,iif[listcount[listfilter[wobjectfindallbycontainer[wobjectgetopencontainer[]], `wobjectgetid[$1]==getvar[tm_cache_pending]`]]>0,0,1]]}
+				DoExpr {setpvar[mh_mm_pickup_unresolved,0]}
+				DoExpr {setvar[tm_cache_sent,0]}
+				DoExpr {setvar[tm_cache_pending,0]}
+				DoExpr {setvar[tm_cache_pickup_retry_at,getunixtime[]+2]}
+				SetState {CACHE_SEARCH}
+	IF: All
+			SecsInStateGE 2
+			Expr {getvar[tm_cache_sent]==0}
+		DO: DoAll
+				DoExpr {setpvar[mh_mm_pickup_unresolved,0]}
+				DoExpr {setvar[tm_cache_sent,0]}
+				DoExpr {setvar[tm_cache_pending,0]}
+				DoExpr {setvar[tm_cache_pickup_retry_at,getunixtime[]+2]}
+				SetState {CACHE_SEARCH}
+	IF: SecsInStateGE 20
+		DO: DoAll
+				DoExpr {echo[`MapHunt: currency move was sent but not confirmed. Check pack space and the open cache. Holding; no blind resend.`]}
+				SetState {MISSION_ERROR}
+~~ }
+
+STATE: {CACHE_SETTLE} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {(wobjectgetname[wobjectgetopencontainer[]]==`Unearthed Cache` && getvar[tm_cache_id]!=0 && wobjectgetid[wobjectgetopencontainer[]]==getvar[tm_cache_id])==0 || listcount[listfilter[wobjectfindallbycontainer[wobjectgetopencontainer[]], `wobjectgetintprop[$1,218103808]==1004101 || wobjectgetobjectclass[$1]==15`]]>0}
+		DO: DoAll
+				SetState {CACHE_SEARCH}
+	IF: SecsInStateGE 2
+		DO: DoAll
+				DoExpr {setpvar[mh_tm_stat_success_search,getpvar[mh_tm_stat_success_search]+1]}
+				DoExpr {echo[`MapHunt: cache currency collected and confirmed.`]}
+				SetState {CACHE_FINISH}
+~~ }
+
+STATE: {MISSION_ERROR} ~~ {
+	IF: Expr {getpvar[mh_mm_pickup_unresolved]==1}
+		DO: SetState {INVENTORY_REVIEW}
+	IF: Always
+		DO: DoAll
+				SetState {RECOVERY_CLEANUP}
+
+~~ }
+
+STATE: {CACHE_RELEASE_EMPTY} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getunixtime[]>=getvar[tm_cache_deadline]}
+		DO: SetState {MISSION_ERROR}
+	IF: Always
+		DO: DoAll
+				DoExpr {listadd[getvar[tm_cache_tried],getvar[tm_cache_id]]}
+				DoExpr {listadd[getvar[tm_cache_rejected],getvar[tm_cache_id]]}
+				DoExpr {setvar[tm_cache_id,0]}
+				DoExpr {setvar[tm_cache_probe_id,0]}
+				DoExpr {setvar[mh_status,`Cache yielded no currency; trying another local cache`]}
+				SetState {CACHE_SCAN}
+~~ }
+
+STATE: {CACHE_SCAN} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getunixtime[]>=getvar[tm_cache_deadline]}
+		DO: SetState {MISSION_ERROR}
+	IF: Always
+		DO: DoAll
+				DoExpr {setvar[tm_cache_candidates,listfilter[wobjectfindalllandscapebynamerx[`^Unearthed Cache$`],`listcontains[getvar[tm_cache_tried],wobjectgetid[$1]]==0 && listcontains[getvar[tm_cache_rejected],wobjectgetid[$1]]==0`]]}
+				SetState {CACHE_CHOOSE}
+~~ }
+
+STATE: {CACHE_CHOOSE} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getunixtime[]>=getvar[tm_cache_deadline]}
+		DO: SetState {MISSION_ERROR}
+	IF: Expr {listcount[getvar[tm_cache_candidates]]>0}
+		DO: SetState {CACHE_TRY_NEXT}
+	IF: Always
+		DO: DoAll
+				DoExpr {setvar[tm_cache_tried,listcreate[]]}
+				DoExpr {setvar[tm_cache_rejected,listcreate[]]}
+				DoExpr {setvar[tm_cache_retry_at,getunixtime[]+8]}
+				DoExpr {setvar[mh_status,`No unopened cache confirmed; refreshing local cache IDs`]}
+				SetState {CACHE_SEARCH}
+~~ }
+
+STATE: {CACHE_TRY_NEXT} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getunixtime[]>=getvar[tm_cache_deadline]}
+		DO: SetState {MISSION_ERROR}
+	IF: Always
+		DO: DoAll
+				DoExpr {setvar[tm_cache_probe_id,wobjectgetid[listgetitem[getvar[tm_cache_candidates],0]]]}
+				DoExpr {listadd[getvar[tm_cache_tried],getvar[tm_cache_probe_id]]}
+				SetState {CACHE_APPROACH_CHECK}
+~~ }
+
+STATE: {CACHE_REOPEN_BOUND} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Always
+		DO: DoAll
+				DoExpr {setvar[tm_cache_probe_id,getvar[tm_cache_id]]}
+				SetState {CACHE_APPROACH_CHECK}
+~~ }
+
+STATE: {CACHE_RETURN_CHECK} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getunixtime[]>=getvar[tm_cache_deadline]}
+		DO: SetState {MISSION_ERROR}
+	IF: Expr {getvar[tm_cache_anchor]!=0 && strlen[getvar[tm_cache_anchor]]>0 && coordinatedistanceflat[getplayercoordinates[],getvar[tm_cache_anchor]]>3}
+		DO: SetState {CACHE_RETURN}
+	IF: Always
+		DO: DoAll
+				SetState {CACHE_SEARCH}
+~~ }
+
+STATE: {CACHE_RETURN} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getunixtime[]>=getvar[tm_cache_deadline]}
+		DO: SetState {MISSION_ERROR}
+	IF: Always
+		DO: DoAll
+				DoExpr {setvar[tm_walk_target,getvar[tm_cache_anchor]]}
+				DoExpr {setvar[tm_walk_generation,getvar[tm_walk_generation]+1]}
+				DoExpr {setvar[mh_walk_token,getvar[mh_walk_token]+1]}
+				DoExpr {setvar[tm_walk_ack,0]}
+				DoExpr {setvar[mh_status,`Returning to the recorded digsite`]}
+				SetState {CACHE_RETURN_WAIT}
+~~ }
+
+STATE: {CACHE_RETURN_WAIT} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getunixtime[]>=getvar[tm_cache_deadline]}
+		DO: SetState {MISSION_ERROR}
+	IF: Expr {getvar[tm_walk_ack]==1 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],getvar[tm_walk_target]]<=2}
+		DO: DoAll
+				SetOpt {EnableNav} {False}
+				Chat {/ub clearmotion}
+				SetState {CACHE_SEARCH}
+	IF: Expr {getvar[tm_walk_ack]==-1}
+		DO: SetState {CACHE_SEARCH}
+	IF: SecsInStateGE 45
+		DO: DoAll
+				SetOpt {EnableNav} {False}
+				Chat {/ub clearmotion}
+				SetState {CACHE_SEARCH}
+~~ }
+
+STATE: {CACHE_APPROACH_CHECK} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getunixtime[]>=getvar[tm_cache_deadline]}
+		DO: SetState {MISSION_ERROR}
+	IF: Expr {strlen[wobjectgetphysicscoordinates[wobjectfindbyid[getvar[tm_cache_probe_id]]]]>0 && coordinatedistanceflat[getplayercoordinates[],wobjectgetphysicscoordinates[wobjectfindbyid[getvar[tm_cache_probe_id]]]]>3}
+		DO: SetState {CACHE_APPROACH}
+	IF: Always
+		DO: DoAll
+				SetState {CACHE_OPEN_SELECTED}
+~~ }
+
+STATE: {CACHE_APPROACH} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getunixtime[]>=getvar[tm_cache_deadline]}
+		DO: SetState {MISSION_ERROR}
+	IF: Always
+		DO: DoAll
+				DoExpr {setvar[tm_walk_target,wobjectgetphysicscoordinates[wobjectfindbyid[getvar[tm_cache_probe_id]]]]}
+				DoExpr {setvar[tm_walk_generation,getvar[tm_walk_generation]+1]}
+				DoExpr {setvar[mh_walk_token,getvar[mh_walk_token]+1]}
+				DoExpr {setvar[tm_walk_ack,0]}
+				DoExpr {setvar[mh_status,`Walking to the selected Unearthed Cache`]}
+				SetState {CACHE_APPROACH_WAIT}
+~~ }
+
+STATE: {CACHE_APPROACH_WAIT} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getunixtime[]>=getvar[tm_cache_deadline]}
+		DO: SetState {MISSION_ERROR}
+	IF: Expr {getvar[tm_cache_probe_id]!=0 && wobjectgetid[wobjectgetopencontainer[]]==getvar[tm_cache_probe_id]}
+		DO: DoAll
+				SetOpt {EnableNav} {False}
+				Chat {/ub clearmotion}
+				SetState {CACHE_SEARCH}
+	IF: Expr {strlen[wobjectgetphysicscoordinates[wobjectfindbyid[getvar[tm_cache_probe_id]]]]>0 && coordinatedistanceflat[getplayercoordinates[],wobjectgetphysicscoordinates[wobjectfindbyid[getvar[tm_cache_probe_id]]]]<=3}
+		DO: DoAll
+				SetOpt {EnableNav} {False}
+				Chat {/ub clearmotion}
+				SetState {CACHE_OPEN_SELECTED}
+	IF: All
+			Expr {getvar[tm_walk_ack]==1}
+			NavEmpty
+		DO: DoAll
+				SetOpt {EnableNav} {False}
+				Chat {/ub clearmotion}
+				SetState {CACHE_OPEN_SELECTED}
+	IF: Expr {getvar[tm_walk_ack]==-1}
+		DO: SetState {CACHE_SKIP_SELECTED}
+	IF: SecsInStateGE 45
+		DO: DoAll
+				SetOpt {EnableNav} {False}
+				Chat {/ub clearmotion}
+				SetState {CACHE_SKIP_SELECTED}
+~~ }
+
+STATE: {CACHE_SKIP_SELECTED} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getunixtime[]>=getvar[tm_cache_deadline]}
+		DO: SetState {MISSION_ERROR}
+	IF: Always
+		DO: DoAll
+				SetOpt {EnableNav} {False}
+				DoExpr {setvar[tm_cache_probe_id,0]}
+				DoExpr {setvar[mh_status,`Could not reach that cache; trying another ID`]}
+				SetState {CACHE_SEARCH}
+~~ }
+
+STATE: {CACHE_OPEN_SELECTED} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getunixtime[]>=getvar[tm_cache_deadline]}
+		DO: SetState {MISSION_ERROR}
+	IF: Always
+		DO: DoAll
+				SetOpt {EnableNav} {False}
+				Chat {/ub clearmotion}
+				DoExpr {setvar[tm_cache_probe_until,getunixtime[]+8]}
+				DoExpr {setvar[mh_status,`Waiting for the selected cache to open`]}
+				DoExpr {actiontryuseitem[wobjectfindbyid[getvar[tm_cache_probe_id]]]}
+				SetState {CACHE_SEARCH}
+~~ }
+
+STATE: {MAP_MESH_PREP} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF: Always
+		DO: DoAll
+				Chat {/ub clearmotion}
+				SetOpt {EnableNav} {False}
+				SetOpt {EnableCombat} {False}
+				SetOpt {EnableBuffing} {False}
+				SetOpt {EnableLooting} {False}
+				DoExpr {setvar[tm_walk_generation,getvar[tm_walk_generation]+1]}
+				DoExpr {setvar[mh_walk_token,getvar[mh_walk_token]+1]}
+				DoExpr {setvar[tm_walk_ack,0]}
+				DoExpr {setvar[mh_status,`Planning a mesh path in the map clue direction`]}
+				SetState {MAP_MESH_WAIT}
+~~ }
+
+STATE: {MAP_MESH_WAIT} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF: Expr {getvar[tm_walk_ack]==-1}
+		DO: SetState {MAP_MESH_FAILED}
+	IF: Expr {getvar[tm_walk_ack]==1 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],getvar[tm_walk_target]]<=1}
+		DO: DoAll
+				SetOpt {EnableNav} {False}
+				Chat {/ub clearmotion}
+				DoExpr {setvar[tm_mesh_failures,0]}
+				SetState {MAP_RESUME}
+	IF: SecsInStateGE 45
+		DO: SetState {MAP_MESH_FAILED}
+~~ }
+
+STATE: {MAP_MESH_FAILED} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF: Always
+		DO: DoAll
+				SetOpt {EnableNav} {False}
+				Chat {/ub clearmotion}
+				DoExpr {maraenavrestore[]}
+				DoExpr {setvar[tm_mesh_failures,getvar[tm_mesh_failures]+1]}
+				DoExpr {setvar[mh_status,`Mesh map step failed: `+getvar[tm_mesh_error]]}
+				SetState {MAP_MESH_RETRY}
+~~ }
+
+STATE: {MAP_MESH_RETRY} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF: Expr {getvar[tm_mesh_failures]>=3}
+		DO: DoAll
+				DoExpr {echo[`Map mesh path unavailable after three tries. Check RynthNav/mesh coverage, or turn off Mesh map steps.`]}
+				SetState {MISSION_ERROR}
+	IF: SecsInStateGE 2
+		DO: DoAll
+				DoExpr {setvar[tm_mesh_step,iif[getvar[tm_mesh_step]/2<4,4,getvar[tm_mesh_step]/2]]}
+				SetState {MAP_MESH_PREP}
+~~ }
+
+STATE: {DIGSITE_RETURN} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF:	Expr {getpvar[mh_tm_dig_active]==1 && getinventorycountbytemplatetype[1004101]>getvar[tm_doubloon_before]}
+		DO:	DoAll
+				DoExpr {setpvar[mh_tm_stat_success_encounter,getpvar[mh_tm_stat_success_encounter]+1]}
+				DoExpr {echo[`MapHunt: +`+(getinventorycountbytemplatetype[1004101]-getvar[tm_doubloon_before])+` Marae Lassel Doubloons (corpse)`]}
+				SetState {CACHE_FINISH}
+	IF:	ChatMatch {(?i)(Something buried at the dig gives way|smaller cache settles into the loose earth|The last of them falls\. Wave 8 is cleared|The last of the corruption is put down)}
+		DO:	DoAll
+				DoExpr {setpvar[mh_tm_stat_completion,getpvar[mh_tm_stat_completion]+1]}
+				DoExpr {setpvar[mh_tm_stat_cache_search,getpvar[mh_tm_stat_cache_search]+1]}
+				Chat {/ub clearmotion}
+				SetOpt {EnableNav} {False}
+				SetOpt {EnableCombat} {False}
+				SetOpt {EnableBuffing} {False}
+				SetOpt {EnableLooting} {False}
+				DoExpr {setvar[tm_aun_loot_active,0]}
+				DoExpr {setvar[tm_cache_deadline,getunixtime[]+300]}
+				SetState {CACHE_PREP}
+	IF: Expr {getcharvital_current[1]>0 && maraerecoverybusy[]==0 && getvar[tm_event_deadline]>0 && getunixtime[]>=getvar[tm_event_deadline]}
+		DO: SetState {ENCOUNTER_TIMEOUT}
+	IF: Expr {getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: DoAll
+				SetOpt {EnableNav} {False}
+				Chat {/ub clearmotion}
+				DoExpr {setvar[tm_walk_target,getvar[tm_cache_anchor]]}
+				DoExpr {setvar[tm_walk_generation,getvar[tm_walk_generation]+1]}
+				DoExpr {setvar[mh_walk_token,getvar[mh_walk_token]+1]}
+				DoExpr {setvar[tm_walk_ack,0]}
+				DoExpr {setvar[mh_status,iif[getvar[tm_anchor_forced]==1,`55-yard boundary: returning to the digsite with combat yielded`,`Returning to the digsite between fights`]]}
+				SetState {DIGSITE_RETURN_WAIT}
+~~ }
+
+STATE: {DIGSITE_FORCE_RETURN} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF:	Expr {getpvar[mh_tm_dig_active]==1 && getinventorycountbytemplatetype[1004101]>getvar[tm_doubloon_before]}
+		DO:	DoAll
+				DoExpr {setpvar[mh_tm_stat_success_encounter,getpvar[mh_tm_stat_success_encounter]+1]}
+				DoExpr {echo[`MapHunt: +`+(getinventorycountbytemplatetype[1004101]-getvar[tm_doubloon_before])+` Marae Lassel Doubloons (corpse)`]}
+				SetState {CACHE_FINISH}
+	IF:	ChatMatch {(?i)(Something buried at the dig gives way|smaller cache settles into the loose earth|The last of them falls\. Wave 8 is cleared|The last of the corruption is put down)}
+		DO:	DoAll
+				DoExpr {setpvar[mh_tm_stat_completion,getpvar[mh_tm_stat_completion]+1]}
+				DoExpr {setpvar[mh_tm_stat_cache_search,getpvar[mh_tm_stat_cache_search]+1]}
+				Chat {/ub clearmotion}
+				SetOpt {EnableNav} {False}
+				SetOpt {EnableCombat} {False}
+				SetOpt {EnableBuffing} {False}
+				SetOpt {EnableLooting} {False}
+				DoExpr {setvar[tm_aun_loot_active,0]}
+				DoExpr {setvar[tm_cache_deadline,getunixtime[]+300]}
+				SetState {CACHE_PREP}
+	IF: Expr {getcharvital_current[1]>0 && maraerecoverybusy[]==0 && getvar[tm_event_deadline]>0 && getunixtime[]>=getvar[tm_event_deadline]}
+		DO: SetState {ENCOUNTER_TIMEOUT}
+	IF: Expr {getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: DoAll
+				SetOpt {EnableCombat} {False}
+				DoExpr {setvar[tm_anchor_forced,1]}
+				DoExpr {setvar[mh_status,`55-yard digsite boundary reached; returning before pursuing more targets`]}
+				SetState {DIGSITE_RETURN}
+~~ }
+
+STATE: {DIGSITE_RETURN_WAIT} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF:	Expr {getpvar[mh_tm_dig_active]==1 && getinventorycountbytemplatetype[1004101]>getvar[tm_doubloon_before]}
+		DO:	DoAll
+				DoExpr {setpvar[mh_tm_stat_success_encounter,getpvar[mh_tm_stat_success_encounter]+1]}
+				DoExpr {echo[`MapHunt: +`+(getinventorycountbytemplatetype[1004101]-getvar[tm_doubloon_before])+` Marae Lassel Doubloons (corpse)`]}
+				SetState {CACHE_FINISH}
+	IF:	ChatMatch {(?i)(Something buried at the dig gives way|smaller cache settles into the loose earth|The last of them falls\. Wave 8 is cleared|The last of the corruption is put down)}
+		DO:	DoAll
+				DoExpr {setpvar[mh_tm_stat_completion,getpvar[mh_tm_stat_completion]+1]}
+				DoExpr {setpvar[mh_tm_stat_cache_search,getpvar[mh_tm_stat_cache_search]+1]}
+				Chat {/ub clearmotion}
+				SetOpt {EnableNav} {False}
+				SetOpt {EnableCombat} {False}
+				SetOpt {EnableBuffing} {False}
+				SetOpt {EnableLooting} {False}
+				DoExpr {setvar[tm_aun_loot_active,0]}
+				DoExpr {setvar[tm_cache_deadline,getunixtime[]+300]}
+				SetState {CACHE_PREP}
+	IF: Expr {getcharvital_current[1]>0 && maraerecoverybusy[]==0 && getvar[tm_event_deadline]>0 && getunixtime[]>=getvar[tm_event_deadline]}
+		DO: SetState {ENCOUNTER_TIMEOUT}
+	IF: Expr {getcharvital_current[1]>0 && maraerecoverybusy[]==0 && getvar[tm_anchor_forced]!=1 && ratargetcount[]>0}
+		DO: SetState {DIGSITE_RETURN_COMBAT}
+	IF: Expr {getcharvital_current[1]>0 && maraerecoverybusy[]==0 && coordinatedistanceflat[getplayercoordinates[],getvar[tm_cache_anchor]]<=3}
+		DO: SetState {DIGSITE_RETURN_DONE}
+	IF: All
+			Expr {getcharvital_current[1]>0 && maraerecoverybusy[]==0 && getvar[tm_walk_ack]==1 && coordinatedistanceflat[getplayercoordinates[],getvar[tm_cache_anchor]]<=10}
+			NavEmpty
+		DO: SetState {DIGSITE_RETURN_DONE}
+	IF: Expr {getcharvital_current[1]>0 && maraerecoverybusy[]==0 && getvar[tm_walk_ack]==-1}
+		DO: SetState {DIGSITE_RETURN_DONE}
+	IF: All
+			SecsInStateGE 45
+			Expr {getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {DIGSITE_RETURN_DONE}
+~~ }
+
+STATE: {DIGSITE_RETURN_COMBAT} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF:	Expr {getpvar[mh_tm_dig_active]==1 && getinventorycountbytemplatetype[1004101]>getvar[tm_doubloon_before]}
+		DO:	DoAll
+				DoExpr {setpvar[mh_tm_stat_success_encounter,getpvar[mh_tm_stat_success_encounter]+1]}
+				DoExpr {echo[`MapHunt: +`+(getinventorycountbytemplatetype[1004101]-getvar[tm_doubloon_before])+` Marae Lassel Doubloons (corpse)`]}
+				SetState {CACHE_FINISH}
+	IF:	ChatMatch {(?i)(Something buried at the dig gives way|smaller cache settles into the loose earth|The last of them falls\. Wave 8 is cleared|The last of the corruption is put down)}
+		DO:	DoAll
+				DoExpr {setpvar[mh_tm_stat_completion,getpvar[mh_tm_stat_completion]+1]}
+				DoExpr {setpvar[mh_tm_stat_cache_search,getpvar[mh_tm_stat_cache_search]+1]}
+				Chat {/ub clearmotion}
+				SetOpt {EnableNav} {False}
+				SetOpt {EnableCombat} {False}
+				SetOpt {EnableBuffing} {False}
+				SetOpt {EnableLooting} {False}
+				DoExpr {setvar[tm_aun_loot_active,0]}
+				DoExpr {setvar[tm_cache_deadline,getunixtime[]+300]}
+				SetState {CACHE_PREP}
+	IF: Expr {getcharvital_current[1]>0 && maraerecoverybusy[]==0 && getvar[tm_event_deadline]>0 && getunixtime[]>=getvar[tm_event_deadline]}
+		DO: SetState {ENCOUNTER_TIMEOUT}
+	IF: Expr {getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: DoAll
+				SetOpt {EnableNav} {False}
+				Chat {/ub clearmotion}
+				SetOpt {EnableCombat} {True}
+				SetOpt {EnableBuffing} {True}
+				DoExpr {setvar[tm_anchor_retry_at,getunixtime[]+5]}
+				DoExpr {setvar[mh_status,`Fighting; will return to the digsite when targets clear`]}
+				SetState {ENCOUNTER}
+~~ }
+
+STATE: {DIGSITE_RETURN_RETRY} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF:	Expr {getpvar[mh_tm_dig_active]==1 && getinventorycountbytemplatetype[1004101]>getvar[tm_doubloon_before]}
+		DO:	DoAll
+				DoExpr {setpvar[mh_tm_stat_success_encounter,getpvar[mh_tm_stat_success_encounter]+1]}
+				DoExpr {echo[`MapHunt: +`+(getinventorycountbytemplatetype[1004101]-getvar[tm_doubloon_before])+` Marae Lassel Doubloons (corpse)`]}
+				SetState {CACHE_FINISH}
+	IF:	ChatMatch {(?i)(Something buried at the dig gives way|smaller cache settles into the loose earth|The last of them falls\. Wave 8 is cleared|The last of the corruption is put down)}
+		DO:	DoAll
+				DoExpr {setpvar[mh_tm_stat_completion,getpvar[mh_tm_stat_completion]+1]}
+				DoExpr {setpvar[mh_tm_stat_cache_search,getpvar[mh_tm_stat_cache_search]+1]}
+				Chat {/ub clearmotion}
+				SetOpt {EnableNav} {False}
+				SetOpt {EnableCombat} {False}
+				SetOpt {EnableBuffing} {False}
+				SetOpt {EnableLooting} {False}
+				DoExpr {setvar[tm_aun_loot_active,0]}
+				DoExpr {setvar[tm_cache_deadline,getunixtime[]+300]}
+				SetState {CACHE_PREP}
+	IF: Expr {getcharvital_current[1]>0 && maraerecoverybusy[]==0 && getvar[tm_event_deadline]>0 && getunixtime[]>=getvar[tm_event_deadline]}
+		DO: SetState {ENCOUNTER_TIMEOUT}
+	IF: Expr {getcharvital_current[1]>0 && maraerecoverybusy[]==0 && getunixtime[]>=getvar[tm_anchor_retry_at]}
+		DO: SetState {DIGSITE_RETURN}
+~~ }
+
+STATE: {DIGSITE_RETURN_DONE} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF:	Expr {getpvar[mh_tm_dig_active]==1 && getinventorycountbytemplatetype[1004101]>getvar[tm_doubloon_before]}
+		DO:	DoAll
+				DoExpr {setpvar[mh_tm_stat_success_encounter,getpvar[mh_tm_stat_success_encounter]+1]}
+				DoExpr {echo[`MapHunt: +`+(getinventorycountbytemplatetype[1004101]-getvar[tm_doubloon_before])+` Marae Lassel Doubloons (corpse)`]}
+				SetState {CACHE_FINISH}
+	IF:	ChatMatch {(?i)(Something buried at the dig gives way|smaller cache settles into the loose earth|The last of them falls\. Wave 8 is cleared|The last of the corruption is put down)}
+		DO:	DoAll
+				DoExpr {setpvar[mh_tm_stat_completion,getpvar[mh_tm_stat_completion]+1]}
+				DoExpr {setpvar[mh_tm_stat_cache_search,getpvar[mh_tm_stat_cache_search]+1]}
+				Chat {/ub clearmotion}
+				SetOpt {EnableNav} {False}
+				SetOpt {EnableCombat} {False}
+				SetOpt {EnableBuffing} {False}
+				SetOpt {EnableLooting} {False}
+				DoExpr {setvar[tm_aun_loot_active,0]}
+				DoExpr {setvar[tm_cache_deadline,getunixtime[]+300]}
+				SetState {CACHE_PREP}
+	IF: Expr {getcharvital_current[1]>0 && maraerecoverybusy[]==0 && getvar[tm_event_deadline]>0 && getunixtime[]>=getvar[tm_event_deadline]}
+		DO: SetState {ENCOUNTER_TIMEOUT}
+	IF: Expr {getcharvital_current[1]>0 && maraerecoverybusy[]==0 && getvar[tm_anchor_forced]==1 && coordinatedistanceflat[getplayercoordinates[],getvar[tm_cache_anchor]]>10}
+		DO: DoAll
+				SetOpt {EnableNav} {False}
+				Chat {/ub clearmotion}
+				DoExpr {setvar[tm_anchor_failures,getvar[tm_anchor_failures]+1]}
+				DoExpr {setvar[tm_anchor_retry_at,getunixtime[]+iif[getvar[tm_anchor_failures]>=3,60,15]]}
+				DoExpr {setvar[mh_status,`Digsite return path not confirmed; retrying with combat yielded to navigation`]}
+				SetState {DIGSITE_RETURN_RETRY}
+	IF: Expr {getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: DoAll
+				SetOpt {EnableNav} {False}
+				Chat {/ub clearmotion}
+				SetOpt {EnableCombat} {True}
+				SetOpt {EnableBuffing} {True}
+				DoExpr {setvar[tm_anchor_failures,iif[coordinatedistanceflat[getplayercoordinates[],getvar[tm_cache_anchor]]<=10,0,getvar[tm_anchor_failures]+1]]}
+				DoExpr {setvar[tm_anchor_retry_at,getunixtime[]+iif[getvar[tm_anchor_failures]>=3,60,15]]}
+				DoExpr {setvar[tm_anchor_forced,0]}
+				DoExpr {setvar[mh_status,`Dig event active; combat enabled and digsite retained`]}
+				SetState {ENCOUNTER}
+~~ }
+
+STATE: {INVENTORY_REVIEW} ~~ {
+	IF: Always
+		DO: DoAll
+				DoExpr {setvar[mh_schema,1]}
+				DoExpr {if[getpvar[mh_pt_cache_pickup_held]==1,rasetsetting[`LootChestsMacroOff`,getpvar[mh_pt_cache_old_pickup]]]}
+				DoExpr {setpvar[mh_pt_cache_pickup_held,0]}
+				DoExpr {maraenavrestore[]}
+				Chat {/ub clearmotion}
+				SetOpt {EnableNav} {False}
+				SetOpt {EnableCombat} {True}
+				SetOpt {EnableBuffing} {True}
+				SetOpt {EnableLooting} {False}
+				DoExpr {setvar[mh_status,`Unconfirmed currency move: inspect inventory before using Review complete. No blind resend.`]}
+				DoExpr {echo[getvar[mh_status]]}
+				SetState {HOLD}
+
+~~ }
+
+STATE: {RECOVERY_CLEANUP} ~~ {
+	IF: Always
+		DO: DoAll
+				DoExpr {if[getpvar[mh_pt_cache_pickup_held]==1,rasetsetting[`LootChestsMacroOff`,getpvar[mh_pt_cache_old_pickup]]]}
+				DoExpr {setpvar[mh_pt_cache_pickup_held,0]}
+				DoExpr {maraenavrestore[]}
+				Chat {/ub clearmotion}
+				SetOpt {EnableNav} {False}
+				SetOpt {EnableCombat} {True}
+				SetOpt {EnableBuffing} {True}
+				SetOpt {EnableLooting} {True}
+				DoExpr {setpvar[mh_tm_dig_active,0]}
+				DoExpr {setvar[tm_map_id,0]}
+				DoExpr {setvar[tm_resume_needed,0]}
+				DoExpr {setvar[tm_cache_pending,0]}
+				DoExpr {setvar[tm_cache_id,0]}
+				DoExpr {setvar[tm_map_gate_until,getunixtime[]+300]}
+				DoExpr {setvar[mh_status,`Map attempt unconfirmed; hunting continues. Maps retry in five minutes.`]}
+				DoExpr {echo[getvar[mh_status]]}
+				SetState {RECOVERY_WAIT}
+
+~~ }
+
+STATE: {RECOVERY_WAIT} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: All
+			SecsInStateGE 10
+			Expr {getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {MAP_RETURN}
+
+~~ }
+
+STATE: {SUPPORT_REQUIRED} ~~ {
+	IF: Always
+		DO: DoAll
+				Chat {/ub clearmotion}
+				SetOpt {EnableNav} {False}
+				DoExpr {echo[`MapHunt needs the documented compatibility support (maraemissionapi >= 6). No map action was issued.`]}
+				SetState {HOLD}
+
+~~ }
+
+STATE: {HUNT_LOAD} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Always
+		DO: DoAll
+				Chat {/ub clearmotion}
+				DoExpr {maraenavrestore[]}
+				Chat {/ra nav load maphunt.nav}
+				DoExpr {setvar[mh_route_ack,0]}
+				DoExpr {setvar[mh_status,`Loading maphunt.nav`]}
+				SetState {HUNT_VERIFY}
+
+~~ }
+
+STATE: {HUNT_VERIFY} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getvar[mh_route_ack]==1}
+		DO: SetState {HUNT_READY}
+	IF: SecsInStateGE 10
+		DO: SetState {NAV_REQUIRED}
+
+~~ }
+
+STATE: {NAV_REQUIRED} ~~ {
+	IF: Always
+		DO: DoAll
+				SetOpt {EnableNav} {False}
+				DoExpr {setvar[mh_status,`Missing, ambiguous or empty maphunt.nav. Put your route in RynthAi NavProfiles, then Resume.`]}
+				DoExpr {echo[getvar[mh_status]]}
+				SetState {HOLD}
+
+~~ }
+
+STATE: {HUNT_READY} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Always
+		DO: DoAll
+				Chat {/ub clearmotion}
+				SetOpt {EnableNav} {False}
+				SetOpt {EnableCombat} {True}
+				SetOpt {EnableBuffing} {True}
+				SetOpt {EnableLooting} {True}
+				SetOpt {EnableNav} {True}
+				DoExpr {setvar[mh_status,`Hunting maphunt.nav; watching the pack for maps`]}
+				SetState {HUNT}
+
+~~ }
+
+STATE: {HUNT} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: NavEmpty
+		DO: SetState {HUNT_LOAD}
+	IF: Expr {getvar[tm_resume_needed]==1 && (coordinatedistanceflat[getplayercoordinates[],getvar[tm_resume_pos]]>=30 || getunixtime[]>=getvar[tm_map_gate_until]+60)}
+		DO: DoExpr {setvar[tm_resume_needed,0]}
+	IF: Expr {getcharvital_current[1]>0 && maraerecoverybusy[]==0 && getunixtime[]>=getvar[tm_map_gate_until] && getvar[tm_resume_needed]==0 && getcharvital_current[1]*100>=getcharvital_buffedmax[1]*85 && getvar[tm_map_id]!=0}
+		DO: SetState {MAP_RESUME}
+	IF: Expr {getcharvital_current[1]>0 && maraerecoverybusy[]==0 && getunixtime[]>=getvar[tm_map_gate_until] && getvar[tm_resume_needed]==0 && getcharvital_current[1]*100>=getcharvital_buffedmax[1]*85 && getitemcountininventorybyname[`Treasure Map`]>0}
+		DO: SetState {MAP_LOCK}
+
+~~ }
+
+STATE: {CLUE_STEP} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getpvar[meshnav]==1}
+		DO: SetState {MAP_MESH_PREP}
+	IF: Always
+		DO: DoAll
+				Chat {/ub clearmotion}
+				SetOpt {EnableNav} {False}
+				SetOpt {EnableCombat} {False}
+				SetOpt {EnableBuffing} {False}
+				SetOpt {EnableLooting} {False}
+				DoExpr {setvar[mh_status,`Walking a measured clue step without mesh planning`]}
+				SetState {DIRECT_PREP}
+
+~~ }
+
+STATE: {DIRECT_PREP} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Always
+		DO: DoAll
+				DoExpr {setvar[tm_walk_generation,getvar[tm_walk_generation]+1]}
+				DoExpr {setvar[mh_walk_token,getvar[mh_walk_token]+1]}
+				DoExpr {setvar[tm_walk_ack,0]}
+				SetState {DIRECT_WAIT}
+
+~~ }
+
+STATE: {DIRECT_WAIT} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Expr {getcharvital_current[1]*100<=getcharvital_buffedmax[1]*75}
+		DO: SetState {MAP_COMBAT_RESUME}
+	IF: Expr {coordinatedistanceflat[getplayercoordinates[],getvar[tm_step_origin]]>=getvar[tm_mesh_step]}
+		DO: SetState {STEP_DONE}
+	IF: Expr {getvar[tm_walk_ack]==-1}
+		DO: SetState {MISSION_ERROR}
+	IF: SecsInStateGE 45
+		DO: SetState {MISSION_ERROR}
+
+~~ }
+
+STATE: {STEP_DONE} ~~ {
+	IF: Death
+		DO: SetState {MAP_DEATH}
+	IF: Always
+		DO: DoAll
+				Chat {/ub clearmotion}
+				SetOpt {EnableNav} {False}
+				DoExpr {setvar[tm_mesh_failures,0]}
+				SetState {MAP_RESUME}
+
+~~ }
+
+STATE: {DEATH_WAIT} ~~ {
+	IF: All
+			SecsInStateGE 6
+			Expr {getcharvital_current[1]>0 && maraerecoverybusy[]==0}
+		DO: SetState {DEATH_READY}
+
+~~ }
+
+STATE: {DEATH_READY} ~~ {
+	IF: Expr {getpvar[mh_mm_pickup_unresolved]==1}
+		DO: SetState {INVENTORY_REVIEW}
+	IF: Always
+		DO: DoAll
+				DoExpr {setvar[tm_map_id,0]}
+				DoExpr {setvar[tm_resume_needed,0]}
+				DoExpr {setpvar[mh_tm_dig_active,0]}
+				DoExpr {setvar[tm_map_gate_until,getunixtime[]+30]}
+				SetState {HUNT_LOAD}
+
+~~ }
+
+STATE: {HOLD} ~~ {
+	IF: Never
+		DO: None
+~~ }
+
