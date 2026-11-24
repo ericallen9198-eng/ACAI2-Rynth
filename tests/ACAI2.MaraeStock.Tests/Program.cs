@@ -46,4 +46,23 @@ Check(!ResumePolicy.CanStart(true,true,true,false),"reconnect cannot interrupt n
 Check(!ResumePolicy.CanStart(true,true,false,true),"reconnect waits for portal completion");
 Check(!ResumePolicy.CanStart(false,true,false,false),"manual Stop prevents reconnect restart");
 Check(ResumePolicy.CanStart(true,true,false,false),"settled reconnect can resume");
+string folderTest=Path.Combine(Path.GetTempPath(),"Marae custom É space "+Guid.NewGuid().ToString("N"));
+try
+{
+ string a=Path.Combine(folderTest,"Configured"),b=Path.Combine(folderTest,"Installed"),c=Path.Combine(folderTest,"Actual"),official=Path.Combine(folderTest,"Official");
+ foreach(string f in new[]{a,b,c,official})Directory.CreateDirectory(Path.Combine(f,"NavProfiles"));
+ Check(MaraeFolders.Resolve(a,b,null,null,official)==a,"valid saved folder preserved");
+ Check(MaraeFolders.Resolve("",b,null,null,official)==b,"installer-selected custom folder is used on first launch");
+ Check(MaraeFolders.Resolve("missing","missing",null,null,official)==official,"official discovery fallback");
+ Check(MaraeFolders.Resolve(a,b,null,Path.Combine(c,"NavProfiles","nested","hunt.nav"),official)==c,"live nested nav path overrides stale install hint");
+ Directory.CreateDirectory(Path.Combine(c,"MetaFiles"));
+ Check(MaraeFolders.Resolve(a,b,Path.Combine(c,"MetaFiles","other.af"),null,official)==c,"live meta data path takes precedence");
+ Check(MaraeFolders.Resolve("missing","missing",null,null,"missing")=="","missing folders do not become a guessed C drive installation");
+ Check(!MaraeFolders.IsDataRoot("relative")&&!MaraeFolders.IsDataRoot(folderTest),"relative and unrelated folders refused");
+ File.WriteAllText(Path.Combine(folderTest,"installation.json"),System.Text.Json.JsonSerializer.Serialize(new {RynthAiFolder=b}));
+ Check(MaraeFolders.InstallerHint(folderTest)==b,"installer hint handles spaces and Unicode");
+ File.WriteAllText(Path.Combine(folderTest,"installation.json"),"broken");
+ Check(MaraeFolders.InstallerHint(folderTest)=="","broken hint is ignored without damaging profile");
+ Check(MaraeFolders.InstallerHint("")=="","stream-loaded assembly does not read a relative working-directory hint");
+}finally{Directory.Delete(folderTest,true);}
 Console.WriteLine($"PASS: {checks} Marae stock NPC, route, clue, recovery and profile checks (synthetic world data only).");

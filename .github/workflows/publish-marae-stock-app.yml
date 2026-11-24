@@ -27,6 +27,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Install PDF build dependency
+        shell: pwsh
+        run: python -m pip install reportlab==4.4.9
       - name: Generate and check mission against the unmodified stock parsers
         shell: pwsh
         run: |
@@ -55,19 +58,21 @@ jobs:
           if ($LASTEXITCODE) { throw 'App publish failed' }
           dotnet publish work/tools/ACAI2.MaraeAppSmoke -c Release -r win-x86 --self-contained true -o "$env:RUNNER_TEMP/app-smoke"
           if ($LASTEXITCODE) { throw 'Smoke tool build failed' }
-          & "$env:RUNNER_TEMP/app-smoke/ACAI2.MaraeAppSmoke.exe" "$env:GITHUB_WORKSPACE/work/artifacts/marae-stock/Plugin/ACAI2.Rynth.Marae.Plugin.dll"
+          & "$env:RUNNER_TEMP/app-smoke/ACAI2.MaraeAppSmoke.exe" "$env:GITHUB_WORKSPACE/work/artifacts/marae-stock/Support/Plugin/ACAI2.Rynth.Marae.Plugin.dll"
           if ($LASTEXITCODE) { throw 'Actual app load smoke failed' }
           & work/tools/ACAI2.MaraeStock/Test-Installer.ps1 -Package "$env:GITHUB_WORKSPACE/work/artifacts/marae-stock"
           if ($LASTEXITCODE) { throw 'Installer checks failed' }
-      - name: Publish the Windows beta download
+      - name: Publish the allegiance package and PDF
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           $pkg="$env:GITHUB_WORKSPACE/work/artifacts/marae-stock"
-          $zip='ACAI2-Marae-App-v1.15.1-Windows.zip'
+          $zip='ACAI2-Marae-App-v1.16.0-Windows.zip'
           Compress-Archive -Path "$pkg/*" -DestinationPath $zip
           $hash=(Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
           "$hash  $zip"|Set-Content "$zip.sha256" -Encoding ascii
-          gh release create marae-stock-app-v1.15.1 $zip "$zip.sha256" --repo '${{ github.repository }}' --target '${{ github.sha }}' --title 'Marae app v1.15.1 — normal RynthAi DLL, native panel' --notes-file work/docs/MARAE-APP-SETUP.md --latest=false
+          $pdf='Marae-Quick-Start-v1.16.0.pdf'
+          Copy-Item "$pkg/Marae-Quick-Start.pdf" $pdf
+          gh release create marae-stock-app-v1.16.0 $zip "$zip.sha256" $pdf --repo '${{ github.repository }}' --target '${{ github.sha }}' --title 'Marae Lassel v1.16.0 — allegiance installer and quick-start PDF' --notes-file work/docs/MARAE-APP-SETUP.md --latest=false
           if ($LASTEXITCODE) { throw 'Release publication failed' }

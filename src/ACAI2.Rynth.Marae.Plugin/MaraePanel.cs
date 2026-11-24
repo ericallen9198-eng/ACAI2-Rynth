@@ -6,13 +6,14 @@ internal sealed record MaraeView(string Character,string Phase,string Detail,boo
 internal sealed record PanelRequest(string Command,MaraeOptions? Options=null,string? Folder=null,bool Visible=true,float X=0,float Y=0);
 internal sealed class MaraePanel
 {
-    private int frame=-1;private bool placed,advanced;private float x,y;private string folder="";
+    private int frame=-1;private bool placed,advanced;private float x,y;private string folder="",publishedFolder="";
     public void Reset(){placed=false;}
     private static void Wrapped(string text){ImGui.PushTextWrapPos(0);ImGui.TextUnformatted(text);ImGui.PopTextWrapPos();}
     public void Draw(MaraeView v,Action<PanelRequest> send)
     {
         if(!v.Visible||ImGui.GetCurrentContext()==IntPtr.Zero||frame==ImGui.GetFrameCount())return;frame=ImGui.GetFrameCount();
-        if(!placed){x=v.X;y=v.Y;folder=v.Folder;ImGui.SetNextWindowPos(new(x,y),ImGuiCond.Always);placed=true;}
+        if(!placed){x=v.X;y=v.Y;folder=publishedFolder=v.Folder;ImGui.SetNextWindowPos(new(x,y),ImGuiCond.Always);placed=true;}
+        if(v.Folder!=publishedFolder){folder=publishedFolder=v.Folder;}
         ImGui.SetNextWindowSize(new(450,380),ImGuiCond.FirstUseEver);ImGui.SetNextWindowBgAlpha(.94f);
         bool visible=v.Visible;ImGui.PushStyleVar(ImGuiStyleVar.WindowRounding,8);
         ImGui.PushStyleColor(ImGuiCol.WindowBg,new Vector4(.035f,.055f,.065f,1));ImGui.PushStyleColor(ImGuiCol.Button,new Vector4(.08f,.30f,.28f,1));
@@ -48,8 +49,9 @@ internal sealed class MaraePanel
                 ImGui.BeginDisabled(v.Running||v.Review);if(ImGui.Button("Start / Resume"))send(new("start"));ImGui.SameLine();if(ImGui.Button("New run"))send(new("new"));ImGui.EndDisabled();
                 ImGui.SameLine();if(ImGui.Button("Stop"))send(new("stop"));
                 if(v.Review){Wrapped("An item move was not confirmed. Check your inventory/cache before resuming.");if(ImGui.Button("I reviewed the pickup — resume"))send(new("review"));}
+                ImGui.TextDisabled("Paths & original mission logic: Soot (xSoot / SootAC)");
                 if(ImGui.SmallButton(advanced?"Hide advanced":"Advanced"))advanced=!advanced;
-                if(advanced){ImGui.BeginDisabled(v.Running);if(ImGui.InputText("RynthAi folder",ref folder,1024))send(new("folder",Folder:folder));ImGui.EndDisabled();Wrapped("Uses the normal RynthAi DLL. Stop and disable autostart for the old MaraeLassel Lua script before using this app.");}
+                if(advanced){ImGui.BeginDisabled(v.Running);if(ImGui.InputText("RynthAi folder",ref folder,1024))send(new("folder",Folder:folder));ImGui.EndDisabled();Wrapped("RynthAi location is detected from Rynth settings and the installer. Choose its data folder containing MetaFiles / NavProfiles.");}
             }
             finally{ImGui.End();}
         }

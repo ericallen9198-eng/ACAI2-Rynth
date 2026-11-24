@@ -52,3 +52,8 @@ ABI layouts documented by MIT-licensed RynthSuite (9df6c150). Its bundled missio
 adapts Soot's supplied Marae Lassel beta with this project's tested policies;
 the existing provenance and notices remain applicable. Genuine RynthSuite parsers
 are linked only into offline test tools. No RynthAi engine binary is distributed.
+
+Marae v1.16 also links the genuine, unmodified RynthCore src/Shared/RynthInstallPaths.cs
+(read-only environment/registry install-path discovery) from the pinned MIT SDK checkout.
+Soot (xSoot / SootAC) is credited for the nav paths, initial mission logic and original
+custom RynthAi DLL implementation in the app, guide and bundled CREDITS.txt.

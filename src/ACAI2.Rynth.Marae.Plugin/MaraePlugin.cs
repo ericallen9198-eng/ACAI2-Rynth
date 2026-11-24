@@ -10,7 +10,7 @@ namespace ACAI2.Rynth.Marae.Plugin;
 
 public sealed class MaraePlugin:RynthPluginBase
 {
-    public const string Version="1.15.1";
+    public const string Version="1.16.0";
     public override uint MinimumApiVersion=>92;
     private static readonly CultureInfo Inv=CultureInfo.InvariantCulture;
     private static readonly Hunter[] Hunters=JsonSerializer.Deserialize<Hunter[]>(Resource("Marae.hunters.json"))!;
@@ -100,7 +100,7 @@ public sealed class MaraePlugin:RynthPluginBase
             if(!readable){Publish();return;}
             if(!initialized&&!portal)
             {
-                initialized=true;ImportPreferences();autoResumePending=profile.Active;
+                initialized=true;ResolveFolder();ImportPreferences();autoResumePending=profile.Active;
             }
             while(requests.TryDequeue(out var queued))
             {
@@ -153,6 +153,14 @@ public sealed class MaraePlugin:RynthPluginBase
         }
         catch(Exception ex){phase="Marae needs attention";detail=ex.Message;Host.Log("[ACAI2 Marae] "+ex.Message);if(profile!=null)Volatile.Write(ref view,new(profile.Character,phase,detail,false,false,profile.Options,profile.Folder,profile.Visible,profile.X,profile.Y));nextTick=time+2;}
     }
+    private void ResolveFolder()
+    {
+        string assemblyFolder=Path.GetDirectoryName(typeof(MaraePlugin).Assembly.Location)??"";
+        string installed=MaraeFolders.InstallerHint(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"ACAI2","Marae"));
+        if(installed.Length==0)installed=MaraeFolders.InstallerHint(assemblyFolder);
+        string folder=MaraeFolders.Resolve(profile!.Folder,installed,bot!.Setting("CurrentMetaPath"),bot.Setting("CurrentNavPath"),MaraeFolders.OfficialRoot);
+        if(folder.Length>0&&profile.Folder!=folder){profile.Folder=folder;Save();}
+    }
     private void ImportPreferences()
     {
         if(profile!.Imported)return;
@@ -176,9 +184,8 @@ public sealed class MaraePlugin:RynthPluginBase
         if(PVar("mm_pickup_unresolved")==1||profile.PendingMove!=null){phase="Review cache pickup";detail="A previous item move was not confirmed. Check the inventory before using the review button.";return;}
         if(automatic&&bot!.Running&&!Owns){phase="Resume available";detail="Another macro is running. Press Start / Resume when ready.";return;}
         if(profile.Options.Mesh&&Host.GetPluginInterface("RynthNav","RynthNav.Path",2)==IntPtr.Zero)throw new InvalidOperationException("Enable RynthNav, or turn Mesh map travel off.");
-        string? metaPath=bot!.Setting("CurrentMetaPath");
-        if(metaPath!=null&&Path.IsPathFullyQualified(metaPath)&&string.Equals(Path.GetFileName(Path.GetDirectoryName(metaPath)),"MetaFiles",StringComparison.OrdinalIgnoreCase))profile.Folder=Path.GetDirectoryName(Path.GetDirectoryName(metaPath))!;
-        if(!Directory.Exists(profile.Folder))throw new DirectoryNotFoundException("Choose your actual RynthAi data folder under Advanced.");
+        ResolveFolder();
+        if(!MaraeFolders.IsDataRoot(profile.Folder))throw new DirectoryNotFoundException("RynthAi data folder not found. Run the installer and choose the folder containing MetaFiles or NavProfiles, or select Advanced here.");
         string target=Path.Combine(profile.Folder,"MetaFiles","Marae Lassel - Embedded.af"),content=Resource("Marae.workflow.af");
         Directory.CreateDirectory(Path.GetDirectoryName(target)!);
         if(!File.Exists(target)||File.ReadAllText(target)!=content){if(File.Exists(target))File.Copy(target,target+".before-stock-app",true);File.WriteAllText(target+".tmp",content);File.Move(target+".tmp",target,true);}
@@ -187,7 +194,7 @@ public sealed class MaraePlugin:RynthPluginBase
         if(fresh){profile.Progress.Clear();profile.Contracts.Clear();}
         profile.Active=true;Save();
         // The old Lua controller must not race this app. Fixed local commands only.
-        bot.Command("/lua stop MaraeLassel");bot.Command("/lua autostart MaraeLassel none");
+        bot!.Command("/lua stop MaraeLassel");bot.Command("/lua autostart MaraeLassel none");
         bot.Command("/ra stop");startup="stop";deadline=time+15;phase="Starting";detail="Loading the embedded mission with saved character preferences.";
         Set("mm_stock_schema",0);npc=null;walkGeneration=restoreGeneration=npcGeneration=pickupGeneration=-1;
     }

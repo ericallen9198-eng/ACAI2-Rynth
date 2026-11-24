@@ -1,3 +1,3 @@
 @echo off
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0Install-Marae.ps1"
+powershell.exe -STA -NoProfile -ExecutionPolicy Bypass -File "%~dp0Support\Install-Marae.ps1"
 if errorlevel 1 pause

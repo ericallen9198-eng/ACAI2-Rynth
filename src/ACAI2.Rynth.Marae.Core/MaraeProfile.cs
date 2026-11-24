@@ -23,7 +23,7 @@ public sealed class MaraeProfile
     public bool Visible {get;set;}=true;
     public float X {get;set;}=240;
     public float Y {get;set;}=120;
-    public string Folder {get;set;}=@"C:\Games\RynthSuite\RynthAi";
+    public string Folder {get;set;}="";
     public static MaraeProfile Load(string path,string server,string character)
     {
         if(!File.Exists(path))return new(){Server=server,Character=character};
