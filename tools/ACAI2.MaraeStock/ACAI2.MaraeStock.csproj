@@ -6,8 +6,8 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/ACAI2.Rynth.Marae.Core/ACAI2.Rynth.Marae.Core.csproj" />
-    
-    
+
+
     <Compile Include="$(RynthSuiteRoot)/Plugins/RynthCore.Plugin.RynthAi/Meta/AfFileParser.cs" Link="AfFileParser.cs" />
     <Compile Include="$(RynthSuiteRoot)/Plugins/RynthCore.Plugin.RynthAi/Meta/MetFileParser.cs" Link="MetFileParser.cs" />
     <Compile Include="$(RynthSuiteRoot)/Plugins/RynthCore.Plugin.RynthAi/Meta/MetaSchema.cs" Link="MetaSchema.cs" />
