@@ -40,12 +40,13 @@ internal sealed class MaraePanel
                     ImGui.EndTable();
                 }
                 Wrapped("Hunt only skips NPC tasks and repeats the route. Maps are optional in either mode.");
-                bool mesh=p.Mesh,cap=p.CampLimit,fallback=p.Fallback;
+                bool mesh=p.Mesh,cap=p.CampLimit,fallback=p.Fallback,watch=p.WatchCaches;
                 changed|=ImGui.Checkbox("Mesh map travel (RynthNav)",ref mesh);changed|=ImGui.Checkbox("2-hour task limit per camp",ref cap);
                 changed|=ImGui.Checkbox("Fallback to 180 after tasks",ref fallback);ImGui.EndDisabled();
+                changed|=ImGui.Checkbox("Nearby cache watcher (55 yd)",ref watch);
                 int close=p.Close,far=p.Far;
                 if(mesh){changed|=ImGui.SliderInt("Close clue",ref close,10,60,"%d yd");changed|=ImGui.SliderInt("Far clue",ref far,60,180,"%d yd");ImGui.TextDisabled("Travel distances apply to the next clue step.");}
-                if(changed)send(new("options",new(areas,mesh,close,far,cap,fallback)));
+                if(changed)send(new("options",new(areas,mesh,close,far,cap,fallback,watch)));
                 ImGui.BeginDisabled(v.Running||v.Review);if(ImGui.Button("Start / Resume"))send(new("start"));ImGui.SameLine();if(ImGui.Button("New run"))send(new("new"));ImGui.EndDisabled();
                 ImGui.SameLine();if(ImGui.Button("Stop"))send(new("stop"));
                 if(v.Review){Wrapped("An item move was not confirmed. Check your inventory/cache before resuming.");if(ImGui.Button("I reviewed the pickup — resume"))send(new("review"));}

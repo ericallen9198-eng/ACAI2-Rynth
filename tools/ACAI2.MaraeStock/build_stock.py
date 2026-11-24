@@ -27,6 +27,8 @@ af=re.sub(r'(STATE: \{CACHE_PREP\} ~~ \{\n)(.*?)(?=\n~~ })',lambda m:m[1]+m[2].r
 needle='Expr {getvar[tm_cache_sent]==0}\n\t\tDO: DoAll\n'
 assert needle in af
 af=af.replace(needle,needle+'\t\t\t\tDoExpr {if[getvar[tm_cache_pending_template]!=1004101,listadd[getvar[tm_cache_skipped_currency],getvar[tm_cache_pending]]]}\n',1)
+from watcher_policy import apply as apply_watcher
+af=apply_watcher(af)
 trailers={0:0,2:1,3:1,4:1,5:2,6:6,7:6,8:0,9:3}; hunters=[]
 def transform(m):
  name=m[1]; lines=m[3].splitlines(); assert lines[0]=='uTank2 NAV 1.2'

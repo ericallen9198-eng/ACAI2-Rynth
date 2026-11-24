@@ -1,5 +1,5 @@
 # Marae Lassel - Quick Start
-Version 1.16.1
+Version 1.17.0
 
 DreamWeave tasks and treasure maps for the 180 Lowlands, 225 High Country and 275 Plateau.
 
@@ -24,6 +24,7 @@ DreamWeave tasks and treasure maps for the 180 Lowlands, 225 High Country and 27
 | Hunt only | ON: skip NPC tasks and repeat the hunting route. OFF: talk to hunters, do tasks and turn them in. |
 | 2-hour task limit | A maximum per camp. Finish early and move on, or turn in completed work when the limit is reached. After all camps, hunt in 180. |
 | Mesh map travel | Optional; needs RynthNav. Default close/far steps are 30/130 yards. The sliders tune the next mesh step. |
+| Nearby cache watcher | ON by default. Checks nearby caches after fights, even with maps off. Inaccessible caches get bounded attempts; hunting resumes. |
 
 ## Quick help
 

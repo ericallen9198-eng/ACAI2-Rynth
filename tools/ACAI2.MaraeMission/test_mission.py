@@ -515,3 +515,30 @@ if stock_mode:
  w.items[12]=item(12);w.dispatch=1;s.until('CACHE_CONFIRM')
  check(w.v['tm_cache_pending']==12 and w.v['tm_cache_sent']==1,'late doubloon is collectible after an earlier optional note rejection')
  print(f"PASS: {ns['checks']} total mission simulations including primary currency priority and optional-note rejection.")
+
+if stock_mode and any(r['State']=='WATCH_CACHE_PREP' for r in rules):
+ def watch_world(items=(),target=2):
+  w=World(items=items);w.open=0;w.p['tm_dig_active']=0
+  w.v.update(mm_watch_active=1,mm_watch_id=target,mm_watch_deadline=60,tm_cache_deadline=60,tm_doubloon_before=0)
+  return w
+ w=watch_world([item(10,container=2)])
+ s=Sim(w,'WATCH_CACHE_PREP');s.until('WATCH_CACHE_CONFIRM',80)
+ check(w.open==2 and w.used==[2] and len(w.moves)==1,'watcher finds an owned nearby cache with no dig/event readiness flag')
+ check(w.options['EnableCombat']==1,'watcher preserves native combat availability')
+ w.ack(10);s.tick();s.until('WATCH_RETURN',40)
+ check(w.v['mm_watch_terminal']==1 and w.p.get('tm_stat_success_search',0)==0,'watcher returns after currency acknowledgment without claiming a completed map')
+ w=watch_world([item(10,container=1)]);w.autoopen=False
+ s=Sim(w,'WATCH_CACHE_PREP');s.until('WATCH_RETURN',80)
+ check(w.used==[2] and not w.moves,'inaccessible watcher candidate is tried once and returns instead of cycling all landscape caches')
+ w=watch_world([item(10,container=1)]);w.open=1;w.autoopen=False
+ s=Sim(w,'WATCH_CACHE_PREP');s.until('WATCH_RETURN',80)
+ check(not w.moves,'an unrelated open container cannot satisfy the watcher ownership gate')
+ w=watch_world();s=Sim(w,'WATCH_CACHE_PREP');s.until('WATCH_RETURN',80)
+ check(w.v['mm_watch_terminal']==1 and not w.moves,'opened empty cache is bounded and terminal without invented currency')
+ w=watch_world([item(10,container=2)]);w.targets=1
+ s=Sim(w,'WATCH_CACHE_PREP');s.until('WATCH_RETURN',10)
+ check(not w.used and not w.moves,'new combat before opening returns the watcher to the hunt')
+ w=watch_world([item(10,container=2)]);s=Sim(w,'WATCH_CACHE_PREP');s.until('WATCH_CACHE_CONFIRM',80)
+ s.until('WATCH_RETURN',80)
+ check(w.p['mm_pickup_unresolved']==1 and len(w.moves)==1,'uncertain watcher item move stays checkpointed with no replay')
+ print(f"PASS: {ns['checks']} total mission simulations including independent nearby-cache probes.")

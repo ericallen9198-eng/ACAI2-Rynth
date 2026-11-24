@@ -10,7 +10,7 @@ namespace ACAI2.Rynth.Marae.Plugin;
 
 public sealed class MaraePlugin:RynthPluginBase
 {
-    public const string Version="1.16.1";
+    public const string Version="1.17.0";
     public override uint MinimumApiVersion=>92;
     private static readonly CultureInfo Inv=CultureInfo.InvariantCulture;
     private static readonly Hunter[] Hunters=JsonSerializer.Deserialize<Hunter[]>(Resource("Marae.hunters.json"))!;
@@ -27,6 +27,12 @@ public sealed class MaraePlugin:RynthPluginBase
     private uint player;private long epoch;private int lifecycle;private volatile bool loggedOut;
     private double nextTick,nextCheckpoint,deadline,nextProbe;private string profilePath="",fileKey="",startup="",phase="Ready",detail="",state="",walkPath="",resumePath="";
     private long walkGeneration=-1,restoreGeneration=-1,npcGeneration=-1,pickupGeneration=-1,logGeneration=-1;
+    private CacheWatcher cacheWatcher=new();
+    private readonly Dictionary<uint,double> nearCaches=new();
+    private double nextCacheScan,idleSince;
+    private string watchResume="";
+    private bool watchOpened,watchDenied;
+    private double watchNav,watchLoot;
     private NpcGate? npc;private string npcRoute="";private bool busy,initialized,readable=true,renderFailed,deferredStop,autoResumePending;
     private string savedRoute="",temporarySignature="";private double? oldMin;private bool? oldNearest;private string temporaryRoute="";
     private static double Now=>System.Diagnostics.Stopwatch.GetTimestamp()/(double)System.Diagnostics.Stopwatch.Frequency;
@@ -43,11 +49,12 @@ public sealed class MaraePlugin:RynthPluginBase
     {
         if(text==null||text.Length>1024||chat.Count>=128)return;
         // Only bounded mission/death messages; ordinary player chat and tells are never stored.
-        if(text.StartsWith("Hea ",StringComparison.Ordinal)&&text.Contains(" tells you, \"",StringComparison.Ordinal)||text.StartsWith("You have killed ",StringComparison.Ordinal)||text.StartsWith("[RynthAi] Own corpse:",StringComparison.Ordinal)||text.StartsWith("[RynthAi] Your corpse is at ",StringComparison.Ordinal)||text=="You have retained all your items. You do not need to recover your corpse!")chat.Enqueue((Volatile.Read(ref epoch),text));
+        if(CacheWatcher.OwnershipRefusal(text)||text.StartsWith("Hea ",StringComparison.Ordinal)&&text.Contains(" tells you, \"",StringComparison.Ordinal)||text.StartsWith("You have killed ",StringComparison.Ordinal)||text.StartsWith("[RynthAi] Own corpse:",StringComparison.Ordinal)||text.StartsWith("[RynthAi] Your corpse is at ",StringComparison.Ordinal)||text=="You have retained all your items. You do not need to recover your corpse!")chat.Enqueue((Volatile.Read(ref epoch),text));
     }
     private void Reset()
     {
         Interlocked.Increment(ref epoch);bot=null;profile=null;player=0;initialized=false;readable=true;startup="";npc=null;recovery=new();busy=false;
+        cacheWatcher=new();nearCaches.Clear();nextCacheScan=idleSince=0;watchResume="";watchOpened=watchDenied=false;
         nextTick=nextProbe=nextCheckpoint=0;deferredStop=autoResumePending=false;walkGeneration=restoreGeneration=npcGeneration=pickupGeneration=logGeneration=-1;
         savedRoute=temporaryRoute=temporarySignature="";oldMin=null;oldNearest=null;recent.Clear();mismatch.Clear();panel.Reset();renderFailed=false;
         while(chat.TryDequeue(out _)){}while(requests.TryDequeue(out _)){}
@@ -94,6 +101,7 @@ public sealed class MaraePlugin:RynthPluginBase
             while(chat.TryDequeue(out var line))if(line.Epoch==epoch)
             {
                 recovery.Observe(line.Text,time);
+                if(cacheWatcher.Active!=0&&CacheWatcher.OwnershipRefusal(line.Text)&&Owns&&Var("mm_watch_active")==1&&Var("tm_cache_probe_id")==cacheWatcher.Active&&Host.GetGroundContainerId()!=cacheWatcher.Active)watchDenied=true;
                 if(Owns&&bot.Running&&Var("mm_stock_schema")==1){ObserveNpc(line.Text);npc?.Observe(line.Text);}
             }
             busy=recovery.Busy(time,dead,portal,nativeGo);Set("mm_stock_recovery_busy",busy?1:0);
@@ -138,20 +146,93 @@ public sealed class MaraePlugin:RynthPluginBase
                 phase=state=="HOLD"?"Run paused":"Stopped";detail=Eval("getvar[ml_status]");Publish();return;
             }
             if(busy){npc=null;DropRoute();phase="Native corpse recovery / travel";detail="RynthAi owns recovery. The mission will continue afterward.";Publish();return;}
+            if(HandleCacheWatcher(time)){Publish();return;}
             HandleNpc(time);
             long walk=(long)Var("mm_stock_walk_generation");
-            if(walk!=walkGeneration&&state is "MAP_MESH_WAIT" or "CACHE_RETURN_WAIT" or "CACHE_APPROACH_WAIT" or "DIGSITE_RETURN_WAIT")
-            {walkGeneration=walk;try{Move(state);}catch(Exception ex){Set("tm_walk_ack",-1);Eval("setvar[tm_mesh_error,`Complete mesh path unavailable`]");Host.Log("[ACAI2 Marae] "+ex.Message);}}
+            string moveState=state.StartsWith("WATCH_",StringComparison.Ordinal)?state[6..]:state;
+            if(walk!=walkGeneration&&moveState is "MAP_MESH_WAIT" or "CACHE_RETURN_WAIT" or "CACHE_APPROACH_WAIT" or "DIGSITE_RETURN_WAIT")
+            {walkGeneration=walk;try{Move(moveState);}catch(Exception ex){Set("tm_walk_ack",-1);Eval("setvar[tm_mesh_error,`Complete mesh path unavailable`]");Host.Log("[ACAI2 Marae] "+ex.Message);}}
             SettlePickup();
             long pickup=(long)Var("mm_stock_pickup_generation");
-            if(state=="CACHE_CONFIRM"&&Var("tm_cache_sent")==-1&&pickup!=pickupGeneration){pickupGeneration=pickup;Pickup();}
+            if((state=="CACHE_CONFIRM"||state=="WATCH_CACHE_CONFIRM")&&Var("tm_cache_sent")==-1&&pickup!=pickupGeneration){pickupGeneration=pickup;Pickup();}
             CaptureMismatch();
             if(time>=nextCheckpoint){nextCheckpoint=time+5;Checkpoint();}
             phase="Area "+Var("ml_zone").ToString(Inv)+" · "+(Var("ml_hunt_only")==1?"Hunt only":"Tasks")+(Var("ml_use_maps")==1?" + maps":"");
             detail=npc==null?state+"\n"+Eval("getvar[ml_status]"):"Talking to "+npc.Hunter.Name+" (attempt "+npc.Attempts+"/3)";
+            if(cacheWatcher.Active!=0){phase="Nearby cache check";detail=state+" · cache "+cacheWatcher.Active.ToString("X8",Inv);}
             Publish();
         }
         catch(Exception ex){phase="Marae needs attention";detail=ex.Message;Host.Log("[ACAI2 Marae] "+ex.Message);if(profile!=null)Volatile.Write(ref view,new(profile.Character,phase,detail,false,false,profile.Options,profile.Folder,profile.Visible,profile.X,profile.Y));nextTick=time+2;}
+    }
+    private bool HandleCacheWatcher(double time)
+    {
+        // Observe local caches without requiring an event-complete signal; dispatch is gated below.
+        if(time>=nextCacheScan)
+        {
+            nextCacheScan=time+1;nearCaches.Clear();var visible=new HashSet<uint>();
+            foreach(uint id in Host.GetLiveObjectIds())
+                if(Host.TryGetObjectName(id,out string name)&&name=="Unearthed Cache")
+                {visible.Add(id);double distance=DistanceTo(id);if(distance<=CacheWatcher.Radius)nearCaches[id]=distance;}
+            cacheWatcher.Observe(nearCaches,visible,time);
+        }
+        if(cacheWatcher.Active==0&&state.StartsWith("CACHE_",StringComparison.Ordinal)&&Var("tm_cache_pickups")>0)cacheWatcher.Handled(checked((uint)Var("tm_cache_id")));
+        if(cacheWatcher.Active!=0)
+        {
+            if(!state.StartsWith("WATCH_",StringComparison.Ordinal)){FinishWatch(time,false);return false;}
+            SettlePickup();
+            watchOpened|=Host.GetGroundContainerId()==cacheWatcher.Active;
+            bool noPending=Var("tm_cache_pending")==0&&profile!.PendingMove==null&&PVar("mm_pickup_unresolved")!=1;
+            if(state=="WATCH_RETURN"||noPending&&(watchDenied||time>=cacheWatcher.Deadline||!profile!.Options.WatchCaches))
+            {FinishWatch(time,true);return true;}
+            return false;
+        }
+        if(state.StartsWith("WATCH_",StringComparison.Ordinal))
+        {
+            // Hot reload has no route lease. Restart from the area dispatch, never replay an item move.
+            if(PVar("mm_pickup_unresolved")==1||profile!.PendingMove!=null)Eval("vtsetmetastate[INVENTORY_REVIEW]");
+            else Eval("vtsetmetastate[DISPATCH]");
+            return true;
+        }
+        if(CacheWatcher.HuntState(state)&&savedRoute.Length>0)RestoreRoute();
+        bool idle=Num("ratargetcount[]")==0&&Num("getbusystate[]")==0;
+        if(!idle)idleSince=time;
+        bool allowed=profile!.Active&&startup.Length==0&&CacheWatcher.MayStart(state,profile.Options.WatchCaches,bot!.Running,busy,false,false,PVar("mm_pickup_unresolved")==1||profile.PendingMove!=null,idle&&time-idleSince>=1);
+        uint candidate=cacheWatcher.Start(nearCaches,time,allowed);
+        if(candidate==0)return false;
+        try
+        {
+            watchResume=state;watchNav=Num("ragetsetting[EnableNavigation]");watchLoot=Num("ragetsetting[EnableLooting]");
+            SaveRoute();temporaryRoute=CurrentRoute;temporarySignature=RouteSignature();
+            watchOpened=watchDenied=false;Setting("EnableNavigation",0);
+            Set("mm_watch_active",1);Set("mm_watch_terminal",0);Set("mm_watch_id",candidate);Set("mm_watch_deadline",DateTimeOffset.UtcNow.ToUnixTimeSeconds()+60);
+            Set("tm_doubloon_before",Num("getinventorycountbytemplatetype[1004101]"));
+            Eval("setvar[tm_cache_anchor,getplayercoordinates[]]");Set("tm_cache_deadline",DateTimeOffset.UtcNow.ToUnixTimeSeconds()+60);
+            Eval("vtsetmetastate[WATCH_CACHE_PREP]");state="WATCH_CACHE_PREP";
+            Host.Log("[ACAI2 Marae] Checking nearby cache "+candidate.ToString("X8",Inv)+"; hunt position saved.");
+        }
+        catch(InvalidDataException ex){FinishWatch(time,false);Host.Log("[ACAI2 Marae] Nearby cache deferred: "+ex.Message);return false;}
+        catch{FinishWatch(time,false);throw;}
+        return true;
+    }
+    private void FinishWatch(double time,bool resume)
+    {
+        uint id=cacheWatcher.Active;bool unresolved=PVar("mm_pickup_unresolved")==1||profile!.PendingMove!=null;
+        bool ownsRoute=temporarySignature.Length>0&&CurrentRoute==temporaryRoute&&RouteSignature()==temporarySignature;
+        cacheWatcher.Finish(time,watchOpened&&Var("mm_watch_terminal")==1,watchDenied);Set("mm_watch_active",0);
+        Eval("if[getpvar[pt_cache_pickup_held]==1,rasetsetting[`LootChestsMacroOff`,getpvar[pt_cache_old_pickup]]]");PSet("pt_cache_pickup_held",0);
+        if(Num("ragetsetting[EnableLooting]")==0)Setting("EnableLooting",watchLoot);
+        if(!busy)RestoreRoute();else DropRoute();
+        if(resume)
+        {
+            if(unresolved)Eval("vtsetmetastate[INVENTORY_REVIEW]");
+            else if(CacheWatcher.HuntState(watchResume))
+            {
+                Set("tm_cache_pending",0);Set("tm_cache_id",0);Set("tm_cache_probe_id",0);Set("tm_cache_anchor",0);Set("tm_cache_deadline",0);
+                Eval("vtsetmetastate["+watchResume+"]");if(ownsRoute)Setting("EnableNavigation",watchNav);
+            }
+        }
+        watchResume="";idleSince=time;
+        Host.Log("[ACAI2 Marae] Nearby cache "+id.ToString("X8",Inv)+(watchDenied?" refused ownership; skipped.":watchOpened?" opened; check ended.":" did not open; bounded retry or skip.") );
     }
     private void ResolveFolder()
     {
@@ -206,6 +287,7 @@ public sealed class MaraePlugin:RynthPluginBase
     private void Cleanup()
     {
         if(!Owns)return;
+        if(cacheWatcher.Active!=0)FinishWatch(Now,false);
         ReleaseNpc(false);if(busy)DropRoute();else RestoreRoute();
         Eval("if[getpvar[pt_cache_pickup_held]==1,rasetsetting[`LootChestsMacroOff`,getpvar[pt_cache_old_pickup]]]");PSet("pt_cache_pickup_held",0);
     }
@@ -350,7 +432,7 @@ public sealed class MaraePlugin:RynthPluginBase
         }
         if(!CachePickupPolicy.Confirmed(p,total,sourceChanged))return;
         profile.PendingMove=null;Save();PSet("mm_stock_pickup_issued",0);
-        if(state=="CACHE_CONFIRM"&&(uint)Var("tm_cache_pending")==p.Item)Set("tm_cache_sent",1);
+        if((state=="CACHE_CONFIRM"||state=="WATCH_CACHE_CONFIRM")&&(uint)Var("tm_cache_pending")==p.Item)Set("tm_cache_sent",1);
     }
     private void Pickup()
     {

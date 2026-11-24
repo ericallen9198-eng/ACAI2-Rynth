@@ -68,11 +68,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $pkg="$env:GITHUB_WORKSPACE/work/artifacts/marae-stock"
-          $zip='ACAI2-Marae-App-v1.16.1-Windows.zip'
+          $zip='ACAI2-Marae-App-v1.17.0-Windows.zip'
           Compress-Archive -Path "$pkg/*" -DestinationPath $zip
           $hash=(Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
           "$hash  $zip"|Set-Content "$zip.sha256" -Encoding ascii
-          $pdf='Marae-Quick-Start-v1.16.1.pdf'
+          $pdf='Marae-Quick-Start-v1.17.0.pdf'
           Copy-Item "$pkg/Marae-Quick-Start.pdf" $pdf
-          gh release create marae-stock-app-v1.16.1 $zip "$zip.sha256" $pdf --repo '${{ github.repository }}' --target '${{ github.sha }}' --title 'Marae Lassel v1.16.1 — allegiance installer and quick-start PDF' --notes-file work/docs/MARAE-APP-SETUP.md --latest=false
+          gh release create marae-stock-app-v1.17.0 $zip "$zip.sha256" $pdf --repo '${{ github.repository }}' --target '${{ github.sha }}' --title 'Marae Lassel v1.17.0 — allegiance installer and quick-start PDF' --notes-file work/docs/MARAE-APP-SETUP.md --latest=false
           if ($LASTEXITCODE) { throw 'Release publication failed' }

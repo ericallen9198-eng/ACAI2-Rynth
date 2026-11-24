@@ -14,15 +14,18 @@ project and installed ACAI2 files are not modified.
 
 ## Marae Lassel app (stock RynthAi beta)
 
-**ACAI2.Marae v1.16.1** provides a native ImGui panel for the three-area task hunt,
+**ACAI2.Marae v1.17.0** provides a native ImGui panel for the three-area task hunt,
 continuous route hunting and optional treasure maps. It uses the normal RynthAi DLL:
 confirmed NPC use, temporary route restore and cache pickup live in this separate app.
 No patched RynthAi DLL or Marae Lua panel is required.
+The optional per-character **Nearby cache watcher** is on by default: it checks caches
+within 55 yards between fights, independently of map mode, skips ownership refusals
+and bounds unanswered probes before restoring the hunt route.
 [One-page setup guide](docs/MARAE-APP-SETUP.md).
 Nav paths and the original mission logic, including the custom RynthAi DLL foundation,
 are by **Soot (xSoot / SootAC)**. This adaptation packages them as a separate app.
-[Download the allegiance installer](https://github.com/ericallen9198-eng/ACAI2-Rynth/releases/download/marae-stock-app-v1.16.1/ACAI2-Marae-App-v1.16.1-Windows.zip) ·
-[One-page PDF](https://github.com/ericallen9198-eng/ACAI2-Rynth/releases/download/marae-stock-app-v1.16.1/Marae-Quick-Start-v1.16.1.pdf).
+[Download the allegiance installer](https://github.com/ericallen9198-eng/ACAI2-Rynth/releases/download/marae-stock-app-v1.17.0/ACAI2-Marae-App-v1.17.0-Windows.zip) ·
+[One-page PDF](https://github.com/ericallen9198-eng/ACAI2-Rynth/releases/download/marae-stock-app-v1.17.0/Marae-Quick-Start-v1.17.0.pdf).
 Build on Windows with `scripts/Publish-Marae.ps1`; the stock-parser release workflow
 pins unmodified RynthSuite 2026.11.23.3 for compatibility checks.
 

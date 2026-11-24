@@ -1,7 +1,7 @@
 using System.Text.Json;
 namespace ACAI2.Rynth.Marae.Core;
 public sealed record AreaOptions(int Level,bool Enabled=true,bool Maps=false,bool HuntOnly=false);
-public sealed record MaraeOptions(AreaOptions[] Areas,bool Mesh=false,int Close=30,int Far=130,bool CampLimit=false,bool Fallback=true)
+public sealed record MaraeOptions(AreaOptions[] Areas,bool Mesh=false,int Close=30,int Far=130,bool CampLimit=false,bool Fallback=true,bool WatchCaches=true)
 {
     public static MaraeOptions Default=>new([new(180),new(225),new(275)]);
     public MaraeOptions Validate()

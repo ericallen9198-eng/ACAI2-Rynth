@@ -64,7 +64,7 @@ try {
   if(Test-Path -LiteralPath $target){New-Item -ItemType Directory $backup -Force|Out-Null;Copy-Item -LiteralPath $target -Destination (Join-Path $backup $entry.Name)}
   Copy-Item -LiteralPath (Join-Path $payload $entry.Name) -Destination $target -Force
  }
- $installation=@{RynthAiFolder=$RynthAiFolder;PluginFolder=[IO.Path]::GetFullPath($Destination);InstallerVersion='1.16.1'}|ConvertTo-Json
+ $installation=@{RynthAiFolder=$RynthAiFolder;PluginFolder=[IO.Path]::GetFullPath($Destination);InstallerVersion='1.17.0'}|ConvertTo-Json
  $installation|Set-Content (Join-Path $Destination 'installation.json') -Encoding UTF8
  # CoreCLR loads managed plugins from streams: Assembly.Location can be empty.
  # A stable per-user hint also supports a custom plugin destination on another drive.
