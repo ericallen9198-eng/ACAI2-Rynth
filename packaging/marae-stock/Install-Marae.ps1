@@ -32,7 +32,8 @@ try {
  $packageRoot=Split-Path $PSScriptRoot -Parent
  $payload=Join-Path $PSScriptRoot 'Plugin'
  if(-not(Test-Path -LiteralPath (Join-Path $payload 'ACAI2.Rynth.Marae.Plugin.dll'))){throw 'Right-click the downloaded ZIP, choose Extract All, then run INSTALL-MARAE.cmd from the extracted folder.'}
- $expected=@(Get-Content (Join-Path $PSScriptRoot 'checksums.json') -Raw|ConvertFrom-Json)
+ $expected=Get-Content (Join-Path $PSScriptRoot 'checksums.json') -Raw|ConvertFrom-Json
+ if(-not $expected){throw 'Package checksum list is empty.'}
  foreach($entry in $expected){
   if([IO.Path]::GetFileName($entry.Name) -ne $entry.Name){throw 'Invalid package filename.'}
   $source=Join-Path $payload $entry.Name
