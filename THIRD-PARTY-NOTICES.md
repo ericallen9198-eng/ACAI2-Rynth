@@ -46,3 +46,9 @@ See THIRD-PARTY-NOTICES/UtilityBelt-Service.txt. No UtilityBelt binary is requir
 this sampler validates the getter/call sites and reads process memory only. It
 never invokes combat methods or changes the power setting. Unsupported clients
 show power unavailable rather than guessing a percentage.
+
+The separate Marae app uses the public RynthAi.Script v1 and RynthNav.Path v2
+ABI layouts documented by MIT-licensed RynthSuite (9df6c150). Its bundled mission
+adapts Soot's supplied Marae Lassel beta with this project's tested policies;
+the existing provenance and notices remain applicable. Genuine RynthSuite parsers
+are linked only into offline test tools. No RynthAi engine binary is distributed.

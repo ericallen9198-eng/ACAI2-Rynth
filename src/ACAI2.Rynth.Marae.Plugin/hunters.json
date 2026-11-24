@@ -1,0 +1,245 @@
+[
+  {
+    "Id": 1,
+    "Name": "Hea Korenuad the Golem Hunter",
+    "Zone": 180,
+    "NS": 43.5986666361491,
+    "EW": -85.43325001398722,
+    "Z": 0.07835416793823242,
+    "Key": "4"
+  },
+  {
+    "Id": 2,
+    "Name": "Hea Talurea the Ursuin Hunter",
+    "Zone": 180,
+    "NS": 43.614000002543136,
+    "EW": -85.42495832443237,
+    "Z": 0.07835416793823242,
+    "Key": "3"
+  },
+  {
+    "Id": 3,
+    "Name": "Hea Tarekeh the Carenzi Hunter",
+    "Zone": 180,
+    "NS": 43.586875025431326,
+    "EW": -85.38114999135335,
+    "Z": 0.07834999561309815,
+    "Key": "0"
+  },
+  {
+    "Id": 4,
+    "Name": "Hea Teruana the Gromnie Hunter",
+    "Zone": 180,
+    "NS": 43.613862482706715,
+    "EW": -85.3644666671753,
+    "Z": 0.07835416793823242,
+    "Key": "2"
+  },
+  {
+    "Id": 5,
+    "Name": "Hea Raukawe the Siraluun Hunter",
+    "Zone": 180,
+    "NS": 43.617079162597655,
+    "EW": -85.37777080535889,
+    "Z": 0.07835416793823242,
+    "Key": "1"
+  },
+  {
+    "Id": 6,
+    "Name": "Hea Mereana the Olthoi Hunter",
+    "Zone": 180,
+    "NS": 43.6122708638509,
+    "EW": -85.3644500096639,
+    "Z": 0.09377500216166178,
+    "Key": "5"
+  },
+  {
+    "Id": 7,
+    "Name": "Hea Tuhiraki the Siberite Hunter",
+    "Zone": 180,
+    "NS": 43.57434164683025,
+    "EW": -85.37575836181641,
+    "Z": 0.09377083778381348,
+    "Key": "6"
+  },
+  {
+    "Id": 8,
+    "Name": "Hea Aroheka the Zefir Hunter",
+    "Zone": 180,
+    "NS": 43.631883303324386,
+    "EW": -85.42576665878296,
+    "Z": 0.09377187093098958,
+    "Key": "7"
+  },
+  {
+    "Id": 9,
+    "Name": "Hea Wairena the Aun Hunter",
+    "Zone": 180,
+    "NS": 43.5986666361491,
+    "EW": -85.43325001398722,
+    "Z": 0.09377500216166178,
+    "Key": "8"
+  },
+  {
+    "Id": 10,
+    "Name": "Hea Ngarekau the Mattekar Hunter",
+    "Zone": 225,
+    "NS": 53.53025541305542,
+    "EW": -79.78230419158936,
+    "Z": 0.30002082188924156,
+    "Key": "8"
+  },
+  {
+    "Id": 11,
+    "Name": "Hea Hakerea the Olthoi Hunter",
+    "Zone": 225,
+    "NS": 53.521922079722096,
+    "EW": -79.78230419158936,
+    "Z": 0.30002082188924156,
+    "Key": "9"
+  },
+  {
+    "Id": 12,
+    "Name": "Hea Zanuah the Siberite Hunter",
+    "Zone": 225,
+    "NS": 53.51358874638875,
+    "EW": -79.76772085825601,
+    "Z": 0.29690577189127604,
+    "Key": "6"
+  },
+  {
+    "Id": 13,
+    "Name": "Hea Tamaneru the Aun Hunter",
+    "Zone": 225,
+    "NS": 53.521922079722096,
+    "EW": -79.76772085825601,
+    "Z": 0.2982946395874023,
+    "Key": "7"
+  },
+  {
+    "Id": 14,
+    "Name": "Hea Marenua the Carenzi Hunter",
+    "Zone": 225,
+    "NS": 53.53442207972209,
+    "EW": -79.75313752492269,
+    "Z": 0.29795160293579104,
+    "Key": "5"
+  },
+  {
+    "Id": 15,
+    "Name": "Hea Pukerua the Gromnie Hunter",
+    "Zone": 225,
+    "NS": 53.54275541305542,
+    "EW": -79.74480419158935,
+    "Z": 0.29838040669759114,
+    "Key": "3"
+  },
+  {
+    "Id": 16,
+    "Name": "Hea Kahureka the Siraluun Hunter",
+    "Zone": 225,
+    "NS": 53.54275541305542,
+    "EW": -79.75313752492269,
+    "Z": 0.2993321736653646,
+    "Key": "4"
+  },
+  {
+    "Id": 17,
+    "Name": "Hea Orewhiti the Zefir Hunter",
+    "Zone": 225,
+    "NS": 53.57192207972209,
+    "EW": -79.74897085825602,
+    "Z": 0.2961976687113444,
+    "Key": "2"
+  },
+  {
+    "Id": 18,
+    "Name": "Hea Hineroa the Golem Hunter",
+    "Zone": 225,
+    "NS": 53.58025541305542,
+    "EW": -79.75105419158936,
+    "Z": 0.2951581637064616,
+    "Key": "1"
+  },
+  {
+    "Id": 19,
+    "Name": "Hea Narekua the Ursuin Hunter",
+    "Zone": 225,
+    "NS": 53.58025541305542,
+    "EW": -79.75938752492269,
+    "Z": 0.2965428670247396,
+    "Key": "0"
+  },
+  {
+    "Id": 20,
+    "Name": "Hea Rukenua the Zefir Hunter",
+    "Zone": 275,
+    "NS": 45.16558335622151,
+    "EW": -75.1042083422343,
+    "Z": 0.3833562215169271,
+    "Key": "zefir"
+  },
+  {
+    "Id": 21,
+    "Name": "Hea Tamarau the Ursuin Hunter",
+    "Zone": 275,
+    "NS": 45.17391668955486,
+    "EW": -75.1104583422343,
+    "Z": 0.38334999084472654,
+    "Key": "ursuin"
+  },
+  {
+    "Id": 22,
+    "Name": "Hea Koruani the Golem Hunter",
+    "Zone": 275,
+    "NS": 45.17391668955486,
+    "EW": -75.10212500890096,
+    "Z": 0.383357302347819,
+    "Key": "golem"
+  },
+  {
+    "Id": 23,
+    "Name": "Hea Weneria the Gromnie Hunter",
+    "Zone": 275,
+    "NS": 45.132250022888186,
+    "EW": -75.07504167556763,
+    "Z": 0.3833541552225749,
+    "Key": "gromnie"
+  },
+  {
+    "Id": 24,
+    "Name": "Hea Taraneki the Siraluun Hunter",
+    "Zone": 275,
+    "NS": 45.12391668955486,
+    "EW": -75.07504167556763,
+    "Z": 0.38353404998779295,
+    "Key": "siraluun"
+  },
+  {
+    "Id": 25,
+    "Name": "Hea Kurelan the Carenzi Hunter",
+    "Zone": 275,
+    "NS": 45.12391668955486,
+    "EW": -75.08337500890096,
+    "Z": 0.3833541552225749,
+    "Key": "carenzi"
+  },
+  {
+    "Id": 26,
+    "Name": "Hea Ruatane the Virindi Hunter",
+    "Zone": 275,
+    "NS": 45.11766668955486,
+    "EW": -75.08962500890095,
+    "Z": 0.38335936864217124,
+    "Key": "virindi"
+  },
+  {
+    "Id": 27,
+    "Name": "Hea Varenkeh the Olthoi Hunter",
+    "Zone": 275,
+    "NS": 45.10933335622151,
+    "EW": -75.08962500890095,
+    "Z": 0.3835330009460449,
+    "Key": "olthoi"
+  }
+]

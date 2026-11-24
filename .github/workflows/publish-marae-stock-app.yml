@@ -1,0 +1,73 @@
+name: Publish Marae app with stock RynthAi
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: work
+          submodules: recursive
+      - uses: actions/checkout@v4
+        with:
+          repository: tombohar/RynthSuite
+          ref: 9df6c15012d077c884bb320824787acfdb5d2a7f
+          path: RynthSuite
+      - uses: actions/checkout@v4
+        with:
+          repository: tombohar/RynthCore
+          ref: 8b793fdf845855d82e8015b85c849e9149b39ee0
+          path: RynthCore
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Generate and check mission against the unmodified stock parsers
+        shell: pwsh
+        run: |
+          python work/tools/ACAI2.MaraeStock/build_stock.py
+          if ($LASTEXITCODE) { throw 'Generation failed' }
+          dotnet run --project work/tools/ACAI2.MaraeStock "-p:RynthSuiteRoot=$env:GITHUB_WORKSPACE/RynthSuite" -- "$env:GITHUB_WORKSPACE/work/metas/marae-lassel-stock/MetaFiles/Marae Lassel - Embedded.af" "$env:RUNNER_TEMP/stock-rules.json" "$env:RUNNER_TEMP/stock-expressions.json"
+          if ($LASTEXITCODE) { throw 'Stock parser checks failed' }
+          python work/tools/ACAI2.MaraeMission/test_mission.py "$env:RUNNER_TEMP/stock-rules.json"
+          if ($LASTEXITCODE) { throw 'Mission simulations failed' }
+          python work/tools/ACAI2.MaraeStock/check_abi.py "$env:GITHUB_WORKSPACE/RynthSuite"
+          if ($LASTEXITCODE) { throw 'Stock Script ABI mismatch' }
+      - name: Audit all expressions using the actual stock engine without game actions
+        shell: pwsh
+        run: |
+          dotnet build RynthSuite/Plugins/RynthCore.Plugin.RynthAi/RynthCore.Plugin.RynthAi.csproj -c Release -p:PublishAot=false -p:NativeLib= -p:SelfContained=false -p:RuntimeIdentifier=win-x86 -p:PlatformTarget=x86 -p:RynthPluginSharedSdk=true
+          if ($LASTEXITCODE) { throw 'Stock audit engine build failed' }
+          dotnet publish work/tools/ACAI2.ExpressionAudit -c Release -r win-x86 --self-contained true -o "$env:RUNNER_TEMP/expression-audit"
+          if ($LASTEXITCODE) { throw 'Audit tool build failed' }
+          & "$env:RUNNER_TEMP/expression-audit/ACAI2.ExpressionAudit.exe" "$env:GITHUB_WORKSPACE/RynthSuite/Plugins/RynthCore.Plugin.RynthAi/bin/Release/net10.0-windows/win-x86/RynthCore.Plugin.RynthAi.dll" "$env:RUNNER_TEMP/stock-rules.json" "$env:GITHUB_WORKSPACE/RynthSuite/Plugins/RynthCore.Plugin.RynthAi/Meta/ExpressionEngine.cs" "$env:RUNNER_TEMP/stock-expressions.json"
+          if ($LASTEXITCODE) { throw 'Stock expression audit failed' }
+          if (git -C RynthSuite status --porcelain --untracked-files=no) { throw 'Stock engine source must remain unmodified' }
+      - name: Publish the standalone app and verify the installer
+        shell: pwsh
+        run: |
+          & work/scripts/Publish-Marae.ps1
+          if ($LASTEXITCODE) { throw 'App publish failed' }
+          dotnet publish work/tools/ACAI2.MaraeAppSmoke -c Release -r win-x86 --self-contained true -o "$env:RUNNER_TEMP/app-smoke"
+          if ($LASTEXITCODE) { throw 'Smoke tool build failed' }
+          & "$env:RUNNER_TEMP/app-smoke/ACAI2.MaraeAppSmoke.exe" "$env:GITHUB_WORKSPACE/work/artifacts/marae-stock/Plugin/ACAI2.Rynth.Marae.Plugin.dll"
+          if ($LASTEXITCODE) { throw 'Actual app load smoke failed' }
+          & work/tools/ACAI2.MaraeStock/Test-Installer.ps1 -Package "$env:GITHUB_WORKSPACE/work/artifacts/marae-stock"
+          if ($LASTEXITCODE) { throw 'Installer checks failed' }
+      - name: Publish the Windows beta download
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $pkg="$env:GITHUB_WORKSPACE/work/artifacts/marae-stock"
+          $zip='ACAI2-Marae-App-v1.15-Windows.zip'
+          Compress-Archive -Path "$pkg/*" -DestinationPath $zip
+          $hash=(Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $zip"|Set-Content "$zip.sha256" -Encoding ascii
+          gh release create marae-stock-app-v1.15 $zip "$zip.sha256" --repo '${{ github.repository }}' --target '${{ github.sha }}' --title 'Marae app v1.15 — normal RynthAi DLL, native panel' --notes-file work/docs/MARAE-APP-SETUP.md --latest=false
+          if ($LASTEXITCODE) { throw 'Release publication failed' }

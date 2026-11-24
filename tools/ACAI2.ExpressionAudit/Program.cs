@@ -73,8 +73,9 @@ if(!genericMapHunt) foreach(int z in new[]{180,225,275}) {
  pv["mm_camp_limit"]="0";if(Eval(expression)!="1")throw new Exception("Disabled timer blocks task");pv[$"mm_timed_{z}"]="0";
 }
 if(Eval("listfilter[listcreate[1,2],`listcontains[listcreate[1],$1]==0`]")!="[2]")throw new Exception("Quoted cache exclusion failed");
-if(Eval("maraecachepickup[1]")!="0")throw new Exception("Unbound cache pickup was not refused");
-Console.WriteLine("PASS: actual-engine cache exclusion and hostless pickup refusal; in-memory fixtures only.");
+bool stockMarae=doc.RootElement.EnumerateArray().Any(r=>r.GetProperty("ConditionData").GetString()!.Contains("mm_stock_ready"));
+if(!stockMarae&&Eval("maraecachepickup[1]")!="0")throw new Exception("Unbound cache pickup was not refused");
+Console.WriteLine(stockMarae?"PASS: stock-engine cache exclusion; native pickup delegated to the separate app.":"PASS: actual-engine cache exclusion and hostless pickup refusal; in-memory fixtures only.");
 
 foreach(var tuple in new[]{("FAR_EAST","mm_mesh_far",1,60),("FAR_EAST","mm_mesh_far",999,180),("CLOSE_EAST","mm_mesh_close",1,10),("CLOSE_EAST","mm_mesh_close",999,60)}) {
  string Find(JsonElement r) {

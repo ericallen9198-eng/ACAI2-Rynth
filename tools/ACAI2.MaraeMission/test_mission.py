@@ -5,11 +5,12 @@ lib=Path(__file__).resolve().parents[1]/'ACAI2.PlateauMeta/test_cache.py'
 # Reuse the small expression/rule interpreter, not its other meta's scenario suite.
 code=lib.read_text().split('w=World([item(10)]);')[0]
 ns={'__name__':'mission_harness','sys':sys};exec(compile(code,str(lib),'exec'),ns)
+stock_mode=any('mm_stock_ready' in str(r) for r in ns['rules'])
 rules=ns['rules'];BaseWorld=ns['World'];BaseSim=ns['Sim'];check=ns['check'];item=ns['item']
 class World(BaseWorld):
  def __init__(self,cell=0x21B70028,items=()):
   super().__init__(items);self.cell=cell;self.busy=False;self.chat='';self.route=None
-  self.v.update(ml_run_mode=1,ml_area_180=1,ml_area_225=1,ml_area_275=1,tm_cache_preexisting=[],tm_cache_anchor=0)
+  self.v.update(mm_stock_ready=1,mm_stock_heartbeat=0,ml_run_mode=1,ml_area_180=1,ml_area_225=1,ml_area_275=1,tm_cache_preexisting=[],tm_cache_anchor=0)
   self.caches={1:{'distance':0,'openable':True},2:{'distance':0,'openable':True}}
   self.p.update(ml_run_mode=1,ml_area_180=1,ml_area_225=1,ml_area_275=1,ml_maps_180=0,ml_maps_225=1,ml_maps_275=1)
  def eval(self,s,scope=None):
@@ -17,6 +18,15 @@ class World(BaseWorld):
   return super().eval(s,scope)
  def ev(self,t,scope):
   if t[0]=='call':
+   if stock_mode and t[1]=='getvar' and self.ev(t[2][0],scope)=='mm_stock_recovery_busy':return int(self.busy)
+   if stock_mode and t[1]=='getvar' and self.ev(t[2][0],scope)=='mm_stock_heartbeat':return self.now
+   if stock_mode and t[1]=='setvar' and self.ev(t[2][0],scope)=='mm_stock_pickup_generation':
+    result=super().ev(t,scope)
+    assert self.p.get('mm_pickup_unresolved')==1,'checkpoint before bridge request'
+    assert self.v.get('tm_cache_sent')==-1,'request awaits bridge acknowledgment'
+    obj=self.v['tm_cache_pending'];assert self.open==self.v['tm_cache_id'] and obj in self.container(self.open)
+    self.moves.append((obj,999,0,self.v.get('tm_cache_stackmode',0)));self.v['tm_cache_sent']=self.dispatch
+    return result
    if t[1]=='maraerecoverybusy':return int(self.busy)
    if t[1]=='maraenavrestore':return 1
    f=t[1]
@@ -157,7 +167,7 @@ check(w.v['pt_pickup_0']==1 and w.v['mm_npc_retry']==1,'retry preserves confirme
 w.v['pt_npc_end']=1;s.until('T225_NPC_DECIDE');s.until('T225_HUNT_LOAD')
 check(w.p.get('mm_225_done_1',0)==0 and w.p.get('mm_area_225',0)==0,'missing hunter never becomes completed')
 check('1' in w.v['mm_npc_log_missing'],'retry snapshots missing hunter identities for logging')
-w=World();w.v.update(ml_zone=225,pt_npc_end=0,pt_pickup_0=1,mm_npc_retry=1);s=Sim(w,'T225_NPC_TALK_WAIT');s.tick(181);s.until('T225_HUNT_LOAD')
+w=World();w.v.update(ml_zone=225,pt_npc_end=0,pt_pickup_0=1,mm_npc_retry=1);s=Sim(w,'T225_NPC_TALK_WAIT');s.tick(421 if stock_mode else 181);s.until('T225_HUNT_LOAD')
 check(s.state=='T225_HUNT_LOAD','silent route eventually starts confirmed tasks without waiting for end marker')
 w=World(0x14B5002F);w.p.update(mm_fallback_180=1,mm_area_180=1,mm_area_225=1,mm_area_275=1);s=Sim(w,'Default');s.until('T180_FARM_RUN')
 check(w.v['ml_zone']==180 and w.v['ml_run_mode']==2 and w.v['ml_use_maps']==1,'all cooldowns choose active 180 treasure circuit rather than stopping')
@@ -236,7 +246,7 @@ s=Sim(w,'CACHE_PREP');s.until('CACHE_APPROACH_WAIT',100);w.dead=True;s.tick()
 check(s.state=='MAP_DEATH' and not w.used and not w.moves,'death during approach yields to recovery without using or moving loot')
 print(f"PASS: {ns['checks']} mission simulations including chase return, 24-yard single-cache approach, timeout and death.")
 
-check(any('maraenavrestore[]' in action_text(r) for r in rules if r['State']=='MAP_DEATH'),'death delegates to recovery only after releasing mission navigation')
+check(any(('maraenavrestore[]' in action_text(r) or 'mm_stock_restore_generation' in action_text(r)) for r in rules if r['State']=='MAP_DEATH'),'death delegates to recovery only after releasing mission navigation')
 
 # Explicit hunt-only mode ignores finished tasks, cooldowns and the map fallback toggle.
 for z,cell in ((180,0x14B5002F),(225,0x1BC2002B),(275,0x21B70028)):
@@ -325,7 +335,7 @@ w.v['tm_cache_pending']=0;s.until('BUDGET_EXPIRED')
 check(s.state=='BUDGET_EXPIRED','quota is enforced as soon as the pending action settles')
 print(f"PASS: {ns['checks']} mission simulations including optional two-hour camps, partial turn-in and Lowlands fallback.")
 w=World();w.p.update(mm_camp_limit=1,mm_timed_225=1,mm_cap_pending_225=1);w.v.update(ml_zone=225,mm_cap_return=1,pt_npc_end=0,mm_npc_retry=1)
-s=Sim(w,'T225_TURNIN_WAIT');s.tick(181);s.until('BUDGET_AREA_DONE',100);s.tick()
+s=Sim(w,'T225_TURNIN_WAIT');s.tick(421 if stock_mode else 181);s.until('BUDGET_AREA_DONE',100);s.tick()
 check(w.p.get('mm_attempted_225',0)==0 and w.p['mm_cap_pending_225']==0,'silent partial turn-in has bounded retries and does not falsely complete/defer task state')
 w=World();w.p.update(mm_camp_limit=1,mm_timed_180=1,mm_deadline_180=7200);w.now=10000
 s=Sim(w,'Default');s.until('T225_START_LOCATION',100);s.state='T225_HUNT_RESUME';s.fired.clear();s.tick()

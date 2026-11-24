@@ -12,6 +12,16 @@ project and installed ACAI2 files are not modified.
 
 [Install and configure Keyfer](docs/KEYFER-SETUP.md).
 
+## Marae Lassel app (stock RynthAi beta)
+
+**ACAI2.Marae v1.15** provides a native ImGui panel for the three-area task hunt,
+continuous route hunting and optional treasure maps. It uses the normal RynthAi DLL:
+confirmed NPC use, temporary route restore and cache pickup live in this separate app.
+No patched RynthAi DLL or Marae Lua panel is required.
+[Setup and first test](docs/MARAE-APP-SETUP.md).
+Build on Windows with `scripts/Publish-Marae.ps1`; the stock-parser release workflow
+pins unmodified RynthSuite 2026.11.23.3 for compatibility checks.
+
 ## Standalone Threads app
 
 The separate **ACAI2.Threads v0.1.6** plugin combines a compact Thread journal,
