@@ -1,5 +1,5 @@
 # Marae Lassel - Quick Start
-Version 1.16.0
+Version 1.16.1
 
 DreamWeave tasks and treasure maps for the 180 Lowlands, 225 High Country and 275 Plateau.
 

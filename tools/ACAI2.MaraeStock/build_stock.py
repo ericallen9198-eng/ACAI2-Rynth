@@ -14,6 +14,19 @@ af=af.replace('DoExpr {setvar[mm_schema,1]}','DoExpr {setvar[mm_schema,1]}\n\t\t
 af=re.sub(r'(STATE: \{T\d+_(?:NPC_TALK_WAIT|TURNIN_WAIT)\} ~~ \{\n)(.*?)(?=\n~~ })',lambda m:m[1]+m[2].replace('SecsInStateGE 180','SecsInStateGE 420'),af,flags=re.S)
 # A missing/unloaded bridge must not turn into an endless NPC navigation hold.
 af=af.replace('STATE: {Default} ~~ {','STATE: {Default} ~~ {\n\tIF: Expr {getvar[mm_stock_ready]!=1 || getunixtime[]-getvar[mm_stock_heartbeat]>5}\n\t\tDO: DoAll\n\t\t\t\tDoExpr {echo[`Marae: enable ACAI2.Marae in RynthCore Plugins, then Resume run.`]}\n\t\t\t\tSetState {HOLD}',1)
+# Optional notes may not starve the primary doubloon reward.
+pool="listfilter[wobjectfindallbycontainer[wobjectgetopencontainer[]],`wobjectgetintprop[$1,218103808]==1004101 || (wobjectgetobjectclass[$1]==15 && listcontains[getvar[tm_cache_skipped_currency],wobjectgetid[$1]]==0)`]"
+af=re.sub(r"listfilter\[wobjectfindallbycontainer\[wobjectgetopencontainer\[\]\],\s*`wobjectgetintprop\[\$1,218103808\]==1004101 \|\| wobjectgetobjectclass\[\$1\]==15`\]",lambda _:pool,af)
+doubloons="listfilter[wobjectfindallbycontainer[wobjectgetopencontainer[]],`wobjectgetintprop[$1,218103808]==1004101`]"
+old="setvar[tm_cache_pending,wobjectgetid[listgetitem["+pool+",0]]]"
+new="setvar[tm_cache_pending,wobjectgetid[listgetitem[iif[listcount["+doubloons+"]>0,"+doubloons+","+pool+"],0]]]"
+assert old in af
+af=af.replace(old,new)
+af=re.sub(r'(STATE: \{CACHE_PREP\} ~~ \{\n)(.*?)(?=\n~~ })',lambda m:m[1]+m[2].replace('DoExpr {setvar[tm_cache_id,0]}','DoExpr {setvar[tm_cache_skipped_currency,listcreate[]]}\n\t\t\t\tDoExpr {setvar[tm_cache_id,0]}'),af,flags=re.S)
+# Only definite no-send/refusal is skipped; never replay a possibly issued move.
+needle='Expr {getvar[tm_cache_sent]==0}\n\t\tDO: DoAll\n'
+assert needle in af
+af=af.replace(needle,needle+'\t\t\t\tDoExpr {if[getvar[tm_cache_pending_template]!=1004101,listadd[getvar[tm_cache_skipped_currency],getvar[tm_cache_pending]]]}\n',1)
 trailers={0:0,2:1,3:1,4:1,5:2,6:6,7:6,8:0,9:3}; hunters=[]
 def transform(m):
  name=m[1]; lines=m[3].splitlines(); assert lines[0]=='uTank2 NAV 1.2'

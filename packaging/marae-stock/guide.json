@@ -1,6 +1,6 @@
 {
   "title": "Marae Lassel - Quick Start",
-  "version": "1.16.0",
+  "version": "1.16.1",
   "intro": "DreamWeave tasks and treasure maps for the 180 Lowlands, 225 High Country and 275 Plateau.",
   "before": [
     "Have an updated RynthCore and RynthAi, with a working combat and loot profile. Enable RynthNav only if you want mesh map travel.",

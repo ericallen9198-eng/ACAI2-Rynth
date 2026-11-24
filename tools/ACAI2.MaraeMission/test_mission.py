@@ -499,3 +499,19 @@ w=World();w.v.update(tm_cache_anchor='dig',tm_event_deadline=1800,tm_anchor_forc
 s=Sim(w,'DIGSITE_RETURN_WAIT');s.until('ENCOUNTER',20)
 check(w.v['tm_anchor_forced']==0 and w.options['EnableCombat']==1,'native route completion near the digsite restores combat despite a wider nav arrival tolerance')
 print(f"PASS: {ns['checks']} total mission simulations.")
+
+if stock_mode:
+ # Live regression: the note was first in container enumeration and hid the doubloon.
+ w=World(items=[item(10,template=20630,amount=1,cls=15),item(11)])
+ s=Sim(w,'CACHE_PREP');s.until('CACHE_CONFIRM')
+ check(w.v['tm_cache_pending']==11,'primary doubloon selected before optional 250000 note even when note is enumerated first')
+ w.dispatch=0;w.ack(11);s.tick();s.until('CACHE_CONFIRM')
+ check(w.v['tm_cache_pending']==10 and w.v['tm_cache_sent']==0,'optional note refusal is recorded as no-send')
+ s.until('CACHE_FINISH',40)
+ check(10 in w.v['tm_cache_skipped_currency'] and w.inv.get(1004101,0)>0,'rejected optional note is skipped and cannot turn a collected doubloon into failure')
+ check(sum(move[0]==10 for move in w.moves)==1,'rejected note is not selected over and over')
+ w=World(items=[item(10,template=20630,amount=1,cls=15)]);w.dispatch=0
+ s=Sim(w,'CACHE_PREP');s.until('CACHE_CONFIRM');s.tick(3)
+ w.items[12]=item(12);w.dispatch=1;s.until('CACHE_CONFIRM')
+ check(w.v['tm_cache_pending']==12 and w.v['tm_cache_sent']==1,'late doubloon is collectible after an earlier optional note rejection')
+ print(f"PASS: {ns['checks']} total mission simulations including primary currency priority and optional-note rejection.")

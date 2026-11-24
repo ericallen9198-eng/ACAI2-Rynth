@@ -96,7 +96,8 @@ public sealed class RecoveryObserver
 public sealed record PendingPickup(uint Container,uint Item,uint Template,int Amount,double InventoryBefore);
 public static class CachePickupPolicy
 {
-    public static bool CanIssue(bool unresolved,uint item,uint container,uint checkpointItem,uint checkpointContainer,uint openContainer,bool cacheName,bool itemPresent,uint template,bool money,bool nativeMoveAvailable,bool pending)=>(unresolved&&!pending&&item!=0&&container!=0&&item==checkpointItem&&container==checkpointContainer&&container==openContainer&&cacheName&&itemPresent&&(template==1004101||money)&&nativeMoveAvailable);
+    public static bool IsCurrency(uint template,int objectClass)=>template==1004101||objectClass==15;
+    public static bool CanIssue(bool unresolved,uint item,uint container,uint checkpointItem,uint checkpointContainer,uint openContainer,bool cacheName,bool itemPresent,uint template,bool money,bool nativeMoveAvailable,bool pending)=>(unresolved&&!pending&&item!=0&&container!=0&&item==checkpointItem&&container==checkpointContainer&&container==openContainer&&cacheName&&itemPresent&&IsCurrency(template,money?15:0)&&nativeMoveAvailable);
     public static bool Confirmed(PendingPickup pending,double inventoryNow,bool sourceChanged)=>inventoryNow>pending.InventoryBefore&&sourceChanged;
 }
 

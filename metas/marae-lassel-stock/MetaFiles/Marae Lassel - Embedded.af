@@ -15009,7 +15009,7 @@ STATE: {CACHE_SEARCH} ~~ {
 				SetState {FAIL_FROM_CACHE_SEARCH}
 	IF: Expr {getpvar[tm_dig_active]==1 && getvar[tm_cache_id]==0 && getvar[tm_cache_pending]==0 && getinventorycountbytemplatetype[1004101]>getvar[tm_doubloon_before]}
 		DO: SetState {CACHE_FINISH}
-	IF: Expr {getvar[tm_cache_id]!=0 && getvar[tm_cache_pending]==0 && getvar[tm_cache_pickups]==0 && getunixtime[]>=getvar[tm_cache_bound_at]+8 && (getvar[tm_cache_probe_id]==0 || getunixtime[]>=getvar[tm_cache_probe_until]) && (wobjectgetid[wobjectgetopencontainer[]]!=getvar[tm_cache_id] || listcount[listfilter[wobjectfindallbycontainer[wobjectgetopencontainer[]],`wobjectgetintprop[$1,218103808]==1004101 || wobjectgetobjectclass[$1]==15`]]==0)}
+	IF: Expr {getvar[tm_cache_id]!=0 && getvar[tm_cache_pending]==0 && getvar[tm_cache_pickups]==0 && getunixtime[]>=getvar[tm_cache_bound_at]+8 && (getvar[tm_cache_probe_id]==0 || getunixtime[]>=getvar[tm_cache_probe_until]) && (wobjectgetid[wobjectgetopencontainer[]]!=getvar[tm_cache_id] || listcount[listfilter[wobjectfindallbycontainer[wobjectgetopencontainer[]],`wobjectgetintprop[$1,218103808]==1004101 || (wobjectgetobjectclass[$1]==15 && listcontains[getvar[tm_cache_skipped_currency],wobjectgetid[$1]]==0)`]]==0)}
 		DO: SetState {CACHE_RELEASE_EMPTY}
 	IF: Expr {wobjectgetname[wobjectgetopencontainer[]]==`Unearthed Cache` && getvar[tm_cache_id]==0 && listcontains[getvar[tm_cache_rejected],wobjectgetid[wobjectgetopencontainer[]]]==0}
 		DO: DoAll
@@ -15017,14 +15017,14 @@ STATE: {CACHE_SEARCH} ~~ {
 				DoExpr {setvar[tm_cache_bound_at,getunixtime[]]}
 				DoExpr {setvar[tm_cache_probe_id,0]}
 				SetState {CACHE_SEARCH}
-	IF: Expr {wobjectgetname[wobjectgetopencontainer[]]==`Unearthed Cache` && getvar[tm_cache_id]!=0 && wobjectgetid[wobjectgetopencontainer[]]==getvar[tm_cache_id] && listcount[listfilter[wobjectfindallbycontainer[wobjectgetopencontainer[]], `wobjectgetintprop[$1,218103808]==1004101 || wobjectgetobjectclass[$1]==15`]]>0 && getunixtime[]>=getvar[tm_cache_pickup_retry_at]}
+	IF: Expr {wobjectgetname[wobjectgetopencontainer[]]==`Unearthed Cache` && getvar[tm_cache_id]!=0 && wobjectgetid[wobjectgetopencontainer[]]==getvar[tm_cache_id] && listcount[listfilter[wobjectfindallbycontainer[wobjectgetopencontainer[]],`wobjectgetintprop[$1,218103808]==1004101 || (wobjectgetobjectclass[$1]==15 && listcontains[getvar[tm_cache_skipped_currency],wobjectgetid[$1]]==0)`]]>0 && getunixtime[]>=getvar[tm_cache_pickup_retry_at]}
 		DO: DoAll
-				DoExpr {setvar[tm_cache_pending,wobjectgetid[listgetitem[listfilter[wobjectfindallbycontainer[wobjectgetopencontainer[]], `wobjectgetintprop[$1,218103808]==1004101 || wobjectgetobjectclass[$1]==15`],0]]]}
+				DoExpr {setvar[tm_cache_pending,wobjectgetid[listgetitem[iif[listcount[listfilter[wobjectfindallbycontainer[wobjectgetopencontainer[]],`wobjectgetintprop[$1,218103808]==1004101`]]>0,listfilter[wobjectfindallbycontainer[wobjectgetopencontainer[]],`wobjectgetintprop[$1,218103808]==1004101`],listfilter[wobjectfindallbycontainer[wobjectgetopencontainer[]],`wobjectgetintprop[$1,218103808]==1004101 || (wobjectgetobjectclass[$1]==15 && listcontains[getvar[tm_cache_skipped_currency],wobjectgetid[$1]]==0)`]],0]]]}
 				DoExpr {setvar[tm_cache_pending_template,wobjectgetintprop[wobjectfindbyid[getvar[tm_cache_pending]],218103808]]}
 				DoExpr {setvar[tm_cache_pending_amount,iif[wobjectgetintprop[wobjectfindbyid[getvar[tm_cache_pending]],12]>1,wobjectgetintprop[wobjectfindbyid[getvar[tm_cache_pending]],12],1]]}
 				DoExpr {setvar[tm_cache_before_count,getinventorycountbytemplatetype[getvar[tm_cache_pending_template]]]}
 				SetState {CACHE_PICKUP}
-	IF: Expr {wobjectgetname[wobjectgetopencontainer[]]==`Unearthed Cache` && getvar[tm_cache_id]!=0 && wobjectgetid[wobjectgetopencontainer[]]==getvar[tm_cache_id] && listcount[listfilter[wobjectfindallbycontainer[wobjectgetopencontainer[]], `wobjectgetintprop[$1,218103808]==1004101 || wobjectgetobjectclass[$1]==15`]]==0 && getvar[tm_cache_pickups]>0}
+	IF: Expr {wobjectgetname[wobjectgetopencontainer[]]==`Unearthed Cache` && getvar[tm_cache_id]!=0 && wobjectgetid[wobjectgetopencontainer[]]==getvar[tm_cache_id] && listcount[listfilter[wobjectfindallbycontainer[wobjectgetopencontainer[]],`wobjectgetintprop[$1,218103808]==1004101 || (wobjectgetobjectclass[$1]==15 && listcontains[getvar[tm_cache_skipped_currency],wobjectgetid[$1]]==0)`]]==0 && getvar[tm_cache_pickups]>0}
 		DO: DoAll
 				SetState {CACHE_SETTLE}
 	IF: Expr {getvar[tm_cache_probe_id]!=0 && getunixtime[]>=getvar[tm_cache_probe_until]}
@@ -16446,6 +16446,7 @@ STATE: {CACHE_PREP} ~~ {
 				SetOpt {EnableLooting} {False}
 				SetOpt {EnableNav} {False}
 				SetOpt {EnableCombat} {False}
+				DoExpr {setvar[tm_cache_skipped_currency,listcreate[]]}
 				DoExpr {setvar[tm_cache_id,0]}
 				DoExpr {if[getvar[tm_cache_anchor]==0,setvar[tm_cache_anchor,getplayercoordinates[]]]}
 				DoExpr {setvar[tm_cache_tried,listcreate[]]}
@@ -16848,6 +16849,7 @@ STATE: {CACHE_CONFIRM} ~~ {
 			SecsInStateGE 2
 			Expr {getvar[tm_cache_sent]==0}
 		DO: DoAll
+				DoExpr {if[getvar[tm_cache_pending_template]!=1004101,listadd[getvar[tm_cache_skipped_currency],getvar[tm_cache_pending]]]}
 				DoExpr {listcreate[setpvar[mm_pickup_unresolved,0],setpvar[mm_stock_pickup_issued,0]]}
 				DoExpr {setvar[tm_cache_sent,0]}
 				DoExpr {setvar[tm_cache_pending,0]}
@@ -17036,7 +17038,7 @@ STATE: {CACHE_SETTLE} ~~ {
 		DO: SetState {BUDGET_EXPIRED}
 	IF: Death
 		DO: SetState {MAP_DEATH}
-	IF: Expr {(wobjectgetname[wobjectgetopencontainer[]]==`Unearthed Cache` && getvar[tm_cache_id]!=0 && wobjectgetid[wobjectgetopencontainer[]]==getvar[tm_cache_id])==0 || listcount[listfilter[wobjectfindallbycontainer[wobjectgetopencontainer[]], `wobjectgetintprop[$1,218103808]==1004101 || wobjectgetobjectclass[$1]==15`]]>0}
+	IF: Expr {(wobjectgetname[wobjectgetopencontainer[]]==`Unearthed Cache` && getvar[tm_cache_id]!=0 && wobjectgetid[wobjectgetopencontainer[]]==getvar[tm_cache_id])==0 || listcount[listfilter[wobjectfindallbycontainer[wobjectgetopencontainer[]],`wobjectgetintprop[$1,218103808]==1004101 || (wobjectgetobjectclass[$1]==15 && listcontains[getvar[tm_cache_skipped_currency],wobjectgetid[$1]]==0)`]]>0}
 		DO: DoAll
 				SetState {CACHE_SEARCH}
 	IF: SecsInStateGE 2

@@ -10,7 +10,7 @@ namespace ACAI2.Rynth.Marae.Plugin;
 
 public sealed class MaraePlugin:RynthPluginBase
 {
-    public const string Version="1.16.0";
+    public const string Version="1.16.1";
     public override uint MinimumApiVersion=>92;
     private static readonly CultureInfo Inv=CultureInfo.InvariantCulture;
     private static readonly Hunter[] Hunters=JsonSerializer.Deserialize<Hunter[]>(Resource("Marae.hunters.json"))!;
@@ -357,7 +357,12 @@ public sealed class MaraePlugin:RynthPluginBase
         uint item=checked((uint)Var("tm_cache_pending")),container=checked((uint)Var("tm_cache_id"));
         if(profile!.PendingMove!=null)return; // independent durable acknowledgment required before any later move
         var contents=new uint[256];int count=Host.GetContainerContents(container,contents);
-        Host.TryGetObjectWcid(item,out uint wcid);bool money=Host.TryGetObjectIntProperty(item,1,out int type)&&(type&128)!=0;
+        Host.TryGetObjectWcid(item,out uint wcid);
+        // Use the same currency classification as the AF and original working cache helper.
+        // Trade Note (250,000): WCID 20630, ObjectClass Money=15, ItemType=262144.
+        // ItemType bit 128 is not the Money object class and rejects these notes.
+        int objectClass=(int)Num("wobjectgetobjectclass[wobjectfindbyid["+item.ToString(Inv)+"]]");
+        bool money=objectClass==15;
         bool allowed=CachePickupPolicy.CanIssue(PVar("mm_pickup_unresolved")==1,item,container,checked((uint)PVar("mm_pickup_item")),checked((uint)PVar("mm_pickup_container")),Host.GetGroundContainerId(),Host.TryGetObjectName(container,out var name)&&name=="Unearthed Cache",count>0&&count<=contents.Length&&contents.Take(count).Contains(item),wcid,money,Host.HasMoveItemExternal,profile.PendingMove!=null);
         if(!allowed){Set("tm_cache_sent",0);return;}
         profile.PendingMove=new(container,item,checked((uint)Var("tm_cache_pending_template")),(int)Var("tm_cache_pending_amount"),Var("tm_cache_before_count"));Save();PSet("mm_stock_pickup_issued",1);

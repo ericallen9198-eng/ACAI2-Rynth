@@ -65,4 +65,10 @@ try
  Check(MaraeFolders.InstallerHint(folderTest)=="","broken hint is ignored without damaging profile");
  Check(MaraeFolders.InstallerHint("")=="","stream-loaded assembly does not read a relative working-directory hint");
 }finally{Directory.Delete(folderTest,true);}
+Check(CachePickupPolicy.IsCurrency(20630,15),"live 250000 Trade Note is currency despite ItemType 262144");
+Check(CachePickupPolicy.CanIssue(true,2147609456,2149769574,2147609456,2149769574,2149769574,true,true,20630,CachePickupPolicy.IsCurrency(20630,15),true,false),"live opened-cache note dispatch is not rejected by item-type bit 128");
+Check(CachePickupPolicy.IsCurrency(1004101,0),"doubloon remains supported even without a Money class");
+Check(!CachePickupPolicy.IsCurrency(20630,1),"template alone cannot classify an arbitrary non-money note object");
+Check(!CachePickupPolicy.CanIssue(true,2,1,2,1,3,true,true,20630,true,true,false),"currency fix retains exact open-container guard");
+Check(!CachePickupPolicy.CanIssue(true,2,1,2,1,1,true,true,20630,true,true,true),"currency fix retains uncertain-move replay guard");
 Console.WriteLine($"PASS: {checks} Marae stock NPC, route, clue, recovery and profile checks (synthetic world data only).");
