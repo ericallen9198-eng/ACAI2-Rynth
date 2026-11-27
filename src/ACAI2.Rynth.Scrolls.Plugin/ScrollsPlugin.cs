@@ -6,11 +6,11 @@ using RynthCore.PluginCore;
 namespace ACAI2.Rynth.Scrolls.Plugin;
 
 internal sealed record UiRequest(long Epoch,string Command,string Value="",string[]? Keys=null,float X=0,float Y=0);
-internal sealed record ScrollView(long Epoch,string Character,string Status,Checklist[] Rows,Supply[] Supplies,string[] Selected,string School,string Search,bool MissingOnly,bool Running,bool Review,int Completed,int Total,string[] History,float X,float Y,bool Visible)
+internal sealed record ScrollView(long Epoch,string Character,string Status,Checklist[] Rows,Supply[] Supplies,string[] Selected,string School,string Search,bool MissingOnly,bool Running,bool Review,int Completed,int Total,string[] History,float X,float Y,bool Visible,string Tab="Self",bool EssentialsOnly=false,int SkillsAvailable=0)
 {public static ScrollView Empty=>new(0,"Waiting for login","Log in to scan learned level VIII spells.",[],[],[],"All","",true,false,false,0,0,[],90,90,true);}
 public sealed class ScrollsPlugin:RynthPluginBase
 {
-    public const string Version="0.1.1";
+    public const string Version="0.1.2";
     public override uint MinimumApiVersion=>92;
     private readonly ConcurrentQueue<UiRequest> requests=new();
     private readonly ScrollPanel panel=new();
@@ -18,6 +18,7 @@ public sealed class ScrollsPlugin:RynthPluginBase
     private ScrollView view=ScrollView.Empty;private Checklist[] rows=[];private InventoryItem[] inventory=[];
     private string path="",status="Ready to scan";private uint player;private long epoch;private int reset;
     private volatile bool loggedOut;private bool readable=true,stopRequested,renderFailed;
+    private int skillsAvailable;
     private double nextProbe,nextScan,nextTick,sentAt,settleAt,idleDeadline;
     private (uint Cell,float X,float Y,float Z)? anchor;
     private static double Now=>System.Diagnostics.Stopwatch.GetTimestamp()/(double)System.Diagnostics.Stopwatch.Frequency;
@@ -35,7 +36,7 @@ public sealed class ScrollsPlugin:RynthPluginBase
     private void Reset()
     {
         // Expiring yield is allowed to lapse; a different login must never resume the prior macro.
-        Interlocked.Increment(ref epoch);batch=null;guard=null;profile=null;player=0;rows=[];inventory=[];anchor=null;readable=true;stopRequested=false;
+        Interlocked.Increment(ref epoch);batch=null;guard=null;profile=null;player=0;rows=[];inventory=[];skillsAvailable=0;anchor=null;readable=true;stopRequested=false;
         while(requests.TryDequeue(out _)){}Volatile.Write(ref view,ScrollView.Empty with {Epoch=epoch});
     }
     private void Bind()
@@ -73,7 +74,13 @@ public sealed class ScrollsPlugin:RynthPluginBase
     {
         if(!Host.HasGetContainerContents||!Host.HasGetObjectWcid)throw new InvalidOperationException("Update RynthCore: inventory APIs are required.");
         var book=ReadSpellbook();var items=Inventory();
-        var result=book.Checklist(catalog,items);
+        // TryGetObjectSkill explicitly serves an owner-bound cached player-skill
+        // snapshot off-thread. A missing skill read is unavailable, not untrained.
+        var training=new Dictionary<uint,int>();
+        if(Host.HasGetObjectSkill)
+            foreach(var skill in SpellRecommendations.Skills)
+                if(Host.TryGetObjectSkill(player,skill.Id,out _,out int state)&&state is >=0 and <=3)training[skill.Id]=state;
+        var result=book.Checklist(catalog,items,training);skillsAvailable=training.Count;
         inventory=items;rows=result;
     }
     private string Safety()
@@ -145,8 +152,13 @@ public sealed class ScrollsPlugin:RynthPluginBase
                     case "hide":profile.Visible=false;Save();break;
                     case "move":profile.X=r.X;profile.Y=r.Y;Save();break;
                     case "school":profile.School=r.Value;Save();break;
+                    case "tab":if(r.Value is "Self" or "Others" or "Equipment" or "Components" or "Activity & recipes"){profile.Tab=r.Value;Save();}break;
+                    case "essentials":profile.EssentialsOnly=r.Value=="1";Save();break;
                     case "search":profile.Search=r.Value[..Math.Min(96,r.Value.Length)];Save();break;
                     case "missing":profile.MissingOnly=r.Value=="1";Save();break;
+                    case "add":if(batch==null){profile.Selected.UnionWith((r.Keys??[]).Where(k=>catalog.Recipes.Any(x=>x.Key==k)));Save();}break;
+                    case "choose":if(batch==null&&catalog.Recipes.Any(x=>x.Key==r.Value)){profile.Selected.Add(r.Value);Save();}break;
+                    case "unchoose":if(batch==null){profile.Selected.Remove(r.Value);Save();}break;
                     case "selection":if(batch==null){profile.Selected=(r.Keys??[]).Where(k=>catalog.Recipes.Any(x=>x.Key==k)).Take(250).ToHashSet();Save();}break;
                     case "print":
                         Local("[ACAI2 Scrolls] Selected missing-spell components (need / owned / short):");
@@ -169,7 +181,7 @@ public sealed class ScrollsPlugin:RynthPluginBase
     {
         if(profile==null)return;
         var selected=rows.Where(r=>profile.Selected.Contains(r.Recipe.Key)&&!r.Known&&r.InPack==0).Select(r=>r.Recipe);
-        Volatile.Write(ref view,new(epoch,profile.Character,status,rows,Planner.Shopping(selected,inventory),profile.Selected.ToArray(),profile.School,profile.Search,profile.MissingOnly,batch!=null,profile.Pending!=null&&batch==null,batch?.Completed??0,batch?.Total??0,profile.Recent.ToArray(),profile.X,profile.Y,profile.Visible));
+        Volatile.Write(ref view,new(epoch,profile.Character,status,rows,Planner.Shopping(selected,inventory),profile.Selected.ToArray(),profile.School,profile.Search,profile.MissingOnly,batch!=null,profile.Pending!=null&&batch==null,batch?.Completed??0,batch?.Total??0,profile.Recent.ToArray(),profile.X,profile.Y,profile.Visible,profile.Tab,profile.EssentialsOnly,skillsAvailable));
     }
     public override void OnRender()
     {

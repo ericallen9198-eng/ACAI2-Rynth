@@ -18,5 +18,5 @@ public sealed class SpellbookSnapshot
         if(ids.Take(count).Any(id=>id==0))throw new InvalidOperationException("Learned-spell snapshot is incomplete; retry Rescan.");
         return new(ids.Take(count));
     }
-    public Checklist[] Checklist(Catalog catalog,IReadOnlyList<InventoryItem> inventory)=>catalog.Recipes.Select(r=>new Checklist(r,Contains(r.SpellId),Planner.Count(inventory,r.ScrollTemplate))).ToArray();
+    public Checklist[] Checklist(Catalog catalog,IReadOnlyList<InventoryItem> inventory,IReadOnlyDictionary<uint,int>? training=null)=>catalog.Recipes.Select(r=>new Checklist(r,Contains(r.SpellId),Planner.Count(inventory,r.ScrollTemplate),SpellRecommendations.Match(r,training))).ToArray();
 }

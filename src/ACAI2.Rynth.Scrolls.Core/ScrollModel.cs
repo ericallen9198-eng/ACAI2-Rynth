@@ -8,7 +8,11 @@ public sealed record ScrollRecipe(string Key,string School,string Name,uint Spel
 public sealed record InventoryItem(uint Id,uint Template,string Name,int Count);
 public sealed record Supply(uint Template,string Name,int Required,int Owned)
 {public int Missing=>Math.Max(0,Required-Owned);}
-public sealed record Checklist(ScrollRecipe Recipe,bool Known,int InPack);
+public sealed record Checklist(ScrollRecipe Recipe,bool Known,int InPack,SkillMatch? Skill=null)
+{
+    public SpellList List=>SpellRecommendations.List(Recipe);
+    public bool Essential=>!Known&&List==SpellList.Self&&Skill?.Relevant==true;
+}
 public sealed record Catalog(string AceCommit,ScrollRecipe[] Recipes,string[] Unresolved)
 {
     public static Catalog Load()
@@ -44,6 +48,7 @@ public sealed class ScrollProfile
 {
     public string Server{get;set;}="";public string Character{get;set;}="";
     public string School{get;set;}="All";public string Search{get;set;}="";public bool MissingOnly{get;set;}=true;
+    public bool EssentialsOnly{get;set;}=false;public string Tab{get;set;}="Self";
     public float X{get;set;}=90;public float Y{get;set;}=90;public bool Visible{get;set;}=true;
     public HashSet<string> Selected{get;set;}=[];public PendingAction? Pending{get;set;}
     public string[] Recent{get;set;}=[];

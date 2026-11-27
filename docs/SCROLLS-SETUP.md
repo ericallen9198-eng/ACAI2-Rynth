@@ -1,10 +1,10 @@
 # ACAI2 Scrollwork — level VIII scroll maker
 
-Version 0.1.1 beta. A separate RynthCore app; no RynthAi DLL replacement or Lua script.
+Version 0.1.2 beta. A separate RynthCore app; no RynthAi DLL replacement or Lua script.
 
-v0.1.1 fixes a first-live-test scan failure: learned spells now come from Rynth’s
-thread-safe cached spellbook snapshot, including the check before each craft.
-The live per-object spell-query API is not called from the plugin pump.
+v0.1.2 separates Self, Others and Equipment, and highlights missing self skill buffs
+for skills actually trained/specialized on this character. Learned spells continue
+to use the thread-safe cached snapshot introduced in v0.1.1.
 
 ## Install
 
@@ -18,7 +18,7 @@ loot profiles, replaces the engine/RynthAi, or touches other ACAI2 apps.
 
 ## Use
 
-1. Click **Rescan**. Choose a school, or All. **Missing only** hides learned spells.
+1. Click **Rescan**. Start on **Self**, or choose **Others** / **Equipment**. Choose a school, or All. **Missing only** hides learned spells.
 2. Check the scrolls you want, or **Select missing in this view**. Scrolls already
    learned or already in your packs cannot be selected for another copy.
 3. Open **Components** for combined Need / Owned / Short counts. **Print component
@@ -37,6 +37,35 @@ Intermediate quills already in your pack are preserved by the shopping calculati
 it lists the raw ingredients for complete selected recipes. A stopped partial recipe
 leaves its intermediate in inventory. This first version does not credit existing
 intermediates toward the raw component checklist, or resume a partial chain later.
+
+## Self, Others and personal essentials
+
+- **Self** is the default list: self buffs, self healing and self dispels, including
+  self weapon auras. It contains 62 recipes.
+- **Others** has attacks, debuffs, and other-target buffs/heals (110 recipes).
+- **Equipment** has item-target spells such as banes, lures, armor and item dispels
+  (25 recipes). They are kept separate because item targeting does not identify
+  whether the equipment belongs to you or another character.
+
+On Self, **Essential** marks an unlearned direct skill buff when that character has
+its matching skill **trained or specialized**. For example, Fletching Mastery Self
+matches Fletching, and Invulnerability Self matches Melee Defense. Hover the spell
+for the matched skill and training status. Essentials sort first, with specialized
+skills before trained skills. **Essentials only** filters Self, and **Select missing
+essentials** adds eligible spells from the current filtered view to your selection.
+A scroll already in your pack can still be an unlearned essential; it is not selected
+for a duplicate craft. Learn that existing scroll manually when ready.
+
+These are relevance suggestions, not a guarantee of casting chance. Attributes,
+protections, weapon auras and dispels remain available without a guessed direct
+skill match. Untrained/inactive skills are not promoted by a high buffed value.
+Missing skill reads remain unknown and do not block the spellbook or crafting.
+Skills use Rynth's owner-bound cached player-skill reads on the plugin pump.
+
+Tab choice, filters and selections are saved per character. Selections are shared
+across tabs; Components totals everything selected. Nothing is selected automatically.
+The two unresolved Light Weapons recipes remain outside the crafting/recommendation
+catalog pending verification of their spell IDs.
 
 ## Stop and interrupted crafting
 
@@ -95,3 +124,6 @@ excluded. Each catalog entry retains its source links.
 Immutable reference subtrees: weenies `77cabd01d67c645b5276aea16067525465b91362`;
 craft `c5e4a7c49ddca269be8b50b9f90079041128598d`. Downloaded reference files were
 verified against their Git blob hashes. Catalog JSON is provided with the package.
+
+Skill identifiers and training classes follow ACEmulator’s documented `Skill` and
+`SkillAdvancementClass` enums: https://github.com/ACEmulator/ACE/tree/master/Source/ACE.Entity/Enum

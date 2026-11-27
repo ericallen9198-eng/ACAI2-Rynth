@@ -21,6 +21,35 @@ foreach(int nativeResult in new[]{-1,0,8,9})
 bool invalid=false;try{SpellbookSnapshot.Read((_,_)=>1,8);}catch(InvalidOperationException){invalid=true;}Check(invalid,"unfilled cached spell IDs rejected");
 var nextBook=SpellbookSnapshot.Read((ids,_)=>{ids[0]=arc.SpellId;return 1;});
 Check(nextBook.Contains(arc.SpellId)&&!nextBook.Contains(aura.SpellId),"new snapshot does not carry previous known set");
+// Spell list partitioning and recommendations use recipe intent and native training,
+// not whether a name happens to contain Other or a buffed skill has a positive value.
+Check(catalog.Recipes.Count(r=>SpellRecommendations.List(r)==SpellList.Self)==62,"self list contains only introspective self recipes");
+Check(catalog.Recipes.Count(r=>SpellRecommendations.List(r)==SpellList.Others)==110,"other list includes attacks, debuffs and other buffs");
+Check(catalog.Recipes.Count(r=>SpellRecommendations.List(r)==SpellList.Equipment)==25,"non-aura item targets have a separate equipment list");
+Check(SpellRecommendations.List(aura)==SpellList.Self&&SpellRecommendations.List(arc)==SpellList.Others,"aura self and offensive arc classify independently of school");
+var armorBane=catalog.Recipes.Single(r=>r.Name=="Inscription of Acid Bane");Check(SpellRecommendations.List(armorBane)==SpellList.Equipment,"bane is equipment, not a self creature buff");
+var jumpDebuff=catalog.Recipes.Single(r=>r.Name.Contains("Jumping Ineptitude"));Check(SpellRecommendations.List(jumpDebuff)==SpellList.Others,"historical misleading Self name cannot classify an inflictive debuff as self");
+var missile=catalog.Recipes.Single(r=>r.SpellId==4522);var fletching=catalog.Recipes.Single(r=>r.SpellId==4552);
+var specialized=new Dictionary<uint,int>{{47,3},{37,2},{31,1}};
+var relevant=book.Checklist(catalog,[],specialized);
+Check(relevant.Single(r=>r.Recipe.Key==missile.Key).Essential&&relevant.Single(r=>r.Recipe.Key==missile.Key).Skill!.TrainingName=="Specialized","missing missile buff matches specialized missile skill");
+Check(relevant.Single(r=>r.Recipe.Key==fletching.Key).Essential,"trained fletching is also a relevant self buff");
+Check(!relevant.Single(r=>r.Recipe.SpellId==4530).Essential,"untrained Creature Magic does not recommend its mastery");
+Check(!book.Checklist(catalog,[]).Any(r=>r.Essential),"unavailable skill snapshot does not invent essentials or break spell scan");
+Check(!book.Checklist(catalog,[],new Dictionary<uint,int>{{47,0}}).Any(r=>r.Essential),"inactive skill cannot be essential");
+var learnedMissile=SpellbookSnapshot.Read((ids,_)=>{ids[0]=missile.SpellId;return 1;});
+Check(!learnedMissile.Checklist(catalog,[],specialized).Single(r=>r.Recipe.Key==missile.Key).Essential,"learned buff is not a missing essential");
+var ownEssential=book.Checklist(catalog,[new(90,missile.ScrollTemplate,"owned missile scroll",1)],specialized);
+Check(ownEssential.Single(r=>r.Recipe.Key==missile.Key).Essential,"unlearned owned scroll remains relevant for manual learning");
+var selfEssentials=SpellRecommendations.Filter(ownEssential,SpellList.Self,"All","",true,true);
+Check(selfEssentials.Length==2&&selfEssentials.All(r=>r.Essential),"essentials filter keeps precisely trained/specialized direct self buffs");
+var cart=SpellRecommendations.SelectMissing(selfEssentials,[]);
+Check(cart.Length==1&&cart[0]==fletching.Key,"bulk essentials selection skips the copy already in inventory");
+Check(SpellRecommendations.Filter(relevant,SpellList.Others,"All","",true,false).All(r=>!r.Essential),"outgoing debuffs are not essential just because their glyph matches a trained skill");
+Check(!relevant.Any(r=>r.Recipe.Name.Contains("Nullify")&&r.Essential),"school glyph in a dispel does not make it a skill buff");
+Check(SpellRecommendations.Filter(relevant,SpellList.Self,"War","",false,false).Length==0,"school filter remains applied within tabs");
+Check(SpellRecommendations.Filter(relevant,SpellList.Self,"Creature","Fletching",true,true).Single().Recipe.Key==fletching.Key,"search and essentials filters compose");
+Check(SpellRecommendations.Skills.Select(r=>r.Id).Distinct().Count()==SpellRecommendations.Skills.Length,"skill IDs are unique");
 foreach(var recipe in catalog.Recipes)
 {
     var items=recipe.Ingredients.Select((i,k)=>new InventoryItem((uint)(k+1),i.Template,i.Name,1)).ToList();
@@ -56,8 +85,8 @@ bool rejected=false;try{new CraftBatch([arc,arc]);}catch(InvalidOperationExcepti
 var folder=Path.Combine(Path.GetTempPath(),"scroll-tests-"+Guid.NewGuid());var path=Path.Combine(folder,"profile.json");
 try
 {
-    var profile=new ScrollProfile{Server="Test",Character="Mage",Pending=fake};profile.Save(path);
-    var restored=ScrollProfile.Load(path,"Test","Mage");Check(restored.Pending==fake,"pre-action checkpoint survives restart; no runtime batch restored");
+    var profile=new ScrollProfile{Server="Test",Character="Mage",Pending=fake,Tab="Others",EssentialsOnly=true};profile.Save(path);
+    var restored=ScrollProfile.Load(path,"Test","Mage");Check(restored.Tab=="Others"&&restored.EssentialsOnly,"list preferences persist per character");Check(restored.Pending==fake,"pre-action checkpoint survives restart; no runtime batch restored");
     bool refused=false;try{ScrollProfile.Load(path,"Test","Other");}catch(InvalidDataException){refused=true;}Check(refused,"checkpoint bound to character");
     for(int i=0;i<50;i++)profile.Record(i.ToString());Check(profile.Recent.Length==20,"activity remains bounded");
 }
