@@ -27,7 +27,7 @@ internal static class Program
             catch (Exception ex) { Console.Error.WriteLine("Arena preview failed: " + ex.Message); Environment.ExitCode = 1; }
             return;
         }
-        Console.Title = "ACAI2.Bridge v0.19";
+        Console.Title = "ACAI2.Bridge v0.20";
         _config = BridgeConfig.Load();
 
         using var listener = new HttpListener();
@@ -47,10 +47,11 @@ internal static class Program
             return;
         }
 
-        Console.WriteLine("ACAI2 Bridge v0.19");
+        Console.WriteLine("ACAI2 Bridge v0.20");
         Console.WriteLine("Listening: " + _config.ListenPrefix);
         Console.WriteLine("Protocol: " + ProtocolInfo.Version);
         Console.WriteLine("Keyfer: " + KeyferConfig.Server + "::" + KeyferConfig.Character);
+        Console.WriteLine("AI model: " + KeyferConfig.Model + " (reasoning: " + ModelCompatibility.ReasoningEffort(KeyferConfig.Model) + ")");
         Console.WriteLine("Purpose: identity, perception, Keyfer conversations, wiki lookup, and event observations");
         Console.WriteLine("Player memory: " + (string.Equals(Environment.GetEnvironmentVariable("ACAI2_MEMORY_ENABLED"), "false", StringComparison.OrdinalIgnoreCase) ? "OFF" : "automatic SQLite notes; review in background"));
         Console.WriteLine("Treasure: observed allegiance reports; 6pm Eastern rounds; fixed one-MMD dispatch on the Keyfer client.");

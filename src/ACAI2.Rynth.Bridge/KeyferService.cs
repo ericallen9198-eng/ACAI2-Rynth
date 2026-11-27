@@ -404,7 +404,7 @@ internal sealed class KeyferService : IDisposable
     {
         var payload = new Dictionary<string, object>
         {
-            ["model"] = options.Model, ["reasoning_effort"] = "minimal", ["max_completion_tokens"] = 1200, ["messages"] = messages
+            ["model"] = options.Model, ["reasoning_effort"] = ModelCompatibility.ReasoningEffort(options.Model), ["max_completion_tokens"] = 1200, ["messages"] = messages
         };
         if (allowWiki) payload["tools"] = new[] { new
         {

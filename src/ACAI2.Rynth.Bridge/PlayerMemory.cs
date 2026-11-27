@@ -178,7 +178,7 @@ internal sealed class PlayerMemory : IDisposable
         var previous = store.Read(identity, DateTime.UtcNow);
         var payload = new
         {
-            model, reasoning_effort = "minimal", max_completion_tokens = 1000, response_format = new { type = "json_object" },
+            model, reasoning_effort = ModelCompatibility.ReasoningEffort(model), max_completion_tokens = 1000, response_format = new { type = "json_object" },
             messages = new object[]
             {
                 new { role = "system", content = """

@@ -35,7 +35,7 @@ internal sealed class ArenaAiCommentary(HttpClient http, string model) : IArenaC
             using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.openai.com/v1/chat/completions");
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", key);
             request.Content = new StringContent(JsonSerializer.Serialize(new {
-                model, reasoning_effort = "minimal", max_completion_tokens = 1400, response_format = new { type = "json_object" },
+                model, reasoning_effort = ModelCompatibility.ReasoningEffort(model), max_completion_tokens = 1400, response_format = new { type = "json_object" },
                 messages = new[] { new { role = "system", content = Instructions }, new { role = "user", content = JsonSerializer.Serialize(new { actions = facts }) } }
             }), Encoding.UTF8, "application/json");
             using var response = await http.SendAsync(request, deadline.Token); response.EnsureSuccessStatusCode();

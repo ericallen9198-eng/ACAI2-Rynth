@@ -4,7 +4,8 @@ internal sealed class KeyferOptions
 {
     public string Server { get; } = Environment.GetEnvironmentVariable("ACAI2_KEYFER_SERVER") ?? "DreamWeave";
     public string Character { get; } = Environment.GetEnvironmentVariable("ACAI2_KEYFER_CHARACTER") ?? "Keyfer Sutherland";
-    public string Model { get; } = Environment.GetEnvironmentVariable("ACAI2_OPENAI_MODEL") ?? "gpt-5-mini";
+    public string Model { get; } = string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("ACAI2_OPENAI_MODEL"))
+        ? "gpt-6-luna" : Environment.GetEnvironmentVariable("ACAI2_OPENAI_MODEL")!.Trim();
     public string DataRoot { get; } = Environment.GetEnvironmentVariable("ACAI2_DATA_ROOT") ??
         (OperatingSystem.IsWindows() ? @"C:\ACAI2\Data" : Path.Combine(AppContext.BaseDirectory, "Data"));
     public string BehaviorPath { get; } = Environment.GetEnvironmentVariable("ACAI2_BEHAVIOR_PATH") ??

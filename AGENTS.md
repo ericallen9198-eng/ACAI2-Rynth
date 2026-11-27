@@ -178,3 +178,10 @@ icons, with engine-owned frame/layout/pop-out and the same body controls. Embedd
 rendering must never begin another top-level window or change ImGui context. Keep
 UI actions queued for the current character/session; close/show are presentation
 only and must not stop/start workflows. Do not modify Combat, Keyfer or the engine.
+
+The user subsequently authorized migrating Keyfer's Bridge from retiring GPT-5 mini
+to GPT-6 Luna for a live trial. Preserve behavior, memory paths, moderation and all
+native action boundaries. Update provider compatibility across chat/wiki, memory
+and arena requests. Controlled tests use fake HTTP only; do not send real player
+conversations or use provider credentials in tests. A Bridge-only Windows package
+may be released; no client plugin, Combat or Rynth engine changes are needed.
