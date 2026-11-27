@@ -1,4 +1,4 @@
-# Keyfer Luna trial — Bridge v0.20
+# Keyfer Luna trial — Bridge v0.20.1
 
 This update switches the Bridge's default model from GPT-5 mini to GPT-6 Luna.
 It keeps your existing personality files, memories, chat history, moderation,
@@ -62,3 +62,16 @@ method rolls back or clears your memories. Do not leave the retiring model selec
 
 This is a Bridge-only update. Scrollwork, Threads, Marae, Combat and the Keyfer
 client plugin are not replaced. The Bridge remains shared by game and Discord.
+
+## v0.20.1 diagnostics
+
+If a request fails, copy the new `[KEYFER] Request failed:` or `[MEMORY] Review
+unavailable:` line from the Bridge console. It now reports the HTTP status and
+recognized provider error code/parameter. It never prints provider error messages,
+API keys, prompts or player conversations. Examples: HTTP 404 / model_not_found
+means model availability or project access; HTTP 401 means authentication; HTTP 429 /
+insufficient_quota means API credit or a spending limit. These are diagnostics,
+not a claim that any one cause has already been confirmed on your PC.
+
+The `[LEADERBOARDS] No recognized output` lines concern native /top capture;
+they are separate from AI provider failures.

@@ -75,7 +75,7 @@ internal sealed class KeyferService : IDisposable
                     if (prose.Length > 0 && prose.Length <= 220) result.Notice = prose;
                 }
                 catch (Exception ex) when (ex is HttpRequestException || ex is OperationCanceledException || ex is JsonException || ex is KeyNotFoundException)
-                { Console.WriteLine("[TREASURE] Banter unavailable: " + ex.GetType().Name); }
+                { Console.WriteLine("[TREASURE] Banter unavailable: " + ProviderHttp.Describe(ex)); }
             }
         }
         if (result.Notice.Length > 0) treasure.SaveBanter(result.Notice);
@@ -394,7 +394,7 @@ internal sealed class KeyferService : IDisposable
         catch (Exception ex) when (ex is HttpRequestException || ex is OperationCanceledException || ex is IOException || ex is JsonException || ex is InvalidOperationException || ex is KeyNotFoundException)
         {
             // Do not expose provider payloads, tokens, or private prompts in diagnostics.
-            Console.WriteLine("[KEYFER] Request failed: " + ex.GetType().Name);
+            Console.WriteLine("[KEYFER] Request failed: " + ProviderHttp.Describe(ex));
             return new KeyferAnswer { Ok = false, Error = "Keyfer could not complete the request; check the Bridge configuration." };
         }
         finally { gate.Release(); }
@@ -419,7 +419,7 @@ internal sealed class KeyferService : IDisposable
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
         request.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
         using var response = await http.SendAsync(request, token);
-        response.EnsureSuccessStatusCode();
+        await ProviderHttp.EnsureSuccessAsync(response, token);
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync(token));
         return document.RootElement.GetProperty("choices")[0].GetProperty("message").Clone();
     }

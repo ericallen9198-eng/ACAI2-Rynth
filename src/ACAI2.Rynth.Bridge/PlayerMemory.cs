@@ -167,7 +167,7 @@ internal sealed class PlayerMemory : IDisposable
             foreach (var group in batch.GroupBy(b => b.Identity))
             {
                 try { await LearnAsync(group.Key, group.Select(g => g.Text).TakeLast(8).ToArray()); }
-                catch (Exception ex) { Console.WriteLine("[MEMORY] Review unavailable: " + ex.GetType().Name); }
+                catch (Exception ex) { Console.WriteLine("[MEMORY] Review unavailable: " + ProviderHttp.Describe(ex)); }
             }
         }
     }
@@ -204,7 +204,7 @@ internal sealed class PlayerMemory : IDisposable
         request.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(shutdown.Token);
         timeout.CancelAfter(TimeSpan.FromSeconds(20));
-        using var response = await http.SendAsync(request, timeout.Token); response.EnsureSuccessStatusCode();
+        using var response = await http.SendAsync(request, timeout.Token); await ProviderHttp.EnsureSuccessAsync(response, timeout.Token);
         using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(timeout.Token));
         using var result = JsonDocument.Parse(doc.RootElement.GetProperty("choices")[0].GetProperty("message").GetProperty("content").GetString() ?? "{}");
         if (!result.RootElement.TryGetProperty("updates", out var updates) || updates.ValueKind != JsonValueKind.Array) return;

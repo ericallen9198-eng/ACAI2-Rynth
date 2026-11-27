@@ -75,6 +75,27 @@ internal static class ModelMigrationChecks
                     model + " all actual chat/wiki/memory/arena payloads use compatible reasoning");
                 check(handler.Requests.Select(r => r.GetProperty("max_completion_tokens").GetInt32()).SequenceEqual(new[] { 1200, 1200, 1200, 1000, 1400 }),
                     model + " preserves bounded output budgets across request paths");
+                handler.Reject = true;
+                using var diagnostics = new StringWriter();
+                var originalOutput = Console.Out;
+                bool chatFailed = false, memoryFailed = false, arenaFellBack = false;
+                try
+                {
+                    Console.SetOut(diagnostics);
+                    chatFailed = !(await service.AskAsync(Ask("rejected", "Keyfer, hello again!"))).Ok;
+                    using var memory = new PlayerMemory(options, http);
+                    try { await memory.LearnAsync(identity, ["I enjoy archery"]); }
+                    catch (ProviderRequestException ex) { memoryFailed = ex.Diagnostic.Contains("insufficient_quota"); }
+                    await new ArenaAiCommentary(http, model).NarrateAsync(match, CancellationToken.None);
+                    arenaFellBack = match.CommentaryMode == "scripted";
+                }
+                finally { Console.SetOut(originalOutput); }
+                check(chatFailed && memoryFailed && arenaFellBack,
+                    model + " provider rejection fails chat and memory safely and retains scripted arena fallback");
+                check(diagnostics.ToString().Contains("HTTP 429; code=insufficient_quota") &&
+                    !diagnostics.ToString().Contains("PRIVATE_PROVIDER_TEXT"),
+                    model + " actual request paths report sanitized provider rejection diagnostics");
+
             }
         }
         finally
@@ -88,12 +109,15 @@ internal static class ModelMigrationChecks
     {
         internal readonly List<JsonElement> Requests = [];
         internal bool WikiNext;
+        internal bool Reject;
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
             if (request.RequestUri?.AbsoluteUri != "https://api.openai.com/v1/chat/completions" ||
                 request.Headers.Authorization?.Parameter != "isolated-test-not-a-real-key") throw new InvalidOperationException("Unexpected isolated request");
             using var doc = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(ct));
             var body = doc.RootElement.Clone(); Requests.Add(body);
+            if (Reject) return new(HttpStatusCode.TooManyRequests) { Content = new StringContent(
+                "{\"error\":{\"code\":\"insufficient_quota\",\"message\":\"PRIVATE_PROVIDER_TEXT\"}}") };
             object message;
             if (WikiNext)
             {

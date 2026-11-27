@@ -38,7 +38,7 @@ internal sealed class ArenaAiCommentary(HttpClient http, string model) : IArenaC
                 model, reasoning_effort = ModelCompatibility.ReasoningEffort(model), max_completion_tokens = 1400, response_format = new { type = "json_object" },
                 messages = new[] { new { role = "system", content = Instructions }, new { role = "user", content = JsonSerializer.Serialize(new { actions = facts }) } }
             }), Encoding.UTF8, "application/json");
-            using var response = await http.SendAsync(request, deadline.Token); response.EnsureSuccessStatusCode();
+            using var response = await http.SendAsync(request, deadline.Token); await ProviderHttp.EnsureSuccessAsync(response, deadline.Token);
             string body = await response.Content.ReadAsStringAsync(deadline.Token); if (body.Length > 64000) return Fallback();
             using var outer = JsonDocument.Parse(body);
             string content = outer.RootElement.GetProperty("choices")[0].GetProperty("message").GetProperty("content").GetString() ?? "";
@@ -47,7 +47,7 @@ internal sealed class ArenaAiCommentary(HttpClient http, string model) : IArenaC
             match.CommentaryMode = "ai"; return ArenaNarrator.Updates(match, prose);
         }
         catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException or JsonException or KeyNotFoundException or InvalidOperationException or RegexMatchTimeoutException or FormatException or IndexOutOfRangeException or ArgumentOutOfRangeException)
-        { return Fallback(); }
+        { Console.WriteLine("[ARENA] AI commentary unavailable: " + ProviderHttp.Describe(ex)); return Fallback(); }
     }
     internal static object? Context(ArenaMatch match, ArenaEvent e)
     {

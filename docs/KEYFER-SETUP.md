@@ -1,4 +1,4 @@
-# Keyfer on Rynth — plugin v0.3.5 / Bridge v0.20
+# Keyfer on Rynth — plugin v0.3.5 / Bridge v0.20.1
 
 This release restores the existing Keyfer services through a Rynth client adapter.
 It does not ship combat rendering, combat parsing, DPS, floating text, attack power,
@@ -24,7 +24,7 @@ are excluded from the published plugin/dependency graph.
 - Verified nearby player names (native player bit 0x8) in sampled perception,
   without guessing object kinds from names or distances from coordinates.
 
-The current source includes Bridge v0.20, which defaults to GPT-6 Luna and preserves the v0.19 moderation behavior.
+The current source includes Bridge v0.20.1, which defaults to GPT-6 Luna and preserves the v0.19 moderation behavior.
 For the Bridge-only model update, see [KEYFER-LUNA-UPDATE.md](KEYFER-LUNA-UPDATE.md).
 The older v0.3.5 full package linked below still includes Bridge v0.19; apply the Bridge-only update afterward. Stop the old
 Bridge before launching the included Bridge\ACAI2.Bridge.exe. Existing AI keys, memory, behavior, wiki reference,
