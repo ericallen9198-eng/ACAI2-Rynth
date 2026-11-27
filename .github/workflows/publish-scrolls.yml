@@ -16,6 +16,7 @@ jobs:
       - name: Publish and check the standalone scroll app
         shell: pwsh
         run: |
+          if (Select-String -Path src/ACAI2.Rynth.Scrolls.Plugin/*.cs -Pattern 'Host\.IsSpellKnown\(') { throw 'Do not query live spell qualities from the plugin pump' }
           & scripts/Publish-Scrolls.ps1
           if ($LASTEXITCODE) { throw 'Publish failed' }
           dotnet publish tools/ACAI2.ScrollsSmoke -c Release -r win-x86 --self-contained true -o "$env:RUNNER_TEMP/scroll-smoke"
@@ -31,11 +32,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $zip='ACAI2-Scrollwork-v0.1.0-Windows.zip'
+          $zip='ACAI2-Scrollwork-v0.1.1-Windows.zip'
           Compress-Archive -Path 'artifacts/scrolls/*' -DestinationPath $zip
           $hash=(Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
           "$hash  $zip" | Set-Content "$zip.sha256" -Encoding ascii
-          gh release create scrolls-v0.1.0 $zip "$zip.sha256" --repo '${{ github.repository }}' --target '${{ github.sha }}' --title 'Scrollwork v0.1.0 — level VIII scroll maker beta' --notes-file docs/SCROLLS-SETUP.md --prerelease --latest=false
+          gh release create scrolls-v0.1.1 $zip "$zip.sha256" --repo '${{ github.repository }}' --target '${{ github.sha }}' --title 'Scrollwork v0.1.1 — level VIII scroll maker beta' --notes-file docs/SCROLLS-SETUP.md --prerelease --latest=false
           if ($LASTEXITCODE) { throw 'Release upload failed' }
       - uses: actions/upload-artifact@v4
         with:

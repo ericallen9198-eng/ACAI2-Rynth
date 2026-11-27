@@ -10,7 +10,7 @@ internal sealed record ScrollView(long Epoch,string Character,string Status,Chec
 {public static ScrollView Empty=>new(0,"Waiting for login","Log in to scan learned level VIII spells.",[],[],[],"All","",true,false,false,0,0,[],90,90,true);}
 public sealed class ScrollsPlugin:RynthPluginBase
 {
-    public const string Version="0.1.0";
+    public const string Version="0.1.1";
     public override uint MinimumApiVersion=>92;
     private readonly ConcurrentQueue<UiRequest> requests=new();
     private readonly ScrollPanel panel=new();
@@ -64,13 +64,17 @@ public sealed class ScrollsPlugin:RynthPluginBase
         }
         return found.ToArray();
     }
+    private SpellbookSnapshot ReadSpellbook()
+    {
+        if(!Host.HasReadKnownSpells)throw new InvalidOperationException("Update RynthCore: the learned-spell snapshot API is unavailable.");
+        return SpellbookSnapshot.Read(Host.ReadKnownSpells);
+    }
     private void Scan()
     {
-        if(!Host.HasIsSpellKnown||!Host.HasGetContainerContents||!Host.HasGetObjectWcid)throw new InvalidOperationException("Update RynthCore: spellbook and inventory APIs are required.");
-        var items=Inventory();var result=new List<Checklist>();
-        foreach(var r in catalog.Recipes)
-        {if(!Host.IsSpellKnown(player,r.SpellId,out bool known))throw new InvalidOperationException("Spellbook unavailable; waiting for a complete scan.");result.Add(new(r,known,Planner.Count(items,r.ScrollTemplate)));}
-        inventory=items;rows=result.ToArray();
+        if(!Host.HasGetContainerContents||!Host.HasGetObjectWcid)throw new InvalidOperationException("Update RynthCore: inventory APIs are required.");
+        var book=ReadSpellbook();var items=Inventory();
+        var result=book.Checklist(catalog,items);
+        inventory=items;rows=result;
     }
     private string Safety()
     {
@@ -121,7 +125,7 @@ public sealed class ScrollsPlugin:RynthPluginBase
         if(time<settleAt)return;
         if(Host.GetBusyState()!=0||!guard.Idle())
         {if(time>=idleDeadline)End("Outstanding actions did not settle; no further craft issued.",false);return;}
-        if(!Host.IsSpellKnown(player,batch.Current.SpellId,out bool known)||known){End("Spellbook changed or became unavailable; rescan before continuing.",false);return;}
+        if(ReadSpellbook().Contains(batch.Current.SpellId)){End("The selected spell is now learned; rescan before continuing.",false);return;}
         var action=batch.Prepare(inventory);if(action.StepIndex==0&&Planner.Count(inventory,batch.Current.ScrollTemplate)>0){End("A selected scroll appeared in your packs; rescan before continuing.",false);return;}profile.Pending=action;Save(); // Durable BEFORE native dispatch.
         sentAt=time;status="Making "+batch.Current.Name+" — step "+(action.StepIndex+1)+"/3";
         if(!Host.UseObjectOn(action.SourceId,action.TargetId))End("Native craft request was not accepted/confirmed. Review inventory before another attempt.",false);

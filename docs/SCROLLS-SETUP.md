@@ -1,6 +1,10 @@
 # ACAI2 Scrollwork — level VIII scroll maker
 
-Version 0.1.0 beta. A separate RynthCore app; no RynthAi DLL replacement or Lua script.
+Version 0.1.1 beta. A separate RynthCore app; no RynthAi DLL replacement or Lua script.
+
+v0.1.1 fixes a first-live-test scan failure: learned spells now come from Rynth’s
+thread-safe cached spellbook snapshot, including the check before each craft.
+The live per-object spell-query API is not called from the plugin pump.
 
 ## Install
 

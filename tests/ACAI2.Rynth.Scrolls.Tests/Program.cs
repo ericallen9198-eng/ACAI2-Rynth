@@ -5,6 +5,22 @@ Check(catalog.Recipes.Length==197,"197 independently resolved recipes");
 Check(catalog.Unresolved.Length==2&&catalog.Unresolved.All(s=>s.Contains("Light Weapon")),"ambiguous recipes cannot craft");
 var aura=catalog.Recipes.Single(r=>r.SpellId==5183);Check(aura.Steps[^1].Result==37665,"Aura Blood Drinker spell identity");
 var arc=catalog.Recipes.Single(r=>r.SpellId==4421);Check(arc.ScrollTemplate==37992,"Acid Arc spell identity");
+// Regression: the learned-spell snapshot succeeds even when live per-spell queries
+// are unavailable on the plugin pump. It must classify all recipes from that cache.
+int reads=0;
+var book=SpellbookSnapshot.Read((ids,size)=>{reads++;ids[0]=aura.SpellId;ids[1]=123;return 2;});
+var checklist=book.Checklist(catalog,[new(99,arc.ScrollTemplate,"owned arc",1)]);
+Check(reads==1&&checklist.Length==197,"one snapshot supplies the entire checklist");
+Check(checklist.Single(r=>r.Recipe.Key==aura.Key).Known,"snapshot learned spell excluded from missing");
+Check(!checklist.Single(r=>r.Recipe.Key==arc.Key).Known&&checklist.Single(r=>r.Recipe.Key==arc.Key).InPack==1,"unlearned owned scroll remains in-pack, not learned");
+foreach(int nativeResult in new[]{-1,0,8,9})
+{
+    bool blocked=false;try{SpellbookSnapshot.Read((_,_)=>nativeResult,8);}catch(InvalidOperationException){blocked=true;}
+    Check(blocked,"cold, empty or truncated snapshot must not mean all spells missing");
+}
+bool invalid=false;try{SpellbookSnapshot.Read((_,_)=>1,8);}catch(InvalidOperationException){invalid=true;}Check(invalid,"unfilled cached spell IDs rejected");
+var nextBook=SpellbookSnapshot.Read((ids,_)=>{ids[0]=arc.SpellId;return 1;});
+Check(nextBook.Contains(arc.SpellId)&&!nextBook.Contains(aura.SpellId),"new snapshot does not carry previous known set");
 foreach(var recipe in catalog.Recipes)
 {
     var items=recipe.Ingredients.Select((i,k)=>new InventoryItem((uint)(k+1),i.Template,i.Name,1)).ToList();

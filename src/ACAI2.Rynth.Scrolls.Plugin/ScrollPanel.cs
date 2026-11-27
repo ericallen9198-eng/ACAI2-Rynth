@@ -29,7 +29,7 @@ internal sealed class ScrollPanel
                 ImGui.TextColored(accent,"LEVEL VIII  /  SCROLL MAKER");ImGui.SameLine();ImGui.TextDisabled("v"+ScrollsPlugin.Version);
                 ImGui.TextDisabled("Inventory supplies  •  Finished scrolls stay in your packs");
                 int known=v.Rows.Count(r=>r.Known),missing=v.Rows.Length-known;
-                ImGui.TextUnformatted($"{known} learned   /   {missing} missing   /   {v.Supplies.Sum(s=>s.Required)/4} selected");
+                ImGui.TextUnformatted(v.Rows.Length==0?"Waiting for learned-spell snapshot…":$"{known} learned   /   {missing} missing   /   {v.Supplies.Sum(s=>s.Required)/4} selected");
                 ImGui.Separator();
                 if(ImGui.BeginTabBar("scroll-tabs"))
                 {
