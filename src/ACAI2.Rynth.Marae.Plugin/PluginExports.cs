@@ -11,6 +11,14 @@ public static unsafe class PluginExports
     private static readonly RynthPluginRuntime<MaraePlugin> Runtime = new();
     private static readonly IntPtr Name = Marshal.StringToHGlobalAnsi("ACAI2.Marae");
     private static readonly IntPtr Version = Marshal.StringToHGlobalAnsi(MaraePlugin.Version);
+    [UnmanagedCallersOnly(EntryPoint="RynthPluginGetSectionsJson",CallConvs=[typeof(CallConvCdecl)])]
+    public static IntPtr Sections() { try { return MaraePlugin.Toolbar.Manifest; } catch { return IntPtr.Zero; } }
+    [UnmanagedCallersOnly(EntryPoint="RynthPluginRenderEmbed",CallConvs=[typeof(CallConvCdecl)])]
+    public static int Embed(byte* surface,float width,float height,float* wantWidth,float* wantHeight)
+    {
+        if(wantWidth!=null)*wantWidth=0;if(wantHeight!=null)*wantHeight=0;
+        try { return Runtime.Plugin?.RenderEmbedded(Marshal.PtrToStringUTF8((IntPtr)surface),width,height)??0; } catch { return -2; }
+    }
     [UnmanagedCallersOnly(EntryPoint="RynthPluginInit",CallConvs=[typeof(CallConvCdecl)])]
     public static int Init(RynthCoreApiNative* api) { try { return Runtime.Init(api); } catch { return 1; } }
     [UnmanagedCallersOnly(EntryPoint="RynthPluginShutdown",CallConvs=[typeof(CallConvCdecl)])]

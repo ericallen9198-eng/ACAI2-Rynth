@@ -1,3 +1,4 @@
+using ACAI2.Rynth.Ui;
 using System.Collections.Concurrent;
 using System.Globalization;
 using System.Reflection;
@@ -10,7 +11,9 @@ namespace ACAI2.Rynth.Marae.Plugin;
 
 public sealed class MaraePlugin:RynthPluginBase
 {
-    public const string Version="1.17.0";
+    public const string Version="1.18.0";
+    internal static readonly ToolbarWindow Toolbar=new("marae","ACAI2 Marae","\uE31A",460,420);
+    private readonly ToolbarVisibility toolbar=new(Toolbar);
     public override uint MinimumApiVersion=>92;
     private static readonly CultureInfo Inv=CultureInfo.InvariantCulture;
     private static readonly Hunter[] Hunters=JsonSerializer.Deserialize<Hunter[]>(Resource("Marae.hunters.json"))!;
@@ -44,6 +47,7 @@ public sealed class MaraePlugin:RynthPluginBase
     {
         var s=(text??"").Trim();if(s is not ("/acai2marae" or "/marae"))return;eat=1;Enqueue(new("show"));
     }
+    private void EnqueueAt(long bound,PanelRequest r){if(requests.Count<32)requests.Enqueue((bound,r));}
     private void Enqueue(PanelRequest r){if(requests.Count<32)requests.Enqueue((Volatile.Read(ref epoch),r));}
     public override void OnChatWindowText(string? text,int type,ref int eat)
     {
@@ -53,7 +57,7 @@ public sealed class MaraePlugin:RynthPluginBase
     }
     private void Reset()
     {
-        Interlocked.Increment(ref epoch);bot=null;profile=null;player=0;initialized=false;readable=true;startup="";npc=null;recovery=new();busy=false;
+        toolbar.Reset();Interlocked.Increment(ref epoch);bot=null;profile=null;player=0;initialized=false;readable=true;startup="";npc=null;recovery=new();busy=false;
         cacheWatcher=new();nearCaches.Clear();nextCacheScan=idleSince=0;watchResume="";watchOpened=watchDenied=false;
         nextTick=nextProbe=nextCheckpoint=0;deferredStop=autoResumePending=false;walkGeneration=restoreGeneration=npcGeneration=pickupGeneration=logGeneration=-1;
         savedRoute=temporaryRoute=temporarySignature="";oldMin=null;oldNearest=null;recent.Clear();mismatch.Clear();panel.Reset();renderFailed=false;
@@ -71,7 +75,7 @@ public sealed class MaraePlugin:RynthPluginBase
     private void Publish()
     {
         if(profile==null)return;
-        Volatile.Write(ref view,new(profile.Character,phase,detail,Owns&&bot!.Running||startup.Length>0,PVar("mm_pickup_unresolved")==1||profile.PendingMove!=null,profile.Options,profile.Folder,profile.Visible,profile.X,profile.Y));
+        Volatile.Write(ref view,new(profile.Character,phase,detail,Owns&&bot!.Running||startup.Length>0,PVar("mm_pickup_unresolved")==1||profile.PendingMove!=null,profile.Options,profile.Folder,profile.Visible,profile.X,profile.Y,epoch));
     }
     public override void OnTick()
     {
@@ -93,6 +97,7 @@ public sealed class MaraePlugin:RynthPluginBase
                 }
             }
             if(profile==null||bot==null||Host.GetPlayerId()!=player)return;
+            if(Host.HasSetPanelOpen)toolbar.Sync((key,mode)=>Host.SetPanelOpen(key,(RynthCore.PluginSdk.RynthPanelOpen)mode),open=>{if(readable&&profile.Visible!=open){profile.Visible=open;Save();}});
             if(Host.GetPluginInterface("RynthAi","RynthAi.Script",1)==IntPtr.Zero)return;
             Set("mm_stock_ready",1);Set("mm_stock_heartbeat",DateTimeOffset.UtcNow.ToUnixTimeSeconds());
             bool portal=!Host.HasIsPortaling||Host.IsPortaling(),dead=Num("getcharvital_current[1]")<=0;
@@ -113,7 +118,7 @@ public sealed class MaraePlugin:RynthPluginBase
             while(requests.TryDequeue(out var queued))
             {
                 if(queued.Epoch!=epoch)continue;var r=queued.Request;
-                if(r.Command=="show"){profile.Visible=true;renderFailed=false;Save();continue;}
+                if(r.Command=="show"){toolbar.Request(true);profile.Visible=true;renderFailed=false;Save();continue;}
                 if(r.Command=="appearance"){profile.Visible=r.Visible;profile.X=r.X;profile.Y=r.Y;Save();continue;}
                 if(r.Command=="options"&&r.Options!=null){profile.Options=r.Options.Validate();ApplyPreferences(false);Save();continue;}
                 if(r.Command=="folder"&&!bot.Running){profile.Folder=r.Folder??profile.Folder;Save();continue;}
@@ -162,7 +167,7 @@ public sealed class MaraePlugin:RynthPluginBase
             if(cacheWatcher.Active!=0){phase="Nearby cache check";detail=state+" · cache "+cacheWatcher.Active.ToString("X8",Inv);}
             Publish();
         }
-        catch(Exception ex){phase="Marae needs attention";detail=ex.Message;Host.Log("[ACAI2 Marae] "+ex.Message);if(profile!=null)Volatile.Write(ref view,new(profile.Character,phase,detail,false,false,profile.Options,profile.Folder,profile.Visible,profile.X,profile.Y));nextTick=time+2;}
+        catch(Exception ex){phase="Marae needs attention";detail=ex.Message;Host.Log("[ACAI2 Marae] "+ex.Message);if(profile!=null)Volatile.Write(ref view,new(profile.Character,phase,detail,false,false,profile.Options,profile.Folder,profile.Visible,profile.X,profile.Y,epoch));nextTick=time+2;}
     }
     private bool HandleCacheWatcher(double time)
     {
@@ -453,10 +458,15 @@ public sealed class MaraePlugin:RynthPluginBase
         if(!accepted){profile.PendingMove=null;Save();PSet("mm_stock_pickup_issued",0);}
         Set("tm_cache_sent",accepted?1:0);
     }
+    internal int RenderEmbedded(string? surface,float width,float height)
+    {
+        if(profile==null||loggedOut||renderFailed)return 0;
+        var snapshot=Volatile.Read(ref view);return Toolbar.Draw(surface,width,height,()=>panel.Draw(snapshot,r=>EnqueueAt(snapshot.Epoch,r),hosted:true));
+    }
     public override void OnRender()
     {
-        if(renderFailed)return;
-        try{panel.Draw(Volatile.Read(ref view),Enqueue);}catch(Exception ex){renderFailed=true;Host.Log("[ACAI2 Marae] Panel hidden after render error: "+ex.Message);}
+        if(renderFailed||Host.HasSetPanelOpen)return;
+        try{var snapshot=Volatile.Read(ref view);panel.Draw(snapshot,r=>EnqueueAt(snapshot.Epoch,r));}catch(Exception ex){renderFailed=true;Host.Log("[ACAI2 Marae] Panel hidden after render error: "+ex.Message);}
     }
     public override void Shutdown()
     {

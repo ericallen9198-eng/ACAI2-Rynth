@@ -1,3 +1,4 @@
+using ACAI2.Rynth.Ui;
 using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
@@ -10,7 +11,9 @@ internal sealed record ScrollView(long Epoch,string Character,string Status,Chec
 {public static ScrollView Empty=>new(0,"Waiting for login","Log in to scan learned level VIII spells.",[],[],[],"All","",true,false,false,0,0,[],90,90,true);}
 public sealed class ScrollsPlugin:RynthPluginBase
 {
-    public const string Version="0.1.2";
+    public const string Version="0.1.3";
+    internal static readonly ToolbarWindow Toolbar=new("scrollwork","Scrollwork","\uEB7A",680,540);
+    private readonly ToolbarVisibility toolbar=new(Toolbar);
     public override uint MinimumApiVersion=>92;
     private readonly ConcurrentQueue<UiRequest> requests=new();
     private readonly ScrollPanel panel=new();
@@ -36,7 +39,7 @@ public sealed class ScrollsPlugin:RynthPluginBase
     private void Reset()
     {
         // Expiring yield is allowed to lapse; a different login must never resume the prior macro.
-        Interlocked.Increment(ref epoch);batch=null;guard=null;profile=null;player=0;rows=[];inventory=[];skillsAvailable=0;anchor=null;readable=true;stopRequested=false;
+        toolbar.Reset();Interlocked.Increment(ref epoch);batch=null;guard=null;profile=null;player=0;rows=[];inventory=[];skillsAvailable=0;anchor=null;readable=true;stopRequested=false;
         while(requests.TryDequeue(out _)){}Volatile.Write(ref view,ScrollView.Empty with {Epoch=epoch});
     }
     private void Bind()
@@ -143,13 +146,14 @@ public sealed class ScrollsPlugin:RynthPluginBase
         try
         {
             if(time>=nextProbe){nextProbe=time+1;Bind();}if(profile==null)return;
+            if(Host.HasSetPanelOpen)toolbar.Sync((key,mode)=>Host.SetPanelOpen(key,(RynthCore.PluginSdk.RynthPanelOpen)mode),open=>{if(readable&&profile.Visible!=open){profile.Visible=open;Save();}});
             while(requests.TryDequeue(out var r))
             {
                 if(r.Epoch!=epoch)continue;
                 switch(r.Command)
                 {
-                    case "show":profile.Visible=true;renderFailed=false;Save();break;
-                    case "hide":profile.Visible=false;Save();break;
+                    case "show":toolbar.Request(true);profile.Visible=true;renderFailed=false;Save();break;
+                    case "hide":toolbar.Request(false);profile.Visible=false;Save();break;
                     case "move":profile.X=r.X;profile.Y=r.Y;Save();break;
                     case "school":profile.School=r.Value;Save();break;
                     case "tab":if(r.Value is "Self" or "Others" or "Equipment" or "Components" or "Activity & recipes"){profile.Tab=r.Value;Save();}break;
@@ -183,9 +187,14 @@ public sealed class ScrollsPlugin:RynthPluginBase
         var selected=rows.Where(r=>profile.Selected.Contains(r.Recipe.Key)&&!r.Known&&r.InPack==0).Select(r=>r.Recipe);
         Volatile.Write(ref view,new(epoch,profile.Character,status,rows,Planner.Shopping(selected,inventory),profile.Selected.ToArray(),profile.School,profile.Search,profile.MissingOnly,batch!=null,profile.Pending!=null&&batch==null,batch?.Completed??0,batch?.Total??0,profile.Recent.ToArray(),profile.X,profile.Y,profile.Visible,profile.Tab,profile.EssentialsOnly,skillsAvailable));
     }
+    internal int RenderEmbedded(string? surface,float width,float height)
+    {
+        if(profile==null||loggedOut||renderFailed)return 0;
+        return Toolbar.Draw(surface,width,height,()=>panel.Render(Volatile.Read(ref view),catalog.Unresolved,Queue,hosted:true));
+    }
     public override void OnRender()
     {
-        if(renderFailed)return;
+        if(renderFailed||Host.HasSetPanelOpen)return;
         try{panel.Render(Volatile.Read(ref view),catalog?.Unresolved??[],Queue);}catch(Exception ex){renderFailed=true;Host.Log("[ACAI2 Scrolls] Panel error: "+ex.Message);}
     }
 }

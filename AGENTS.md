@@ -171,3 +171,10 @@ paused after normal completion or settled stop. Stop on movement, combat, death,
 logout, identity change or competing automation. No buying, automatic learning,
 provider calls or changes to RynthAi DLLs. Keep unresolved/retired recipes outside
 craft dispatch and preserve per-character preferences with bounded history.
+
+The user authorized native Rynth toolbar windows for Scrollwork, Threads and Marae.
+Use the existing GetSectionsJson / RenderEmbed window schema and bundled Phosphor
+icons, with engine-owned frame/layout/pop-out and the same body controls. Embedded
+rendering must never begin another top-level window or change ImGui context. Keep
+UI actions queued for the current character/session; close/show are presentation
+only and must not stop/start workflows. Do not modify Combat, Keyfer or the engine.

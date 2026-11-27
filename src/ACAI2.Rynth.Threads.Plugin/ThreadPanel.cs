@@ -19,7 +19,7 @@ internal sealed class ThreadPanel
     private ThreadAppearance a=new();
     private PrepPlan plan=>a.Plan;
     private bool position=true,settings;
-    private int frame=-1;
+    private int frame=-1;private IntPtr lastContext;
     private string goal="lum";
     public bool Visible {get=>a.Visible;set{a.Visible=value;Dirty=true;}}
     public bool Dirty;
@@ -34,30 +34,31 @@ internal sealed class ThreadPanel
     public void Save(string path)
     {string temporary=path+".tmp";File.WriteAllText(temporary,JsonSerializer.Serialize(a));File.Move(temporary,path,true);}
     private static string Summary(IEnumerable<string> doses)=>string.Join(", ",doses.GroupBy(n=>n).Select(g=>g.Key+(g.Count()>1?" x"+g.Count():"")));
-    public void Draw(string character,ThreadView view,PrepMachine machine,string notice,Action<PrepPlan> start,Action stop,Action<string> command)
+    public void Draw(string character,ThreadView view,PrepMachine machine,string notice,Action<PrepPlan> start,Action stop,Action<string> command,bool hosted=false)
     {
-        if(!a.Visible||ImGui.GetCurrentContext()==IntPtr.Zero)return;
-        int current=ImGui.GetFrameCount();if(frame==current)return;frame=current;
-        if(position){ImGui.SetNextWindowPos(new(a.X,a.Y),ImGuiCond.Always);position=false;}
-        ImGui.SetNextWindowSize(new(440,420),ImGuiCond.FirstUseEver);ImGui.SetNextWindowBgAlpha(a.Opacity);
+        if((!hosted&&!a.Visible)||ImGui.GetCurrentContext()==IntPtr.Zero)return;
+        int current=ImGui.GetFrameCount();if(lastContext==ImGui.GetCurrentContext()&&frame==current)return;frame=current;lastContext=ImGui.GetCurrentContext();
+        if(!hosted&&position){ImGui.SetNextWindowPos(new(a.X,a.Y),ImGuiCond.Always);position=false;}
+        if(!hosted){ImGui.SetNextWindowSize(new(440,420),ImGuiCond.FirstUseEver);ImGui.SetNextWindowBgAlpha(a.Opacity);}
         ImGui.PushStyleVar(ImGuiStyleVar.WindowRounding,8);
         ImGui.PushStyleColor(ImGuiCol.WindowBg,new Vector4(.035f,.055f,.065f,1));
         ImGui.PushStyleColor(ImGuiCol.Header,new Vector4(.08f,.3f,.28f,1));
         bool visible=a.Visible;
         try
         {
-            bool expanded=ImGui.Begin("THREADS / "+character+"###acai2-threads",ref visible,a.Locked?ImGuiWindowFlags.NoMove:ImGuiWindowFlags.None);
+            bool expanded=hosted||ImGui.Begin("THREADS / "+character+"###acai2-threads",ref visible,a.Locked?ImGuiWindowFlags.NoMove:ImGuiWindowFlags.None);
             try
             {
-                if(visible!=a.Visible){a.Visible=visible;Dirty=true;}
+                if(!hosted&&visible!=a.Visible){a.Visible=visible;Dirty=true;}
                 if(!expanded)return;
-                var pos=ImGui.GetWindowPos();if(pos.X!=a.X||pos.Y!=a.Y){a.X=pos.X;a.Y=pos.Y;Dirty=true;}
-                ImGui.TextColored(new(.38f,.9f,.77f,1),"Thread journal + gem preparation");
+                var pos=ImGui.GetWindowPos();if(!hosted&&(pos.X!=a.X||pos.Y!=a.Y)){a.X=pos.X;a.Y=pos.Y;Dirty=true;}
+                ImGui.TextColored(new(.38f,.9f,.77f,1),"Thread journal + gem preparation / "+character);
                 ImGui.SameLine();if(ImGui.SmallButton("Settings"))settings=!settings;
                 if(settings)
                 {
-                    bool locked=a.Locked;if(ImGui.Checkbox("Lock position",ref locked)){a.Locked=locked;Dirty=true;}
+                    ImGui.BeginDisabled(hosted);bool locked=a.Locked;if(ImGui.Checkbox("Lock position",ref locked)){a.Locked=locked;Dirty=true;}
                     float opacity=a.Opacity;if(ImGui.SliderFloat("Background",ref opacity,.15f,1)){a.Opacity=opacity;Dirty=true;}
+                    ImGui.EndDisabled();if(hosted)ImGui.TextDisabled("Window layout and appearance use Rynth panel controls.");
                     if(ImGui.Button("Export local records"))command("export");
                 }
                 ImGui.TextDisabled(view.Runs+" runs | "+view.Presses+" presses | local records only");
@@ -144,7 +145,7 @@ internal sealed class ThreadPanel
                 }
                 ImGui.Separator();ImGui.TextWrapped(view.Notice);if(notice.Length>0)ImGui.TextWrapped(notice);
             }
-            finally{ImGui.End();}
+            finally{if(!hosted)ImGui.End();}
         }
         finally{ImGui.PopStyleColor(2);ImGui.PopStyleVar();}
     }

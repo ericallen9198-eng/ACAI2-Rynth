@@ -1,20 +1,28 @@
 # ACAI2 Scrollwork — level VIII scroll maker
 
-Version 0.1.2 beta. A separate RynthCore app; no RynthAi DLL replacement or Lua script.
+Version 0.1.3 beta. A separate RynthCore app; no RynthAi DLL replacement or Lua script.
 
-v0.1.2 separates Self, Others and Equipment, and highlights missing self skill buffs
-for skills actually trained/specialized on this character. Learned spells continue
-to use the thread-safe cached snapshot introduced in v0.1.1.
+v0.1.3 adds a scroll icon to Rynth’s toolbar. Rynth hosts the window and owns its
+placement, resizing, text size, close button and pop-out. The existing Self / Others /
+Equipment lists, essentials, recipes and crafting checkpoints are retained.
 
 ## Install
 
 1. Close the game, extract the whole ZIP, and double-click **INSTALL-SCROLLS.cmd**.
 2. In RynthCore → Plugins → Add Plugin, paste the DLL path copied by the installer. Enable **ACAI2.Scrolls**. Keep RynthAi enabled.
-3. Log in and type `/acai2scrolls`. The panel opens automatically on first use.
+3. Log in and type `/acai2scrolls`. Or click the scroll icon in Rynth’s bar.
 
 The default DLL is `%LOCALAPPDATA%\ACAI2\Scrolls\App\ACAI2.Rynth.Scrolls.Plugin.dll`.
 The installer also creates PLUGIN-PATH.txt there. It never installs API keys, changes
 loot profiles, replaces the engine/RynthAi, or touches other ACAI2 apps.
+
+## Native panel controls
+
+Click the scroll icon to show/hide Scrollwork, or use `/acai2scrolls` to open it.
+Closing the panel does not stop a craft; use Stop for that. Rynth remembers the new
+hosted panel layout through its normal window settings. Legacy standalone X/Y
+values stay in the old profile but do not control the native frame. Pop-outs draw
+in Rynth’s current context; no second ImGui context is created.
 
 ## Use
 

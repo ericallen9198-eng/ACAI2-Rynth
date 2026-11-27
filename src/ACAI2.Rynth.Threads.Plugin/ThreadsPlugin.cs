@@ -1,3 +1,4 @@
+using ACAI2.Rynth.Ui;
 using System.Collections.Concurrent;
 using System.Text.Json;
 using ACAI2.Rynth.Threads.Core;
@@ -7,12 +8,16 @@ namespace ACAI2.Rynth.Threads.Plugin;
 
 public sealed class ThreadsPlugin : RynthPluginBase
 {
-    public const string Version="0.1.6";
+    public const string Version="0.1.7";
+    internal static readonly ToolbarWindow Toolbar=new("threads","Threads","\uE6A2",460,500);
+    private readonly ToolbarVisibility toolbar=new(Toolbar);
     public override uint MinimumApiVersion=>92;
     private readonly ConcurrentQueue<string> commands=new();
     private readonly ConcurrentQueue<(string Text,int Type)> prepChat=new();
     private readonly PrepMachine prep=new();
-    private readonly ConcurrentQueue<PrepPlan> starts=new();
+    private readonly ConcurrentQueue<(long Epoch,PrepPlan Plan)> starts=new();
+    private readonly ConcurrentQueue<long> uiStops=new();
+    private long uiEpoch;
     private readonly ThreadPanel panel=new();
     private ThreadWorker? journal;
     private ThreadIdentity? identity;
@@ -33,7 +38,7 @@ public sealed class ThreadsPlugin : RynthPluginBase
     private StationPosition? batchOrigin;
     private string Root=>Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"ACAI2-Threads");
     private static double Now=>System.Diagnostics.Stopwatch.GetTimestamp()/(double)System.Diagnostics.Stopwatch.Frequency;
-    public override int Initialize(){Host.Log("[ACAI2 Threads] v0.1.6. /acai2threads opens the standalone panel. Gem preparation starts only from the panel.");return 0;}
+    public override int Initialize(){Host.Log("[ACAI2 Threads] v0.1.7. /acai2threads opens the standalone panel. Gem preparation starts only from the panel.");return 0;}
     public override void OnLoginComplete(){waiting=false;Interlocked.Exchange(ref lifecycle,1);}
     public override void OnLogout(){waiting=true;journal?.Dispose();Interlocked.Exchange(ref lifecycle,1);}
     public override void OnChatWindowText(string? text,int type,ref int eat)
@@ -74,17 +79,19 @@ public sealed class ThreadsPlugin : RynthPluginBase
                 catch(Exception ex){prepReadable=false;notice="Local state unavailable; prep disabled, existing file preserved: "+ex.GetType().Name;}
             }
         }
+        while(uiStops.TryDequeue(out long stopEpoch))if(stopEpoch==Volatile.Read(ref uiEpoch))commands.Enqueue("stop");
         while(commands.TryDequeue(out string? cmd))
         {
-            if(cmd is "show" or "" or "setup"){panel.Visible=true;renderFailed=false;}
-            else if(cmd=="hide")panel.Visible=false;
+            if(cmd is "show" or "" or "setup"){toolbar.Request(true);panel.Visible=true;renderFailed=false;}
+            else if(cmd=="hide"){toolbar.Request(false);panel.Visible=false;}
             else if(cmd=="stop"){resumeAfterStop=waitingPlan!=null||prep.Data.State is "Supply check" or "Loading" or "Idle" or "Completed";waitingPlan=null;prep.Stop();settleAfter=Now+2;notice=resumeAfterStop?"Stopped; waiting for the client to settle before releasing RynthAi.":"Stopped during an outstanding request; RynthAi stays paused for review.";SavePrep();Local(notice);}
             else if(cmd=="status")Local("v"+Version+" | prep "+prep.Data.State+" "+prep.Data.Notice+" | "+notice);
             else if(cmd=="export")journal?.Submit(new("command","export",DateTime.UtcNow));
         }
-        if(starts.TryDequeue(out var requested))StartPrep(requested);
+        if(starts.TryDequeue(out var requested)&&requested.Epoch==Volatile.Read(ref uiEpoch))StartPrep(requested.Plan);
         while(prepChat.TryDequeue(out var line)){Interlocked.Decrement(ref queued);prep.Observe(line.Text,line.Type);}
         if(identity==null)return;
+        if(Host.HasSetPanelOpen)toolbar.Sync((key,mode)=>Host.SetPanelOpen(key,(RynthPanelOpen)mode),open=>{if(panel.Visible!=open)panel.Visible=open;});
         if(Now>=nextStep)
         {
             nextStep=Now+.2;
@@ -298,14 +305,27 @@ public sealed class ThreadsPlugin : RynthPluginBase
         }
         catch(Exception ex){waitingPlan=null;notice="Start refused: "+ex.Message;Local(notice);if(Lease.Active){resumeAfterStop=true;settleAfter=Now+2;}}
     }
+    private void DrawPanel(bool hosted)
+    {
+        var who=identity;var worker=journal;long bound=Volatile.Read(ref uiEpoch);
+        if(who==null||!ReferenceEquals(who,identity))return;
+        panel.Draw(who.Character,worker?.View??ThreadView.Empty,prep,notice,
+            p=>{if(starts.IsEmpty)starts.Enqueue((bound,JsonSerializer.Deserialize<PrepPlan>(JsonSerializer.Serialize(p))!));},
+            ()=>{if(uiStops.Count<16)uiStops.Enqueue(bound);},s=>worker?.Submit(new("command",s,DateTime.UtcNow)),hosted);
+    }
+    internal int RenderEmbedded(string? surface,float width,float height)
+    {
+        if(identity==null||waiting||renderFailed)return 0;
+        return Toolbar.Draw(surface,width,height,()=>DrawPanel(true));
+    }
     public override void OnRender()
     {
-        if(identity==null||renderFailed)return;
-        try{panel.Draw(identity.Character,journal?.View??ThreadView.Empty,prep,notice,p=>{if(starts.IsEmpty)starts.Enqueue(JsonSerializer.Deserialize<PrepPlan>(JsonSerializer.Serialize(p))!);},()=>commands.Enqueue("stop"),s=>journal?.Submit(new("command",s,DateTime.UtcNow)));}
-        catch(Exception ex){renderFailed=true;Local("Thread panel hidden after error: "+ex.GetType().Name+" "+ex.Message);}
+        if(identity==null||renderFailed||Host.HasSetPanelOpen)return;
+        try{DrawPanel(false);}catch(Exception ex){renderFailed=true;Host.Log("[ACAI2 Threads] Panel error: "+ex.Message);}
     }
     private void End()
     {
+        toolbar.Reset();Interlocked.Increment(ref uiEpoch);while(uiStops.TryDequeue(out _)){}
         waitingPlan=null;resumeAfterStop=false;if(botLease?.Active==true){try{botLease.Release(false);}catch{}}held=false;
         prep.Stop("Login ended");try{SavePrep();}catch{};
         if(journal!=null){journal.Dispose();closing=journal.Completion;}journal=null;identity=null;player=0;pendingIdentify=0;pendingPurchase=0;identifyAfter.Clear();folder="";anchor=null;batchOrigin=null;previousCheckpoint="";prep.Restore(new());

@@ -4,7 +4,7 @@
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <PlatformTarget>x86</PlatformTarget>
     <RuntimeIdentifier>win-x86</RuntimeIdentifier>
-    <Version>1.17.0</Version>
+    <Version>1.18.0</Version>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <PublishAot>false</PublishAot>
     <SelfContained>false</SelfContained>
@@ -29,6 +29,7 @@
     <EmbeddedResource Include="../../metas/marae-lassel-stock/MetaFiles/Marae Lassel - Embedded.af" LogicalName="Marae.workflow.af" />
     <EmbeddedResource Include="../../metas/marae-lassel-mission/checkpoint-keys.json" LogicalName="Marae.keys.json" />
   </ItemGroup>
+  <ItemGroup><Compile Include="../Shared/ToolbarWindow.cs" Link="Ui/ToolbarWindow.cs" /></ItemGroup>
   <Import Project="..\..\external\RynthCore\src\RynthCore.PluginSdk\build\RynthCore.PluginSdk.targets" />
   <!-- The SDK import runs before IntermediateOutputPath is populated. Keep its
        generated sources under obj so subsequent builds do not glob them twice. -->

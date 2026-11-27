@@ -1,6 +1,6 @@
 {
   "title": "Marae Lassel - Quick Start",
-  "version": "1.17.0",
+  "version": "1.18.0",
   "intro": "DreamWeave tasks and treasure maps for the 180 Lowlands, 225 High Country and 275 Plateau.",
   "before": [
     "Have an updated RynthCore and RynthAi, with a working combat and loot profile. Enable RynthNav only if you want mesh map travel.",
@@ -21,7 +21,7 @@
     ],
     [
       "Start",
-      "Log into DreamWeave and type /acai2marae. Choose your areas and options below, then click Start / Resume. The app loads its mission and routes for you."
+      "Log into DreamWeave and click the ACAI2 Marae map icon in Rynth\u2019s bar, or type /acai2marae. Choose your areas and options below, then click Start / Resume. The app loads its mission and routes for you."
     ]
   ],
   "options": [
@@ -53,7 +53,7 @@
   "tips": [
     "Suggested tasks + maps: tick your areas and Use maps; leave Hunt only OFF. Enable the 2-hour limit if you want a bounded daily circuit.",
     "Start / Resume keeps progress. New run starts the area's task checks over. Stop saves progress and stops automatic login resume.",
-    "Panel closed? Type /acai2marae. Lost the plugin path? Open %LOCALAPPDATA%\\ACAI2\\Marae and read PLUGIN-PATH.txt.",
+    "Map icon or /acai2marae opens the panel. Closing it does not stop hunting. PLUGIN-PATH.txt is in %LOCALAPPDATA%\\ACAI2\\Marae.",
     "Wrong data location? In the app, open Advanced and set the folder containing MetaFiles / NavProfiles. You can also rerun the installer.",
     "Watch the first NPC and map/cache before leaving it unattended. If a pickup needs review, check your pack/cache before clicking the review button."
   ],

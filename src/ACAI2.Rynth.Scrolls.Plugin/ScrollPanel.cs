@@ -5,7 +5,7 @@ namespace ACAI2.Rynth.Scrolls.Plugin;
 
 internal sealed class ScrollPanel
 {
-    private bool position=true,reviewCheck,tabsPlaced;private string activeTab="";private int frame=-1;private Vector2? lastPosition;
+    private bool position=true,reviewCheck,tabsPlaced;private string activeTab="";private int frame=-1;private IntPtr lastContext;private Vector2? lastPosition;
     private const string Schools="All\0Creature\0Item\0Life\0War\0Void\0";
     // ImGui.NET's flagged string overload requires a close-button pointer.
     // A null pointer keeps these fixed navigation tabs non-closeable.
@@ -15,9 +15,9 @@ internal sealed class ScrollPanel
         fixed(byte* p=label)return ImGuiNative.igBeginTabItem(p,null,flags)!=0;
     }
     public void Reload(){position=true;reviewCheck=false;lastPosition=null;tabsPlaced=false;activeTab="";}
-    public void Render(ScrollView v,string[] unresolved,Action<UiRequest> send)
+    public void Render(ScrollView v,string[] unresolved,Action<UiRequest> send,bool hosted=false)
     {
-        if(!v.Visible||ImGui.GetCurrentContext()==IntPtr.Zero||frame==ImGui.GetFrameCount())return;frame=ImGui.GetFrameCount();
+        if((!hosted&&!v.Visible)||ImGui.GetCurrentContext()==IntPtr.Zero||(lastContext==ImGui.GetCurrentContext()&&frame==ImGui.GetFrameCount()))return;frame=ImGui.GetFrameCount();lastContext=ImGui.GetCurrentContext();
         void Request(string command,string value="",string[]? keys=null,float x=0,float y=0)=>send(new(v.Epoch,command,value,keys,x,y));
         var accent=new Vector4(.38f,.88f,.9f,1);var purple=new Vector4(.7f,.5f,1,1);
         ImGui.PushStyleColor(ImGuiCol.WindowBg,new Vector4(.045f,.055f,.09f,.97f));
@@ -25,15 +25,15 @@ internal sealed class ScrollPanel
         ImGui.PushStyleColor(ImGuiCol.CheckMark,accent);ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding,new Vector2(12,10));
         try
         {
-            ImGui.SetNextWindowSize(new Vector2(680,540),ImGuiCond.FirstUseEver);
-            if(position){ImGui.SetNextWindowPos(new(v.X,v.Y),ImGuiCond.Always);position=false;}
-            bool visible=true;bool open=ImGui.Begin("SCROLLWORK / "+v.Character+"###acai2-scrolls",ref visible);
+            if(!hosted)ImGui.SetNextWindowSize(new Vector2(680,540),ImGuiCond.FirstUseEver);
+            if(!hosted&&position){ImGui.SetNextWindowPos(new(v.X,v.Y),ImGuiCond.Always);position=false;}
+            bool visible=true;bool open=hosted||ImGui.Begin("SCROLLWORK / "+v.Character+"###acai2-scrolls",ref visible);
             try
             {
-                if(!visible)Request("hide");
+                if(!hosted&&!visible)Request("hide");
                 if(!open)return;
-                var pos=ImGui.GetWindowPos();if(lastPosition!=pos){lastPosition=pos;if(Math.Abs(pos.X-v.X)>1||Math.Abs(pos.Y-v.Y)>1)Request("move",x:pos.X,y:pos.Y);}
-                ImGui.TextColored(accent,"LEVEL VIII  /  SCROLL MAKER");ImGui.SameLine();ImGui.TextDisabled("v"+ScrollsPlugin.Version);
+                var pos=ImGui.GetWindowPos();if(!hosted&&lastPosition!=pos){lastPosition=pos;if(Math.Abs(pos.X-v.X)>1||Math.Abs(pos.Y-v.Y)>1)Request("move",x:pos.X,y:pos.Y);}
+                ImGui.TextColored(accent,"LEVEL VIII  /  SCROLL MAKER");ImGui.SameLine();ImGui.TextDisabled("v"+ScrollsPlugin.Version+" / "+v.Character);
                 ImGui.TextDisabled("Inventory supplies  •  Finished scrolls stay in your packs");
                 int known=v.Rows.Count(r=>r.Known),missing=v.Rows.Length-known;
                 ImGui.TextUnformatted(v.Rows.Length==0?"Waiting for learned-spell snapshot…":$"{known} learned   /   {missing} missing   /   {v.Supplies.Sum(s=>s.Required)/4} selected total");
@@ -133,7 +133,7 @@ internal sealed class ScrollPanel
                     ImGui.BeginDisabled(!reviewCheck);if(ImGui.Button("Clear reviewed checkpoint")){Request("review");reviewCheck=false;}ImGui.EndDisabled();
                 }
             }
-            finally{ImGui.End();}
+            finally{if(!hosted)ImGui.End();}
         }
         finally{ImGui.PopStyleVar();ImGui.PopStyleColor(3);}
     }

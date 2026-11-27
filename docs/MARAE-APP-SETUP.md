@@ -1,5 +1,5 @@
 # Marae Lassel - Quick Start
-Version 1.17.0
+Version 1.18.0
 
 DreamWeave tasks and treasure maps for the 180 Lowlands, 225 High Country and 275 Plateau.
 
@@ -13,7 +13,7 @@ DreamWeave tasks and treasure maps for the 180 Lowlands, 225 High Country and 27
 1. **Extract.** Close the game. Right-click the downloaded ZIP, choose Extract All, then open the extracted folder.
 2. **Install.** Double-click INSTALL-MARAE.cmd. It finds RynthAi automatically. If a folder picker opens, choose your RynthAi folder containing MetaFiles or NavProfiles. Your RynthSuite folder also works; any drive is fine.
 3. **Add the plugin.** Open RynthCore > Plugins > Add Plugin. Paste with Ctrl+V in the file-name box: the installer copied the full DLL path. Select it and enable ACAI2.Marae. Keep RynthAi enabled.
-4. **Start.** Log into DreamWeave and type /acai2marae. Choose your areas and options below, then click Start / Resume. The app loads its mission and routes for you.
+4. **Start.** Log into DreamWeave and click the ACAI2 Marae map icon in Rynth’s bar, or type /acai2marae. Choose your areas and options below, then click Start / Resume. The app loads its mission and routes for you.
 
 ## Pick your options
 
@@ -30,7 +30,7 @@ DreamWeave tasks and treasure maps for the 180 Lowlands, 225 High Country and 27
 
 - Suggested tasks + maps: tick your areas and Use maps; leave Hunt only OFF. Enable the 2-hour limit if you want a bounded daily circuit.
 - Start / Resume keeps progress. New run starts the area's task checks over. Stop saves progress and stops automatic login resume.
-- Panel closed? Type /acai2marae. Lost the plugin path? Open %LOCALAPPDATA%\ACAI2\Marae and read PLUGIN-PATH.txt.
+- Map icon or /acai2marae opens the panel. Closing it does not stop hunting. PLUGIN-PATH.txt is in %LOCALAPPDATA%\ACAI2\Marae.
 - Wrong data location? In the app, open Advanced and set the folder containing MetaFiles / NavProfiles. You can also rerun the installer.
 - Watch the first NPC and map/cache before leaving it unattended. If a pickup needs review, check your pack/cache before clicking the review button.
 

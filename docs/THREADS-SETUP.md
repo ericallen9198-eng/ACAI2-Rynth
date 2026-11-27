@@ -1,3 +1,18 @@
+# Threads v0.1.7 — native Rynth toolbar panel
+
+The sparkle icon in Rynth’s toolbar opens/closes Threads. `/acai2threads` still opens
+it, and `/acai2threads hide` closes it. Rynth owns the frame, placement, resizing,
+text size and pop-out. Closing the window does not stop gem preparation; use STOP
+BATCH or `/acai2threads stop` to stop a batch.
+
+Close the game, extract the full Windows ZIP and run **INSTALL-THREADS.cmd**.
+Its default DLL path is `%LOCALAPPDATA%\ACAI2\Threads\App\ACAI2.Rynth.Threads.Plugin.dll`.
+The installer copies that path to your clipboard. In RynthCore Plugins, disable an
+old Threads entry at a different path, then add/enable this one. Do not run two copies.
+If your previous entry already uses this path, keep it. Existing recipes, progress,
+local records and appearance files under `%LOCALAPPDATA%\ACAI2-Threads` are retained.
+The new hosted frame uses Rynth’s own saved window layout. No RynthAi DLL is replaced.
+
 # ACAI2 Threads v0.1.6 — standalone gem maker and journal
 
 This is an independent managed x86 Rynth plugin, not a replacement for RynthCore,

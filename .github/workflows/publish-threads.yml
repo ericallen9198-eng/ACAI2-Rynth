@@ -8,7 +8,7 @@ on:
       version:
         description: Package version (e.g. 0.1.5)
         required: true
-        default: '0.1.6'
+        default: '0.1.7'
       commit_sha:
         description: Full tested source commit SHA
         required: true
