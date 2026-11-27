@@ -159,3 +159,15 @@ installation is an explicit separate version-guarded backup-first operation.
 Native Hunt mode must remain unavailable until its original area can be paused and
 restored with acknowledgment; /ra hunt start re-anchors from the current position.
 Preserve per-character settings/checkpoints and never replay uncertain currency moves.
+
+The user authorized a separate level VIII Scrollwork plugin: read learned spells,
+show missing craftable scrolls and inventory-adjusted component totals, then craft
+an explicitly selected batch from owned supplies. Use verified spell/template IDs
+and serial item-on-item actions on OnTick, with a durable checkpoint before each
+native use and inventory acknowledgment before the next. Unconfirmed uses must
+survive restart for review, never replay automatically. Use the stock Script /
+Activity / expiring Yield interfaces; restore only the macro this live batch
+paused after normal completion or settled stop. Stop on movement, combat, death,
+logout, identity change or competing automation. No buying, automatic learning,
+provider calls or changes to RynthAi DLLs. Keep unresolved/retired recipes outside
+craft dispatch and preserve per-character preferences with bounded history.

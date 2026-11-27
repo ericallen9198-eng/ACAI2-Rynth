@@ -1,0 +1,43 @@
+name: Build and publish Scrollwork beta
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Publish and check the standalone scroll app
+        shell: pwsh
+        run: |
+          & scripts/Publish-Scrolls.ps1
+          if ($LASTEXITCODE) { throw 'Publish failed' }
+          dotnet publish tools/ACAI2.ScrollsSmoke -c Release -r win-x86 --self-contained true -o "$env:RUNNER_TEMP/scroll-smoke"
+          if ($LASTEXITCODE) { throw 'Smoke build failed' }
+          & "$env:RUNNER_TEMP/scroll-smoke/ACAI2.ScrollsSmoke.exe" "$env:GITHUB_WORKSPACE/artifacts/scrolls/Support/Plugin/ACAI2.Rynth.Scrolls.Plugin.dll"
+          if ($LASTEXITCODE) { throw 'Actual app load/manifest smoke failed' }
+          & tools/ACAI2.ScrollsSmoke/Test-Installer.ps1 -Package "$env:GITHUB_WORKSPACE/artifacts/scrolls"
+          if ($LASTEXITCODE) { throw 'Installer verification failed' }
+          if (Test-Path artifacts/scrolls/Support/Plugin/cimgui.dll) { throw 'Must use engine ImGui' }
+          if (Test-Path artifacts/scrolls/Support/Plugin/ImGui.NET.dll) { throw 'Must use engine bindings' }
+      - name: Publish beta package
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $zip='ACAI2-Scrollwork-v0.1.0-Windows.zip'
+          Compress-Archive -Path 'artifacts/scrolls/*' -DestinationPath $zip
+          $hash=(Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $zip" | Set-Content "$zip.sha256" -Encoding ascii
+          gh release create scrolls-v0.1.0 $zip "$zip.sha256" --repo '${{ github.repository }}' --target '${{ github.sha }}' --title 'Scrollwork v0.1.0 — level VIII scroll maker beta' --notes-file docs/SCROLLS-SETUP.md --prerelease --latest=false
+          if ($LASTEXITCODE) { throw 'Release upload failed' }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ACAI2-Scrollwork-Windows
+          path: artifacts/scrolls/

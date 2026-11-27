@@ -142,3 +142,10 @@ excluded from compilation.
 
 [Current status](docs/STATUS.md) · [rollout plan](docs/NEXT-ROLLOUT.md) ·
 [cloud development](docs/CLOUD-DEVELOPMENT.md) · [source provenance](origin/ACAI2-SOURCE.md)
+
+## Scrollwork — standalone level VIII scroll maker
+
+`/acai2scrolls` opens the missing-spell checklist, component planner and explicit
+inventory-only crafting panel. The beta contains 197 ACE-checked recipe chains;
+it leaves finished scrolls in your packs and does not buy or learn automatically.
+See [Scrollwork setup and recipe sources](docs/SCROLLS-SETUP.md).

@@ -57,3 +57,13 @@ Marae v1.16 also links the genuine, unmodified RynthCore src/Shared/RynthInstall
 (read-only environment/registry install-path discovery) from the pinned MIT SDK checkout.
 Soot (xSoot / SootAC) is credited for the nav paths, initial mission logic and original
 custom RynthAi DLL implementation in the app, guide and bundled CREDITS.txt.
+
+## Scrollwork recipe reference data
+
+Level VIII scroll formula facts were checked against ACEmulator's
+[ACE-World-16PY-Patches](https://github.com/ACEmulator/ACE-World-16PY-Patches)
+(AGPL-3.0; license included as `THIRD-PARTY-NOTICES/ACE-World-Data-LICENSE.txt`).
+The user-supplied Asheron's Call Community Wiki scroll tables are credited under
+their CC-BY-SA terms. The normalized catalog includes per-entry source links;
+`docs/SCROLLS-SETUP.md` describes changes, exclusions and immutable reference trees.
+No ACE server implementation is linked into the app.
