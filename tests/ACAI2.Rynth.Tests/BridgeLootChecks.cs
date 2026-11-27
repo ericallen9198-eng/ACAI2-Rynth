@@ -28,6 +28,17 @@ internal static class BridgeLootChecks
             check(reply.Ok&&fake.Calls==1&&fake.Body.Contains("ownChestLoot")&&fake.Body.Contains("Dolabra")&&fake.Body.Contains("ReportedCompletedCycles"),"real Bridge service supplies typed own chest findings to the fake model even without a nearby-world event");
             check(fake.Body.Contains("No-match")||fake.Body.Contains("nothing matched"),"model context explicitly distinguishes profile rejection from empty chests");
             check(reply.ReplyChannel!="Tell"&&string.IsNullOrEmpty(reply.GeneralNotice),"Bridge itself preserves Toe's asking channel without a public-to-private handoff");
+            foreach (string question in new[] { "what is your favorite weapon lately?",
+                "Keyfer you been looting chests you dont remember any of the weapons you pulleD?" })
+            {
+                var personal = await service.AskAsync(new() { InstanceId="loot-test", Server="DreamWeave", Character="Keyfer Sutherland",
+                    Speaker="Toe", SpeakerId="personal-"+fake.Calls, Channel="Tell", Question=question, LootObservation=ledger.Snapshot(DateTime.UtcNow) });
+                using var body = JsonDocument.Parse(fake.Body);
+                check(personal.Ok && personal.Answer != KeyferService.WikiFallback && !body.RootElement.TryGetProperty("tools", out _) &&
+                    !body.RootElement.TryGetProperty("tool_choice", out _) && fake.Body.Contains("Dolabra") &&
+                    fake.Body.Contains("This is a personal conversation"),
+                    "reported personal weapon/loot question uses existing findings without a wiki tool or referral");
+            }
             foreach(var channel in new[]{"General","Allegiance","Tell"})
             {
                 int calls=fake.Calls;

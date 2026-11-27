@@ -27,7 +27,7 @@ internal static class Program
             catch (Exception ex) { Console.Error.WriteLine("Arena preview failed: " + ex.Message); Environment.ExitCode = 1; }
             return;
         }
-        Console.Title = "ACAI2.Bridge v0.20.1";
+        Console.Title = "ACAI2.Bridge v0.20.2";
         _config = BridgeConfig.Load();
 
         using var listener = new HttpListener();
@@ -47,7 +47,7 @@ internal static class Program
             return;
         }
 
-        Console.WriteLine("ACAI2 Bridge v0.20.1");
+        Console.WriteLine("ACAI2 Bridge v0.20.2");
         Console.WriteLine("Listening: " + _config.ListenPrefix);
         Console.WriteLine("Protocol: " + ProtocolInfo.Version);
         Console.WriteLine("Keyfer: " + KeyferConfig.Server + "::" + KeyferConfig.Character);

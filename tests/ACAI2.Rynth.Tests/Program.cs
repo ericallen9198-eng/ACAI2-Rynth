@@ -197,6 +197,7 @@ OwnLootChecks.Run(Check);
 await BridgeLootChecks.Run(Check);
 await ModelMigrationChecks.Run(Check);
 await ProviderHttpChecks.Run(Check);
+await WikiFallbackChecks.Run(Check);
 Console.WriteLine($"All {count} checks passed. Only fake HTTP handlers were used; no AI, game chat or production Bridge calls.");
 
 record Call(string Path,string Json,string Method);
