@@ -3,7 +3,7 @@ using System.Text.Json;
 var script=File.ReadAllText(args[0]);var index=File.ReadAllText(Path.Combine(Path.GetDirectoryName(args[0])!,"probe-index.json"));
 Script New(){
  var vm=new Script(CoreModules.Preset_Complete);
- vm.Globals["indexText"]=index;vm.Globals["scriptText"]=script;
+ vm.Globals["indexText"]=index;vm.Globals["routeText"]=File.ReadAllText(Path.Combine(Path.GetDirectoryName(args[0])!,"route-index.json"));vm.Globals["scriptText"]=script;
  vm.Globals["encodeNative"]=(Func<DynValue,string>)(v=>JsonSerializer.Serialize(ToObject(v)));
  vm.Globals["decodeNative"]=(Func<string,DynValue>)(s=>FromElement(vm,JsonDocument.Parse(s).RootElement));
  vm.DoString(File.ReadAllText(Path.Combine(AppContext.BaseDirectory,"harness.lua")));

@@ -27,7 +27,7 @@
         "z": 26.554422
       },
       "heightDifference": 55.64558410644531,
-      "route_length": 360.082856517357,
+      "route_length": 360.082856517358,
       "status": "mesh_predicted_not_live_verified"
     },
     {
@@ -55,7 +55,7 @@
         "z": 34
       },
       "heightDifference": 44.20000457763672,
-      "route_length": 184.63440064962538,
+      "route_length": 184.63440064962109,
       "status": "mesh_predicted_not_live_verified"
     },
     {
@@ -83,7 +83,7 @@
         "z": 25.768383
       },
       "heightDifference": 52.33162307739258,
-      "route_length": 118.13292966441693,
+      "route_length": 118.13292966441742,
       "status": "mesh_predicted_not_live_verified"
     },
     {
@@ -111,7 +111,7 @@
         "z": 34.040016
       },
       "heightDifference": 43.959991455078125,
-      "route_length": 222.43947079598482,
+      "route_length": 222.43947079598607,
       "status": "mesh_predicted_not_live_verified"
     },
     {
@@ -139,7 +139,7 @@
         "z": 26
       },
       "heightDifference": 39.400001525878906,
-      "route_length": 101.81843517508618,
+      "route_length": 101.81843517508452,
       "status": "mesh_predicted_not_live_verified"
     },
     {
@@ -167,7 +167,7 @@
         "z": 22.199999
       },
       "heightDifference": 56.20001220703125,
-      "route_length": 170.6979588141113,
+      "route_length": 170.69795881411238,
       "status": "mesh_predicted_not_live_verified"
     },
     {
@@ -195,7 +195,7 @@
         "z": 34
       },
       "heightDifference": 47.20000457763672,
-      "route_length": 373.59812059244314,
+      "route_length": 373.5981205924435,
       "status": "mesh_predicted_not_live_verified"
     },
     {
@@ -223,7 +223,7 @@
         "z": 40
       },
       "heightDifference": 42.00000762939453,
-      "route_length": 149.60017534541493,
+      "route_length": 149.60017534541498,
       "status": "mesh_predicted_not_live_verified"
     },
     {
@@ -251,7 +251,7 @@
         "z": 120.14427
       },
       "heightDifference": 28.600006103515625,
-      "route_length": 718.655030027556,
+      "route_length": 718.6550300275561,
       "status": "mesh_predicted_not_live_verified"
     },
     {
@@ -279,7 +279,7 @@
         "z": 120.144264
       },
       "heightDifference": 28.400001525878906,
-      "route_length": 127.66317182007475,
+      "route_length": 127.66317182007398,
       "status": "mesh_predicted_not_live_verified"
     },
     {
@@ -307,7 +307,7 @@
         "z": 45.8
       },
       "heightDifference": 36.40000534057617,
-      "route_length": 1272.0280656296834,
+      "route_length": 1272.028065629686,
       "status": "mesh_predicted_not_live_verified"
     },
     {
@@ -335,7 +335,7 @@
         "z": 41.83349
       },
       "heightDifference": 40.399993896484375,
-      "route_length": 114.14945320988004,
+      "route_length": 114.14945320987934,
       "status": "mesh_predicted_not_live_verified"
     },
     {
@@ -363,7 +363,7 @@
         "z": 84.12434
       },
       "heightDifference": 57.40000534057617,
-      "route_length": 606.9047788980768,
+      "route_length": 718.9167175157727,
       "status": "mesh_predicted_not_live_verified"
     },
     {
@@ -391,7 +391,7 @@
         "z": 84.05171
       },
       "heightDifference": 57.027381896972656,
-      "route_length": 115.37146521347675,
+      "route_length": 115.37146521347535,
       "status": "mesh_predicted_not_live_verified"
     },
     {
@@ -419,7 +419,7 @@
         "z": 84.12434
       },
       "heightDifference": 62.40000534057617,
-      "route_length": 133.91085448144182,
+      "route_length": 133.91085448144193,
       "status": "mesh_predicted_not_live_verified"
     },
     {
@@ -447,7 +447,7 @@
         "z": 81.9912
       },
       "heightDifference": 56.84868621826172,
-      "route_length": 303.30127042568165,
+      "route_length": 303.30127042568154,
       "status": "mesh_predicted_not_live_verified"
     },
     {
@@ -475,7 +475,7 @@
         "z": 84.200005
       },
       "heightDifference": 45.70000457763672,
-      "route_length": 180.55738773082624,
+      "route_length": 180.55738773082703,
       "status": "mesh_predicted_not_live_verified"
     },
     {
@@ -503,7 +503,7 @@
         "z": 82.200005
       },
       "heightDifference": 41.10000228881836,
-      "route_length": 111.38318484180127,
+      "route_length": 111.3831848417988,
       "status": "mesh_predicted_not_live_verified"
     },
     {
@@ -531,7 +531,7 @@
         "z": 82.20001
       },
       "heightDifference": 59.70001220703125,
-      "route_length": 221.45715428084515,
+      "route_length": 221.45715428084438,
       "status": "mesh_predicted_not_live_verified"
     },
     {
@@ -559,7 +559,7 @@
         "z": 82.200005
       },
       "heightDifference": 58.20000457763672,
-      "route_length": 106.03135611317327,
+      "route_length": 106.03135611317519,
       "status": "mesh_predicted_not_live_verified"
     },
     {
@@ -587,7 +587,7 @@
         "z": 84.144264
       },
       "heightDifference": 50.9199333190918,
-      "route_length": 1210.016397231099,
+      "route_length": 1210.0163972311002,
       "status": "mesh_predicted_not_live_verified"
     },
     {
@@ -615,7 +615,7 @@
         "z": 84.144264
       },
       "heightDifference": 50.600006103515625,
-      "route_length": 118.71573740088841,
+      "route_length": 118.71573740088712,
       "status": "mesh_predicted_not_live_verified"
     },
     {
@@ -643,7 +643,7 @@
         "z": 76.144264
       },
       "heightDifference": 36.70000457763672,
-      "route_length": 171.76824570004973,
+      "route_length": 171.768245700049,
       "status": "mesh_predicted_not_live_verified"
     },
     {
@@ -671,7 +671,7 @@
         "z": 74.34427
       },
       "heightDifference": 35.40000915527344,
-      "route_length": 101.14214534846028,
+      "route_length": 101.14214534845928,
       "status": "mesh_predicted_not_live_verified"
     },
     {
@@ -727,7 +727,7 @@
         "z": 82.20001
       },
       "heightDifference": 46.600013732910156,
-      "route_length": 129.87592225248596,
+      "route_length": 129.87592225248426,
       "status": "mesh_predicted_not_live_verified"
     },
     {
@@ -755,7 +755,7 @@
         "z": 82.200005
       },
       "heightDifference": 58.20000457763672,
-      "route_length": 129.72520126712868,
+      "route_length": 129.7252012671292,
       "status": "mesh_predicted_not_live_verified"
     },
     {
@@ -783,7 +783,7 @@
         "z": 82.200005
       },
       "heightDifference": 54.80000305175781,
-      "route_length": 128.7146692342279,
+      "route_length": 128.71466923422673,
       "status": "mesh_predicted_not_live_verified"
     },
     {
@@ -811,7 +811,7 @@
         "z": 82.20001
       },
       "heightDifference": 58.5000114440918,
-      "route_length": 212.42941080180105,
+      "route_length": 212.42941080180168,
       "status": "mesh_predicted_not_live_verified"
     },
     {
@@ -839,7 +839,7 @@
         "z": 82
       },
       "heightDifference": 54.5,
-      "route_length": 144.14101352591285,
+      "route_length": 144.14101352591243,
       "status": "mesh_predicted_not_live_verified"
     },
     {
@@ -867,7 +867,7 @@
         "z": 82
       },
       "heightDifference": 49.099998474121094,
-      "route_length": 112.57988733927915,
+      "route_length": 112.57988733928097,
       "status": "mesh_predicted_not_live_verified"
     },
     {
@@ -895,7 +895,7 @@
         "z": 81.22739
       },
       "heightDifference": 46.227386474609375,
-      "route_length": 158.2946148012923,
+      "route_length": 158.29461480129018,
       "status": "mesh_predicted_not_live_verified"
     },
     {
@@ -923,7 +923,7 @@
         "z": 82.02738
       },
       "heightDifference": 50.70000457763672,
-      "route_length": 109.01613063620965,
+      "route_length": 109.01613063621183,
       "status": "mesh_predicted_not_live_verified"
     },
     {
@@ -951,7 +951,7 @@
         "z": 79.9707
       },
       "heightDifference": 49.570701599121094,
-      "route_length": 1188.557046649156,
+      "route_length": 1188.55704664916,
       "status": "mesh_predicted_not_live_verified"
     },
     {
@@ -979,7 +979,7 @@
         "z": 82.2
       },
       "heightDifference": 54.89999771118164,
-      "route_length": 221.34982416883722,
+      "route_length": 221.3498241688377,
       "status": "mesh_predicted_not_live_verified"
     },
     {
@@ -1007,7 +1007,7 @@
         "z": 82
       },
       "heightDifference": 34.89999771118164,
-      "route_length": 114.03134605143856,
+      "route_length": 114.03134605143765,
       "status": "mesh_predicted_not_live_verified"
     }
   ]

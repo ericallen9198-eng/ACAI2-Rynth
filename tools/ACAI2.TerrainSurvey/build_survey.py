@@ -3,7 +3,7 @@ import json,re,math,argparse
 parser=argparse.ArgumentParser();parser.add_argument('--data',type=Path,required=True);parser.add_argument('--out',type=Path,required=True);args=parser.parse_args()
 root=args.data;pack=args.out;(pack/'MetaFiles').mkdir(parents=True,exist_ok=True);(pack/'NavProfiles').mkdir(exist_ok=True)
 src=Path(__file__).resolve().parents[2].joinpath('metas/marae-lassel-stock/MetaFiles/Marae Lassel - Embedded.af').read_text()
-navs={};states={};report=[]
+navs={};states={};report=[];corridors={}
 def E(x):return 'DoExpr {'+x+'}'
 def A(a):return '\tIF: Always\n\t\tDO: DoAll\n'+''.join('\t\t\t\t'+x+'\n' for x in a)
 def R(c,a):return '\tIF: '+c+'\n\t\tDO: DoAll\n'+''.join('\t\t\t\t'+x+'\n' for x in a)
@@ -12,6 +12,7 @@ D=R('Expr {getvar[te_logger_schema]!=3 || getvar[te_logger_active]!=1 || getunix
 pos={275:'45.2079477958333|-75.0632305458333|0.3833541875',180:'43.5416666666667|-85.4083333333333|0.0833541625',225:'53.5283333458333|-79.802500025|0.3000208542'}
 def coord(p):return f"{p['north']:.12f}|{p['east']:.12f}|{p['z']/240:.12f}"
 def nav(name,points,label=None):
+ corridors[name]=points
  pts=[]
  for p in points:pts.append(['0',str(p['east']),str(p['north']),str(p['z']/240),'0'])
  navs[name]=['uTank2 NAV 1.2','4',str(len(pts))]+[v for p in pts for v in p]
@@ -27,7 +28,10 @@ for z in [180,225]:
  S(f'LAND_{z}',D+R('Expr {getvar[te_location_stable]==1 && getcharvital_current[1]>0 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],`'+pos[z]+'`]<15 && abs[coordinategetz[getplayercoordinates[]]*240-'+('20.005' if z==180 else '72.005')+']<8}',['SetOpt {EnableNav} {False}',f'SetState {{SELECT_{z}}}'])+R('Expr {getvar[te_transport_timeout]==1}',[E(f'echo[`Terrain survey: {z} portal arrival unconfirmed; sector remains untested.`]'),'SetState {NEXT_SECTOR}']))
 for z in [275,180,225]:
  route=json.loads((root/f'route-{z}.json').read_text());hub=json.loads((root/f'hub-{z}-approaches.json').read_text());legs=route['legs']
- original=root/f'Terrain_{z}_Cliff_Approaches.nav';(pack/'NavProfiles'/original.name).write_text(original.read_text())
+ points=route['corners'];lines=['uTank2 NAV 1.2','4',str(len(points))]
+ for point in points:lines.extend(['0',str(point['east']),str(point['north']),str(point['z']/240),'0'])
+ filename=f'Terrain_{z}_Cliff_Approaches.nav';payload='\n'.join(lines)+'\n'
+ (root/filename).write_text(payload);(pack/'NavProfiles'/filename).write_text(payload)
  selects=''
  for i,leg in enumerate(legs,1):selects+=R('Expr {getvar[te_probe]=='+str(i)+'}',[f'SetState {{PROBE_{z}_{i}}}'])
  selects+=R('Expr {getvar[te_entry_hub]==1}',['SetState {NEXT_SECTOR}'])+A([f'SetState {{RETURN_{z}}}']);S(f'SELECT_{z}',D+selects)
@@ -80,5 +84,8 @@ S('FINISHED','\tIF: Expr {0==1}\n\t\tDO: SetState {FINISHED}\n')
 af='\n'.join('STATE: {'+n+'} ~~ {\n'+b+'~~ }\n' for n,b in states.items())
 for n,a in navs.items():af+='\nNAVDATA: '+n+' '+str(len(a))+' ~~ {\n'+'\n'.join(a)+'\n~~ }\n'
 (pack/'MetaFiles/Terrain Access Survey.af').write_text(af)
+(pack/'Scripts/TerrainSurvey').mkdir(parents=True,exist_ok=True)
+(pack/'portal-links.json').write_text((root/'camp-portals.json').read_text())
+(pack/'Scripts/TerrainSurvey/route-index.json').write_text(json.dumps(dict(schema=1,corridors=corridors),separators=(',',':')))
 (pack/'probe-index.json').write_text(json.dumps(dict(schema=1,source='RynthNav NavData release 2026102103; new Detour mesh paths, not hunt loops',probes=report),indent=2))
 print('Built terrain-only controller:',len(states),'states;',len(navs),'embedded navs;',len(report),'cliff targets;',sum(p['distinct_hub_retry'] for p in report),'distinct hub retries.')

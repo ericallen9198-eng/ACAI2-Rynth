@@ -1,4 +1,4 @@
--- TerrainSurvey v0.3.2. Stock RynthLua/RynthAi only; streamed local diagnostics.
+-- TerrainSurvey v0.3.3. Stock RynthLua/RynthAi only; streamed local diagnostics.
 local ai,fsmod,json,info=require('rynth.ai'),require('filesystem'),require('json'),require('rynthlua')
 local fs=fsmod.GetData()
 local META='Terrain Access Survey'
@@ -17,9 +17,14 @@ local stableSince=0
 local lastPosition=nil
 local transport=nil
 local lootUntil=0
+local avoidanceRequested=false
 local settings={FollowNavMin=0.5,NavResumeNearest=0,StopMacroOnDeath=0,DeathRecallMode=0,LootOwnCorpse=1,TravelToOwnCorpse=1,EnableMeta=1}
 local zones={[0]=275,[1]=180,[2]=225}
 local planned={}
+local corridorText,corridorErr=fsmod.GetScript().ReadText('route-index.json')
+assert(corridorText,'Missing route-index.json: '..tostring(corridorErr))
+local corridors=json.decode(corridorText).corridors
+assert(type(corridors)=='table','Invalid route-index.json')
 local raw,readErr=fsmod.GetScript().ReadText('probe-index.json')
 assert(raw,'Missing probe-index.json: '..tostring(readErr))
 for _,p in ipairs(json.decode(raw).probes) do planned[p.id]=p end
@@ -47,7 +52,7 @@ local function save()
 end
 local function log(kind,data)
  if not cp then return end
- data=data or {};data.event=kind;data.utc_unix=num('getunixtime[]');data.run=cp.run
+ data=data or {};data.software='0.3.3';data.event=kind;data.utc_unix=num('getunixtime[]');data.run=cp.run
  data.stage=cp.stage;data.probe=cp.probe;data.attempt=cp.attempt
  local line=json.encode(data)..'\n'
  cp.logSlot=cp.logSlot or 1;cp.logChars=cp.logChars or 0
@@ -108,7 +113,7 @@ local function applySettings()
  for n,v in pairs(settings)do assert(ai.SetSetting(n,v),'Cannot set '..n)end
 end
 local function begin(fresh)
- errorText='';movement=nil;transport=nil;stableSince=0
+ errorText='';movement=nil;transport=nil;stableSince=0;avoidanceRequested=false
  if game.State~='InGame' or game.Character.InPortalSpace or not ai.Available then notice('Wait until logged in and out of portal space.');return end
  if ai.MacroRunning and not owns()then notice('Stop the other macro/controller first.');return end
  local t=num('getunixtime[]')
@@ -119,6 +124,7 @@ local function begin(fresh)
   -- An explicit new run replaces this character's previous bounded diagnostic set.
   for i=1,SLOTS do local ok,err=fs.WriteText('diagnostics-'..key..'-'..i..'.jsonl','');assert(ok,tostring(err))end
  elseif cp.stage>=3 or cp.completed then notice('Survey complete. Use /terrainsurvey new for another pass.');return end
+ local copied,copyErr=fs.WriteText('corridors-'..key..'.json',corridorText);assert(copied,tostring(copyErr))
  cp.recorderVersion=3;cp.active=true;cp.completed=false;save();ai.Command('/rnav avoid portals on');log(fresh and 'new_run' or 'resume_requested',{server=cp.server,character=cp.character})
  if not fresh and owns() and ai.MacroRunning and num('getvar[te_logger_schema]')==3 then
   -- Rejoin the live survey without stopping native corpse travel.
@@ -180,6 +186,8 @@ local function drainEvents(t)
  for _,e in ipairs(q)do
   local s=e.message
   if s then
+   local metres=tonumber(s:match('^%[RynthNav%] avoid: portals on, ([%d%.]+) m'))
+   if metres and metres<10 and not avoidanceRequested then avoidanceRequested=true;ai.Command('/rnav avoid portals 10');log('native_portal_clearance_requested',{previous_metres=metres,new_metres=10})end
    if not cp.recovery and s:find('^%[RynthAi%] Your corpse is at ') and not s:find(', died ',1,true) then startRecovery(t,'death')end
    if s:find('^%[RynthAi%] Loot')or s:find('^%[RynthAi%] Nothing on Corpse')then lootUntil=t+15 end
    log('native_diagnostic',{message=s})
@@ -249,25 +257,51 @@ local function travelReadiness(t,s)
  set('te_can_travel',not reason and t>=quietUntil and 1 or 0)
  return reason or (t<quietUntil and 'settling' or nil)
 end
+local function corridorDistance(s)
+ local name=tostring(s.nav.name or ''):match('^<embedded:(.-)>$')or tostring(s.nav.name or '')
+ local points=corridors[name];if not points or #points<2 then return nil end
+ local best=math.huge;local closest=math.huge
+ for i=2,#points do
+  local a,b=points[i-1],points[i]
+  local dx=(b.east-a.east)*240;local dy=(b.north-a.north)*240
+  local ax=(s.east-a.east)*240;local ay=(s.north-a.north)*240
+  local length=dx*dx+dy*dy
+  local f=length>0 and math.max(0,math.min(1,(ax*dx+ay*dy)/length))or 0
+  local flat=math.sqrt((ax-dx*f)^2+(ay-dy*f)^2)
+  closest=math.min(closest,flat)
+  local height=a.z+(b.z-a.z)*f
+  -- Keep levels apart; a lower path under a cliff is not the same corridor.
+  if math.abs(s.world_height-height)<=15 then best=math.min(best,flat)end
+ end
+ return best==math.huge and closest or best,best==math.huge
+end
 local function monitor(t,s,pause)
  if s.state=='HUB_WAIT' or s.state:match('^LAND_%d+$')then
   if not transport or transport.state~=s.state or transport.generation~=s.transport_generation then transport={state=s.state,generation=s.transport_generation,elapsed=0,last=t}end
   if not pause then transport.elapsed=transport.elapsed+math.min(2,math.max(0,t-transport.last))end
   transport.last=t;set('te_transport_timeout',transport.elapsed>=(s.state=='HUB_WAIT'and 45 or 90)and 1 or 0)
  else transport=nil;set('te_transport_timeout',0)end
- if not s.state:match('^WAIT_%d+_%d+$') or not s.north or not s.east then movement=nil;return end
- -- A different known camp while surveying Plateau is a misroute, not a cliff failure.
- if cp.stage==0 and not s.portaling then
-  for _,at in ipairs({{43.5416666667,-85.4083333333,20.005},{53.5283333458,-79.802500025,72.005}})do
-   if math.sqrt((s.north-at[1])^2+(s.east-at[2])^2)*240<100 and math.abs(s.world_height-at[3])<15 then
-    if not movement or not movement.wrongArea then
-     movement={state=s.state,wrongArea=true};log('unexpected_camp',{coordinates=s.coordinates,target=s.target});save();val('vtsetsetting[EnableNavigation,0]')
-    end
-    if not pause then log('misroute_hub_recovery',{target=s.target});save();val('vtsetmetastate[RESUME]');movement=nil end
-    return
-   end
+ if not(s.state:match('^WAIT_%d+_%d+$')or s.state:match('^RETURN_WAIT_%d+$'))or not s.north or not s.east then movement=nil;return end
+ -- All-sector route guard: catch a different camp even after wandering away from its landing.
+ local away,wrongLevel=corridorDistance(s)
+ if away and (away>55 or wrongLevel) and not s.portaling then
+  if not movement or not movement.wrongArea then
+   movement={state=s.state,wrongArea=true};log('off_corridor',{coordinates=s.coordinates,target=s.target,distance_yards=away,wrong_level=wrongLevel,nav=s.nav.name});save();val('vtsetsetting[EnableNavigation,0]')
+   notice('Outside the intended survey route; holding navigation until combat/buffs settle, then returning through the hub.')
   end
+  if not pause then
+   cp.routeRecoveries=cp.routeRecoveries or {};local id=s.target;local count=(cp.routeRecoveries[id]or 0)+1;cp.routeRecoveries[id]=count
+   log('misroute_hub_recovery',{target=id,attempt=count,distance_yards=away})
+   if count>=3 and planned[id]then
+    cp.results[id]={outcome='deferred',reason='repeated_route_displacement',does_not_prove_impassable=true,utc_unix=t,coordinates=s.coordinates};cp.probe=cp.probe+1;cp.attempt=0
+    log('misroute_deferred',{target=id});set('te_probe',cp.probe);set('te_attempt',0)
+   end
+   save();val('vtsetmetastate[RESUME]');movement=nil
+  end
+  return
  end
+ if movement and movement.wrongArea then movement=nil end
+ if s.state:match('^RETURN_WAIT_')then movement=nil;return end
  if not movement or movement.state~=s.state then movement={state=s.state,last=t,elapsed=0,stationary=0,at=s,trace={},sampleAt=t+6,index=s.nav.index}end
  local m=movement;local dt=math.min(2,math.max(0,t-m.last));m.last=t
  if pause then
@@ -415,7 +449,7 @@ local function guardedTick()
 end
 game.RegisterCommand('/terrainsurvey',function(args)
  local r=tostring(args or ''):lower():match('^%s*(%S+)')or'status'
- if r=='status'then local last=cp and cp.lastSample or {};notice('v0.3.2; state '..tostring(last.state or phase)..'; wait '..tostring(last.pause_reason or 'none')..'; '..(cp and cp.active and 'Active' or 'Stopped')..'; phase '..phase..'; '..(cp and ('zone '..tostring(zones[cp.stage])..', point '..cp.probe)or'no checkpoint')..'; logs: '..tostring(info.DataFolder));return end
+ if r=='status'then local last=cp and cp.lastSample or {};notice('v0.3.3; state '..tostring(last.state or phase)..'; wait '..tostring(last.pause_reason or 'none')..'; '..(cp and cp.active and 'Active' or 'Stopped')..'; phase '..phase..'; '..(cp and ('zone '..tostring(zones[cp.stage])..', point '..cp.probe)or'no checkpoint')..'; logs: '..tostring(info.DataFolder));return end
  if #requests<4 then requests[#requests+1]=r end
 end)
 game.OnTick.Add(guardedTick)

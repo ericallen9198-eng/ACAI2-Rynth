@@ -90,8 +90,8 @@ start();for i=1,80 do sim.navIndex=i;step()end;assert((sim.vars.te_movement_fail
 -- SCENARIO moving for longer than one old AF sample interval is repeatedly observed
 start();for i=1,100 do sim.coords=tostring(45.2+i*.005)..'|-75.1|0.38';step()end;assert((sim.vars.te_movement_fail or 0)==0)
 -- SCENARIO accidental 180 arrival preserves the Plateau point rather than crediting cliff failure
-start();sim.targets=2;sim.coords='43.5416666667|-85.4083333333|0.0833541667';step(10);assert(cp().probe==1 and sim.vars.te_movement_fail==0 and sim.settings.EnableNavigation==0)
-sim.targets=0;step(15);assert(cp().probe==1 and sim.state=='WAIT_275_01')
+start();sim.navName='<embedded:Hub_275_01>';sim.targets=2;sim.coords='43.5416666667|-85.4083333333|0.0833541667';step(10);assert(cp().probe==1 and sim.vars.te_movement_fail==0 and sim.settings.EnableNavigation==0)
+sim.onResumeCoords='45.20794|-75.06323|0.384';sim.targets=0;step(15);assert(cp().probe==1 and sim.state=='WAIT_275_01')
 -- SCENARIO current status appears in the user-facing chat even while recording is repairing
 start();sim.failWrites=true;report(1,1,1);local n=#sim.logs;sim.request('status');assert(#sim.logs>n)
 -- SCENARIO old one-shot no-progress outcomes are preserved as unverified and scheduled for recheck
@@ -110,3 +110,17 @@ start();sim.settings.EnableLooting=0;sim.hp=0;sim.rememberCorpse=true;sim.native
 sim.hp=429;sim.nativeRecovery=false;send('[RynthAi] Own corpse: recovered everything (2 items).');step(25);assert(sim.settings.EnableLooting==0 and not cp().recovery)
 -- SCENARIO stopping during recovery restores temporarily enabled looting
 start();sim.settings.EnableLooting=0;sim.hp=0;step();assert(sim.settings.EnableLooting==1);request('stop');assert(sim.settings.EnableLooting==0 and not require('rynth.ai').MacroRunning)
+-- SCENARIO wrong-area recovery protects an 180 survey after taking the 225 portal
+start();local c,n=cp();c.stage=1;sim.files[n]=encodeNative(c);sim.vars.te_stage=1;sim.navName='<embedded:Hub_180_01>';sim.targets=2;sim.coords='52.1650468826294|-80.568896484375|0.0888588825861613';reloadScript()
+assert(cp().stage==1 and cp().probe==1 and sim.settings.EnableNavigation==0);sim.onResumeCoords='43.5416666667|-85.4083333333|0.0833541667';sim.targets=0;step(15);assert(cp().stage==1 and cp().probe==1 and next(cp().results)==nil)
+-- SCENARIO wrong-area recovery protects a 225 survey after taking the Plateau portal
+start();local c,n=cp();c.stage=2;sim.files[n]=encodeNative(c);sim.vars.te_stage=2;sim.navName='<embedded:Hub_225_01>';sim.targets=2;sim.coords='45.20794|-75.06323|0.383354';reloadScript()
+assert(cp().stage==2 and cp().probe==1 and sim.settings.EnableNavigation==0);sim.onResumeCoords='53.528333|-79.802500|0.300021';sim.targets=0;step(15);assert(cp().stage==2 and cp().probe==1)
+-- SCENARIO repeated misroutes are bounded without blacklisting the terrain
+start();sim.navName='<embedded:Hub_275_01>';sim.coords='43.5416666667|-85.4083333333|0.0833541667';step(10);assert(cp().probe>1 and cp().results['275_01']and cp().results['275_01'].outcome=='deferred'and cp().routeRecoveries['275_01']==3,'probe '..cp().probe..' count '..tostring(cp().routeRecoveries and cp().routeRecoveries['275_01'])..' state '..sim.state)
+-- SCENARIO native portal radius is raised to ten metres after a smaller reported setting
+start();assert(sim.avoidRadius==10 and countCommand('/rnav avoid portals 10')==1)
+-- SCENARIO a larger existing native portal avoidance radius is preserved
+sim.avoidRadius=14;start();assert(sim.avoidRadius==14 and countCommand('/rnav avoid portals 10')==0)
+-- SCENARIO a lower floor under a survey route is recovered without serializing infinity
+start();sim.navName='<embedded:Hub_275_01>';sim.coords='45.20794|-75.06323|0.01';sim.targets=2;step(3);assert(cp().probe==1 and sim.settings.EnableNavigation==0)

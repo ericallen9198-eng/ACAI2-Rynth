@@ -12,7 +12,8 @@ local function emit(s)if sim.chat then sim.chat({Message=s})end end
 ai.Command=function(c)
  sim.commands[#sim.commands+1]=c
  if c=='/ra meta load Terrain Access Survey.af'then if not sim.ignoreLoad then sim.meta='Terrain Access Survey' end
- elseif c=='/rnav avoid portals on'then sim.avoidPortals=true
+ elseif c=='/rnav avoid portals on'then sim.avoidPortals=true;emit('[RynthNav] avoid: portals on, '..(sim.avoidRadius or 4)..' m; walls off; corners reached at 2 m')
+ elseif c=='/rnav avoid portals 10'then sim.avoidRadius=10;emit('[RynthNav] avoid: portals on, 10 m; walls off; corners reached at 2 m')
  elseif c=='/ra start'then ai.MacroRunning=true
  elseif c=='/ra owncorpse'then
   if not sim.suppressStatus then
@@ -30,7 +31,7 @@ ai.Evaluate=function(e)
  if e=='getplayercoordinates[]'then return sim.coords end
  if e=='getplayerlandcell[]'then return 565641256 end
  if e=='getcharvital_current[1]'then return sim.hp end
- if e=='ranav[]'then return encodeNative({name='embedded',index=sim.navIndex or 0,points=15,finished=false})end
+ if e=='ranav[]'then return encodeNative({name=sim.navName or 'synthetic',index=sim.navIndex or 0,points=15,finished=false})end
  if e=='getbusystate[]'then return sim.busy or 0 end
  if e=='ratargetcount[]'then return sim.targets or 0 end
  if e=='rabuffsdue[0]'then return sim.buffs or 0 end
@@ -42,7 +43,7 @@ ai.Evaluate=function(e)
  local setting,value=e:match('^vtsetsetting%[([^,]+),([^%]]+)%]$');if setting then sim.settings[setting]=tonumber(value);return 1 end
  error('Unexpected expression '..e)
 end
-local mods={['rynth.ai']=ai,filesystem={GetData=function()return fs end,GetScript=function()return {ReadText=function()return indexText end}end},json={encode=function(v)return encodeNative(v)end,decode=function(s)return decodeNative(s)end},rynthlua={DataFolder='C:\\Test\\RynthLua\\Data\\TerrainSurvey'}}
+local mods={['rynth.ai']=ai,filesystem={GetData=function()return fs end,GetScript=function()return {ReadText=function(n)return n=='route-index.json'and routeText or indexText end}end},json={encode=function(v)return encodeNative(v)end,decode=function(s)return decodeNative(s)end},rynthlua={DataFolder='C:\\Test\\RynthLua\\Data\\TerrainSurvey'}}
 require=function(n)return assert(mods[n],n)end
 clock=function()return sim.time*1000 end
 chat=function(s)sim.logs[#sim.logs+1]=s end
@@ -52,7 +53,7 @@ function step(n)
  for i=1,n or 1 do
   sim.time=sim.time+1;sim.tick()
   -- Minimal host macro lifecycle only. AF parsing/structure is checked separately.
-  if ai.MacroRunning and sim.state=='RESUME'and sim.vars.te_recovery_busy==0 then sim.state='WAIT_'..({[0]=275,[1]=180,[2]=225})[sim.vars.te_stage]..'_'..string.format('%02d',sim.vars.te_probe)end
+  if ai.MacroRunning and sim.state=='RESUME'and sim.vars.te_recovery_busy==0 then if sim.onResumeCoords then sim.coords=sim.onResumeCoords;sim.onResumeCoords=nil end;sim.state='WAIT_'..({[0]=275,[1]=180,[2]=225})[sim.vars.te_stage]..'_'..string.format('%02d',sim.vars.te_probe)end
   if ai.MacroRunning and sim.state=='FINISH_COMMIT'and sim.vars.te_finish_ack==1 then ai.MacroRunning=false;sim.state='FINISHED'end
  end
 end

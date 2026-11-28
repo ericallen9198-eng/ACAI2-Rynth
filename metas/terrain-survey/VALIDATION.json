@@ -1,5 +1,5 @@
 {
-  "pilot": "Terrain Access Survey v0.3.2 \u2014 confirm arrival before combat displacement",
+  "pilot": "Terrain Access Survey v0.3.3 \u2014 portal clearance at all camps and route recovery in every sector",
   "live_game_tested": false,
   "upstream_rynth_suite_commit": "4602d9267d0892da7179cac9f70ea5622e3a1b7e",
   "navdata_release": "2026102103",
@@ -11,7 +11,7 @@
     "states": 211,
     "navs": 77,
     "refs": 77,
-    "points": 2384,
+    "points": 3632,
     "portals": 2,
     "warnings": 0
   },
@@ -28,8 +28,8 @@
     "180": 4404,
     "225": 3694
   },
-  "runtime_limits": "Live game/Windows installer unverified. Native corpse travel requires Rynth to remember the death. Disk recording and AF watchdog use bounded automatic repair.",
-  "controlled_scenarios": 42,
+  "runtime_limits": "Live game/Windows installer unverified. Nearby portal standing positions are conservative exclusion anchors, not exact portal centres. Native corpse travel requires Rynth to remember the death.",
+  "controlled_scenarios": 48,
   "logging": {
     "sample_seconds": 5,
     "ring_slots": 8,
@@ -50,16 +50,26 @@
     "native_corpse_trip_not_stopped_on_recorder_rejoin": true
   },
   "portal_clearance": {
-    "replanned_hub_approaches": 7,
-    "new_segments_raycast_checked": 187,
-    "exclusion_radius_yards": 12,
-    "center_ns": 45.1009859708,
-    "center_ew": -75.0757791208,
-    "mesh_tiles_crc_verified": 24,
-    "native_avoid_command": "/rnav avoid portals on",
-    "intentional_portals_preserved": 2
+    "radius_yards": 15,
+    "nearby_positions": 5,
+    "paths_replanned": 14,
+    "new_segments_raycast_checked": 1271,
+    "minimum_planned_clearance_yards": 15.46266884015875,
+    "exact_portal_centers": false,
+    "mesh_tiles_crc_verified": 60,
+    "native_minimum_metres": 10,
+    "larger_native_setting_preserved": true
   },
   "monitor": "Recurring Lua tick; AF rules fire once per state entry. Combat, buffing, busy, container/loot activity and settling pause movement checks. Stable arrival gates hub/portal transitions.",
   "loot_setting": "Ordinary EnableLooting preserved; temporarily enable only for native own-corpse recovery, then restore.",
-  "inspection": "Stable live position within 3 horizontal yards and 4 world height units is saved immediately; no waiting for NavEmpty or trailing action/pause points."
+  "inspection": "Stable live position within 3 horizontal yards and 4 world height units is saved immediately; no waiting for NavEmpty or trailing action/pause points.",
+  "route_guard": {
+    "all_sectors": true,
+    "includes_return_paths": true,
+    "flat_tolerance_yards": 55,
+    "height_tolerance_world_units": 15,
+    "recovery_attempts_per_point": 3,
+    "after_limit": "defer point without classifying terrain impassable"
+  },
+  "directed_portal_links": 6
 }

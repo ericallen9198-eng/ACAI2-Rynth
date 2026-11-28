@@ -1,6 +1,6 @@
-TERRAIN ACCESS SURVEY v0.3.2 — RECORDED OVERNIGHT PILOT
+TERRAIN ACCESS SURVEY v0.3.3 — RECORDED OVERNIGHT PILOT
 
-UPDATING FROM v0.2 OR v0.3
+UPDATING FROM AN EARLIER SURVEY
 Run /terrainsurvey stop, then /lua stop TerrainSurvey. Install the new files.
 Run /lua start TerrainSurvey and /terrainsurvey resume. Keep the Data folder;
 use Resume to preserve the run. Old v0.2 no-progress failures are retained as
@@ -44,7 +44,8 @@ enter account passwords or manage the launcher.
 MANUAL INSTALL IF YOU PREFER
 Copy MetaFiles\Terrain Access Survey.af into the active RynthAi MetaFiles folder.
 Copy the WHOLE Scripts\TerrainSurvey folder into RynthLua\Scripts, so that
-RynthLua\Scripts\TerrainSurvey\index.lua and probe-index.json are together.
+RynthLua\Scripts\TerrainSurvey\index.lua, probe-index.json and route-index.json
+are together.
 Then use the three commands above. Do not put these files in Lua's root folder.
 The separate NavProfiles are optional visual/manual previews; the meta embeds
 all routes and handles travel automatically.
@@ -78,12 +79,26 @@ movement budget and stall checks, followed by an 8-second settling grace.
 Loot diagnostic activity also supplies a short looting grace. Recall/travel
 checks wait for those activities and for the portal transition to settle.
 
-The survey enables native /rnav avoid portals on without changing your avoidance
-radius. This setting remains on afterward. The seven affected hub approaches
-are also replanned around a 12-yard exclusion centred on the known shared camp
-portal staging point. Fixed waypoint paths need this geometric clearance too;
-turning on a planner setting alone does not redraw an already embedded route.
-The two intentional named portal connections remain included and usable.
+Portal avoidance covers all three camps. The walking paths keep a conservative
+15-yard exclusion around the supplied positions beside the portal clusters;
+these are nearby player positions, not surveyed portal centres. The checked
+minimum planned clearance is 15.46 yards from those positions. Native portal
+avoidance is enabled too: a reported radius below 10 metres is raised to 10;
+a larger existing radius is preserved. Those avoidance settings remain enabled
+and at the selected radius afterward. The two intentional hub portal routes are
+still usable; accidental portals are excluded from ordinary walking routes.
+
+Each active inspection/return route is checked against its saved 3D corridor in
+all three sectors. A position more than 55 yards away, or on a different height
+layer, holds survey navigation. Once native combat/buffs/looting settle, it
+returns through the hub to the same unfinished point. After three route
+recoveries at a point, that inspection is deferred so the survey can continue;
+this is explicitly not proof that terrain is impassable.
+
+portal-links.json records the six directed camp portal links for a future travel
+planner. It distinguishes nearby standing positions from actual portal centres,
+and links whose exact arrival has not yet been verified. This survey still uses
+its established /ls + named hub portal travel, not those new shortcut links.
 
 Status output now appears in game chat as well as the Lua console.
 

@@ -30,7 +30,8 @@ $backupRoot = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) (
 $files = @(
     @{ Source='MetaFiles\Terrain Access Survey.af'; Target=(Join-Path $MetaFolder 'Terrain Access Survey.af'); Backup='Terrain Access Survey.af' },
     @{ Source='Scripts\TerrainSurvey\index.lua'; Target=(Join-Path $ScriptsFolder 'TerrainSurvey\index.lua'); Backup='index.lua' },
-    @{ Source='Scripts\TerrainSurvey\probe-index.json'; Target=(Join-Path $ScriptsFolder 'TerrainSurvey\probe-index.json'); Backup='probe-index.json' }
+    @{ Source='Scripts\TerrainSurvey\probe-index.json'; Target=(Join-Path $ScriptsFolder 'TerrainSurvey\probe-index.json'); Backup='probe-index.json' },
+    @{ Source='Scripts\TerrainSurvey\route-index.json'; Target=(Join-Path $ScriptsFolder 'TerrainSurvey\route-index.json'); Backup='route-index.json' }
 )
 foreach ($file in $files) {
     $source = Join-Path $PSScriptRoot $file.Source
@@ -49,7 +50,7 @@ foreach ($file in $files) {
     Copy-Item -LiteralPath $source -Destination $file.Target -Force
     if ((Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash -ne (Get-FileHash -LiteralPath $file.Target -Algorithm SHA256).Hash) { throw "Installed file verification failed: $($file.Target)" }
 }
-Write-Host 'TerrainSurvey v0.3.2 installed and verified. No DLLs or saved character data were changed.' -ForegroundColor Green
+Write-Host 'TerrainSurvey v0.3.3 installed and verified. No DLLs or saved character data were changed.' -ForegroundColor Green
 if (Test-Path -LiteralPath $backupRoot) { Write-Host "Previous survey files: $backupRoot" }
 Write-Host 'In game: /lua start TerrainSurvey'
 Write-Host 'Then:    /terrainsurvey new'
