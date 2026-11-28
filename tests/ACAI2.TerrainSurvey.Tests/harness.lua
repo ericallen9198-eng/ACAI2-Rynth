@@ -1,4 +1,4 @@
-sim={time=1000,files={},settings={FollowNavMin=1.5,NavResumeNearest=1,StopMacroOnDeath=1,DeathRecallMode=1,LootOwnCorpse=0,TravelToOwnCorpse=0,EnableLooting=0,EnableMeta=0,EnableBuffing=1,EnableNavigation=1},vars={},pvars={},state='HOLD',meta='other',commands={},logs={},hp=429,coords='45.2|-75.1|0.38',failWrites=false,nativeRecovery=false,rememberCorpse=false}
+sim={time=1000,files={},settings={BoostNavPriority=0,FollowNavMin=1.5,NavResumeNearest=1,StopMacroOnDeath=1,DeathRecallMode=1,LootOwnCorpse=0,TravelToOwnCorpse=0,EnableLooting=0,EnableMeta=0,EnableBuffing=1,EnableNavigation=1},vars={},pvars={},state='HOLD',meta='other',commands={},logs={},hp=429,coords='45.2|-75.1|0.38',failWrites=false,nativeRecovery=false,rememberCorpse=false}
 local fs={}
 fs.ReadText=function(n)return sim.files[n],sim.files[n]and nil or 'missing'end
 fs.FileExists=function(n)return sim.files[n]~=nil end
@@ -76,7 +76,7 @@ function step(n)
  end
 end
 function request(s)sim.request(s);step()end
-function start()step();request('new');step(20);assert(ai.MacroRunning,'must run');assert(sim.state=='WAIT_275_01','start checkpoint: '..sim.state)end
+function start(wait)step();request('new');step(wait or 20);assert(ai.MacroRunning,'must run');assert(sim.state=='WAIT_275_01','start checkpoint: '..sim.state)end
 function cp()
  for n,s in pairs(sim.files)do if n:find('^checkpoint%-')then return decodeNative(s),n end end
  error('no checkpoint')

@@ -65,7 +65,7 @@ foreach ($file in $files) {
     Copy-Item -LiteralPath $source -Destination $file.Target -Force
     if ((Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash -ne (Get-FileHash -LiteralPath $file.Target -Algorithm SHA256).Hash) { throw "Installed file verification failed: $($file.Target)" }
 }
-Write-Host 'TerrainSurvey v0.4.1 and its companion installed and verified. Rynth DLLs and saved character data were not replaced.' -ForegroundColor Green
+Write-Host 'TerrainSurvey v0.4.2 and its companion installed and verified. Rynth DLLs and saved character data were not replaced.' -ForegroundColor Green
 if (Test-Path -LiteralPath $backupRoot) { Write-Host "Previous survey files: $backupRoot" }
 Write-Host 'In game: /lua start TerrainSurvey'
 Write-Host 'Existing survey: /terrainsurvey resume (keeps progress)'

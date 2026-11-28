@@ -1,5 +1,5 @@
--- TerrainSurvey v0.4.1. Stock RynthLua/RynthAi only; streamed local diagnostics.
-TerrainSurveyVersion='0.4.1' -- readable through /lua execin for support
+-- TerrainSurvey v0.4.2. Stock RynthLua/RynthAi only; streamed local diagnostics.
+TerrainSurveyVersion='0.4.2' -- readable through /lua execin for support
 local ai,fsmod,json,info=require('rynth.ai'),require('filesystem'),require('json'),require('rynthlua')
 local fs=fsmod.GetData()
 local META='Terrain Access Survey'
@@ -20,7 +20,7 @@ local repairAt=0
 local movement=nil
 local mesh=nil
 local meshMissingAt=nil
-local quietUntil=0
+local cadence=nil
 local stableSince=0
 local lastPosition=nil
 local transport=nil
@@ -29,7 +29,7 @@ local observedContainer=0
 local containerOpenedAt=-1000000000
 local lootDoneAt=-1000000000
 local avoidanceRequested=false
-local settings={FollowNavMin=0.5,NavResumeNearest=0,StopMacroOnDeath=0,DeathRecallMode=0,LootOwnCorpse=1,TravelToOwnCorpse=1,EnableMeta=1}
+local settings={FollowNavMin=0.5,NavResumeNearest=0,StopMacroOnDeath=0,DeathRecallMode=0,LootOwnCorpse=1,TravelToOwnCorpse=1,EnableMeta=1,BoostNavPriority=1}
 local zones={[0]=275,[1]=180,[2]=225}
 local planned={}
 local corridorText,corridorErr=fsmod.GetScript().ReadText('route-index.json')
@@ -64,7 +64,7 @@ local function save()
 end
 local function log(kind,data)
  if not cp then return end
- data=data or {};data.software='0.4.1';data.event=kind;data.utc_unix=num('getunixtime[]');data.run=cp.run
+ data=data or {};data.software='0.4.2';data.event=kind;data.utc_unix=num('getunixtime[]');data.run=cp.run
  data.stage=cp.stage;data.probe=cp.probe;data.attempt=cp.attempt
  local line=json.encode(data)..'\n'
  cp.logSlot=cp.logSlot or 1;cp.logChars=cp.logChars or 0
@@ -102,7 +102,8 @@ local function restoreSettings()
  for n,v in pairs(cp.oldSettings)do
   local live=ai.GetSetting(n)
   local a=type(live)=='boolean' and (live and 1 or 0) or tonumber(live)
-  if a==settings[n]then ai.SetSetting(n,v)end
+  local expected=n=='BoostNavPriority'and(cp.priorityApplied or settings[n])or settings[n]
+  if a==expected then ai.SetSetting(n,v)end
  end
  cp.oldSettings=nil
 end
@@ -123,11 +124,12 @@ local function applySettings()
   local old=ai.GetSetting(n);assert(old~=nil,'Required native setting unavailable: '..n)
   if cp.oldSettings[n]==nil then cp.oldSettings[n]=old end
  end
+ cp.priorityApplied=1
  save() -- preserve original settings before any edits
  for n,v in pairs(settings)do assert(ai.SetSetting(n,v),'Cannot set '..n)end
 end
 local function begin(fresh)
- errorText='';movement=nil;mesh=nil;meshMissingAt=nil;transport=nil;returning=nil;stableSince=0;avoidanceRequested=false
+ errorText='';movement=nil;mesh=nil;cadence=nil;meshMissingAt=nil;transport=nil;returning=nil;stableSince=0;avoidanceRequested=false
  if game.State~='InGame' or game.Character.InPortalSpace or not ai.Available then notice('Wait until logged in and out of portal space.');return end
  if ai.MacroRunning and not owns()then notice('Stop the other macro/controller first.');return end
  local t=num('getunixtime[]')
@@ -271,19 +273,57 @@ local function commit(t,state)
  end
  set('te_commit',seq)
 end
+local function surveyPriority(value)
+ if not cp.oldSettings or cp.oldSettings.BoostNavPriority==nil then return end
+ if cp.priorityApplied~=value then cp.priorityApplied=value;save()end
+ local live=ai.GetSetting('BoostNavPriority');local wanted=value==1
+ if (live==true or live==1)~=wanted then val('vtsetsetting[BoostNavPriority,'..value..']')end
+end
 local function travelReadiness(t,s)
  local buff=ai.GetSetting('EnableBuffing')
  local loot=ai.GetSetting('EnableLooting');local lootEnabled=loot~=false and loot~=0
  if s.open_container~=observedContainer then observedContainer=s.open_container;containerOpenedAt=t end
  local recentContainer=s.open_container~=0 and containerOpenedAt>lootDoneAt and t-containerOpenedAt<15
- local reason=s.hp<=0 and 'death' or s.portaling and 'portal' or s.targets>0 and 'combat' or s.busy>0 and 'native_busy' or ((buff==nil or buff==true or buff==1)and s.buffs_due>0)and 'buffing' or (lootEnabled and (recentContainer or t<lootUntil))and 'looting' or nil
- if reason then quietUntil=t+8 end
+ local walking=s.state:match('^WAIT_%d+_%d+$')or s.state:match('^RETURN_WAIT_%d+$')
+ local essential=s.hp<=0 and 'death'or s.portaling and 'portal'or ((buff==nil or buff==true or buff==1)and s.buffs_due>0)and 'buffing'or nil
+ local window=nil
+ if walking and not cp.recovery then
+  if not cadence or cadence.zone~=cp.stage then cadence={zone=cp.stage,phase='travel',elapsed=0,last=t}end
+  local dt=math.min(2,math.max(0,t-cadence.last));cadence.last=t
+  if not essential then
+   if cadence.phase=='travel'then
+    local moved=lastPosition and s.north and s.east and math.sqrt((s.north-lastPosition.north)^2+(s.east-lastPosition.east)^2)*240 or 0
+    if mesh and mesh.phase=='walking'and s.busy==0 and moved>=0.5 then cadence.elapsed=cadence.elapsed+dt end
+    if cadence.elapsed>=15 then
+     cadence.phase='fight_loot';cadence.elapsed=0
+     log('cadence_fight_loot',{budget_seconds=30,coordinates=s.coordinates})
+    end
+   else
+    cadence.elapsed=cadence.elapsed+dt
+    local clear=s.targets==0 and s.busy==0 and not(lootEnabled and(recentContainer or t<lootUntil))
+    if cadence.elapsed>=30 or(cadence.elapsed>=3 and clear)then
+     cadence.phase='travel';cadence.elapsed=0
+     log('cadence_travel',{budget_active_seconds=15,coordinates=s.coordinates})
+    end
+   end
+  end
+  if cadence.phase=='fight_loot'then window='fight_loot_window' end
+  surveyPriority(window and 0 or 1)
+ else
+  if cp.recovery then cadence=nil;surveyPriority(0)else surveyPriority(1)end
+ end
+ -- Native Boost Nav Priority owns the travel/fight arbitration. Its vitals and
+ -- buff managers still run first; target count is not an empty-radar gate.
+ local reason=essential or window
+ if not walking then
+  reason=reason or(s.busy>0 and 'native_busy')or(lootEnabled and(recentContainer or t<lootUntil)and 'looting')
+ end
  local jumped=lastPosition and s.north and s.east and math.sqrt((s.north-lastPosition.north)^2+(s.east-lastPosition.east)^2)*240>80
  if s.portaling or s.hp<=0 or not s.north or not s.east then stableSince=0 elseif stableSince==0 or jumped then stableSince=t end
  if s.north and s.east then lastPosition={north=s.north,east=s.east}end
  set('te_location_stable',stableSince>0 and t-stableSince>=3 and 1 or 0)
- set('te_can_travel',not reason and t>=quietUntil and 1 or 0)
- return reason or (t<quietUntil and 'settling' or nil)
+ set('te_can_travel',not reason and 1 or 0)
+ return reason
 end
 local function corridorDistance(s)
  local name=tostring(val('getvar[te_corridor]'))
@@ -359,8 +399,9 @@ local function monitor(t,s,pause,meshPause)
  if m.stationary>=12 and mesh and mesh.phase=='walking' and mesh.variant<4 then
   mesh.variant=mesh.variant+1;mesh.phase='retry';mesh.retryAt=t+2;set('te_mesh_request',0);set('te_mesh_walking',0);val('vtsetsetting[EnableNavigation,0]');m.stationary=0;m.at=s
   log('mesh_replan',{reason='stationary',variant=mesh.variant,target=s.target,coordinates=s.coordinates})
+  if cadence and s.targets>0 then cadence.phase='fight_loot';cadence.elapsed=0;log('cadence_fight_loot',{budget_seconds=30,reason='blocked_with_targets'})end
  end
- if m.stationary>=40 then reason='no_progress' elseif m.elapsed>=300 then reason='active_travel_budget' end
+ if m.stationary>=12 and mesh and mesh.variant>=4 then reason='no_progress' elseif m.stationary>=40 then reason='no_progress' elseif m.elapsed>=300 then reason='active_travel_budget' end
  if t>=m.sampleAt then
   local repeats=0
   for _,p in ipairs(m.trace)do if math.sqrt((s.north-p.north)^2+(s.east-p.east)^2)*240<3 then repeats=repeats+1 end end
@@ -384,7 +425,7 @@ meshTick=function(t,s,pause)
  local points=corridors[name]
  if not points then
   val('vtsetsetting[EnableNavigation,0]')
-  deactivate('Survey controller is older than v0.4.1; install both the meta and Lua files, then Resume');return 'controller_mismatch'
+  deactivate('Survey controller is older than v0.4.2; install both the meta and Lua files, then Resume');return 'controller_mismatch'
  end
  local age=t-num('getvar[te_mesh_heartbeat]')
  local fresh=num('getvar[te_mesh_schema]')==2 and age<=5 and age>=-5
@@ -392,7 +433,7 @@ meshTick=function(t,s,pause)
   val('vtsetsetting[EnableNavigation,0]');set('te_mesh_walking',0)
   if mesh then mesh.phase='idle';mesh.goal=nil end;set('te_mesh_request',0)
   meshMissingAt=meshMissingAt or t
-  if t-meshMissingAt>=15 then deactivate('TerrainMesh v0.4.1 companion is unavailable; install the complete update, enable ACAI2.Terrain and Resume')end
+  if t-meshMissingAt>=15 then deactivate('TerrainMesh v0.4.2 companion is unavailable; install the complete update, enable ACAI2.Terrain and Resume')end
   return 'waiting_for_mesh_companion'
  end
  meshMissingAt=nil
@@ -525,7 +566,7 @@ local function tick()
  end
  local newKey=safeKey(game.ServerName,game.Character.Name)
  if newKey~=key then
-  key=newKey;cp=nil;mesh=nil;movement=nil;lastPosition=nil;lootActivity={count=0,nextFlush=0}
+  key=newKey;cp=nil;mesh=nil;cadence=nil;movement=nil;lastPosition=nil;lootActivity={count=0,nextFlush=0}
   cp=readCheckpoint();phase='';previousState='';events={};errorText=''
   if cp and cp.active then phase='rejoin';deadline=num('getunixtime[]')+8 end
  elseif not wasInGame and cp and cp.active then phase='rejoin';deadline=num('getunixtime[]')+8 end
@@ -583,8 +624,8 @@ local function tick()
  end
  local s=snapshot();local state=s.state
  s.mesh_phase=mesh and mesh.phase or '';s.mesh_variant=mesh and mesh.variant or 0;s.mesh_request=num('getvar[te_mesh_request]')
- local pause=travelReadiness(t,s);s.pause_reason=pause
- if not cp.recovery then local meshPause=meshTick(t,s,pause);if not cp.active then return end;monitor(t,s,pause,meshPause)end
+ local pause=travelReadiness(t,s);s.pause_reason=pause;s.cadence=cadence and cadence.phase or 'transport';s.cadence_elapsed=cadence and cadence.elapsed or 0
+ if not cp.recovery then local meshPause=meshTick(t,s,pause);if not cp.active then return end;monitor(t,s,pause or(s.busy>0 and 'native_busy'or nil),meshPause)end
  if t>=nextSample or state~=previousState then
   local changed=state~=previousState;s.evidence='observed_pose_only'
   log(changed and 'state_change' or 'sample',s);nextSample=t+SAMPLE_SECONDS;previousState=state;cp.lastSample=s
@@ -657,7 +698,7 @@ local function guardedTick()
 end
 game.RegisterCommand('/terrainsurvey',function(args)
  local r=tostring(args or ''):lower():match('^%s*(%S+)')or'status'
- if r=='status'then local last=cp and cp.lastSample or {};notice('v0.4.1; state '..tostring(last.state or phase)..'; mesh '..tostring(last.mesh_phase or 'waiting')..'; wait '..tostring(last.pause_reason or 'none')..'; '..(cp and cp.active and 'Active' or 'Stopped')..'; phase '..phase..'; '..(cp and ('zone '..tostring(zones[cp.stage])..', point '..cp.probe)or'no checkpoint')..'; logs: '..tostring(info.DataFolder));return end
+ if r=='status'then local last=cp and cp.lastSample or {};notice('v0.4.2; state '..tostring(last.state or phase)..'; mesh '..tostring(last.mesh_phase or 'waiting')..'; cycle '..tostring(last.cadence or 'transport')..'; wait '..tostring(last.pause_reason or 'none')..'; '..(cp and cp.active and 'Active' or 'Stopped')..'; phase '..phase..'; '..(cp and ('zone '..tostring(zones[cp.stage])..', point '..cp.probe)or'no checkpoint')..'; logs: '..tostring(info.DataFolder));return end
  if #requests<4 then requests[#requests+1]=r end
 end)
 game.OnTick.Add(guardedTick)
@@ -668,4 +709,4 @@ game.World.OnChatText.Add(function(e)
   events[#events+1]={message=s:sub(1,600)}
  end
 end)
-notice('v0.4.1 ready. /terrainsurvey new starts a recorded pass; /terrainsurvey resume continues. Logs: '..tostring(info.DataFolder))
+notice('v0.4.2 ready. /terrainsurvey new starts a recorded pass; /terrainsurvey resume continues. Logs: '..tostring(info.DataFolder))

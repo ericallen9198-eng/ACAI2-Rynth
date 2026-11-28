@@ -11,7 +11,7 @@ namespace ACAI2.Rynth.Terrain.Plugin;
 // Native calls run exclusively on OnTick. Logout callbacks only set a flag.
 public sealed class TerrainPlugin:RynthPluginBase
 {
-    public const string Version="0.4.1";
+    public const string Version="0.4.2";
     public override uint MinimumApiVersion=>92;
     private volatile bool loggedOut;
     private int epoch,seenEpoch=-1;

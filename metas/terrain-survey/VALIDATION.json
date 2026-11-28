@@ -1,5 +1,5 @@
 {
-  "pilot": "Terrain Access Survey v0.4.1 - active return, bounded final recall and route evidence",
+  "pilot": "Terrain Access Survey v0.4.2 - bounded travel and fight/loot windows",
   "live_game_tested": false,
   "upstream_rynth_suite_commit": "4602d9267d0892da7179cac9f70ea5622e3a1b7e",
   "navdata_release": "2026102103",
@@ -29,7 +29,7 @@
     "225": 3694
   },
   "runtime_limits": "Live game unverified. Windows release requires genuine publish, x86 load and installer checks. Native mesh cannot guarantee every landscape obstacle; portal anchor positions are conservative, not exact portal centers.",
-  "controlled_scenarios": 82,
+  "controlled_scenarios": 86,
   "logging": {
     "sample_seconds": 5,
     "ring_slots": 8,
@@ -63,7 +63,7 @@
     "native_minimum_metres": 10,
     "larger_native_setting_preserved": true
   },
-  "monitor": "Recurring Lua tick; AF rules fire once per state entry. Combat, buffing, busy, container/loot activity and settling pause movement checks. Stable arrival gates hub/portal transitions.",
+  "monitor": "Recurring Lua tick; AF rules fire once per state entry. Native buffs, recovery and portal transitions pause travel. Busy actions pause progress checks. Combat candidates never require an empty radar before walking.",
   "loot_setting": "Ordinary EnableLooting preserved; temporarily enable only for native own-corpse recovery, then restore.",
   "inspection": "Stable live position within 3 horizontal yards and 4 world height units is saved immediately; no waiting for NavEmpty or trailing action/pause points.",
   "route_guard": {
@@ -177,7 +177,7 @@
   },
   "runtime_mesh": {
     "interface": "Stock RynthNav.Path v2, complete paths only; no custom engine DLL",
-    "planner_companion": "ACAI2.Terrain v0.4.1; genuine pinned RynthCore SDK",
+    "planner_companion": "ACAI2.Terrain v0.4.2; genuine pinned RynthCore SDK",
     "live_segment_checks_per_second": 4,
     "stationary_replan_seconds": 12,
     "side_approaches_yards": [
@@ -230,5 +230,12 @@
     "client_total_resource_use": "Not measured by controlled checks",
     "client_resource_sample_seconds": 60,
     "resource_scope": "Whole client managed heap, private/virtual bytes and cumulative process CPU; not isolated survey consumption"
+  },
+  "travel_cadence": {
+    "moving_seconds": 15,
+    "fight_loot_max_seconds": 30,
+    "early_clear_min_seconds": 3,
+    "native_setting": "BoostNavPriority; original restored on Stop",
+    "no_empty_radar_gate": true
   }
 }

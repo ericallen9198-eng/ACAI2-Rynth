@@ -77,23 +77,24 @@ start();sim.pvars.te_recorder_restarts=2;reloadScript();assert(sim.pvars.te_reco
 -- SCENARIO recorder reload during native corpse travel never stops its macro
 start();sim.hp=0;sim.rememberCorpse=true;sim.nativeRecovery=true;step();sim.hp=429;step(20)
 local n=countCommand('STOP');reloadScript();assert(countCommand('STOP')==n and sim.nativeRecovery and sim.state=='RECOVERY_WAIT')
--- SCENARIO recurring monitor pauses through long combat and does not mark a terrain failure
-start();sim.targets=6;step(150);assert((sim.vars.te_movement_fail or 0)==0);sim.targets=0;step(15);assert((sim.vars.te_movement_fail or 0)==0)
+-- SCENARIO respawning candidates do not hide genuinely stationary travel forever
+start();sim.targets=6;step(300);assert(sim.vars.te_movement_fail==1 and require('rynth.ai').MacroRunning)
 -- SCENARIO recurring monitor allows a full buff cycle and grace between casts
 start();sim.buffs=16;step(180);assert((sim.vars.te_movement_fail or 0)==0);sim.buffs=0;step(15);assert((sim.vars.te_movement_fail or 0)==0)
 -- SCENARIO active looting refreshes its bounded grace while the corpse is open
-start();sim.settings.EnableLooting=1;game.World.OpenContainer={Id=123}
+start();sim.state='HUB_WAIT';sim.settings.EnableLooting=1;game.World.OpenContainer={Id=123}
 for i=1,12 do send('[RynthAi] Looted [Keep] Gold Pea');step(10)end
 assert((sim.vars.te_movement_fail or 0)==0);game.World.OpenContainer=nil;step(15);assert((sim.vars.te_movement_fail or 0)==0)
 -- SCENARIO genuine idle lack of progress still triggers after activity ends
-start();sim.targets=3;step(80);sim.targets=0;step(150);assert(sim.vars.te_movement_fail==1)
+start();sim.targets=3;step(80);sim.targets=0;step(300);assert(sim.vars.te_movement_fail==1)
 -- SCENARIO advancing route points counts as progress despite close positions
 start();for i=1,80 do sim.navIndex=i;step()end;assert((sim.vars.te_movement_fail or 0)==0)
 -- SCENARIO moving for longer than one old AF sample interval is repeatedly observed
 start();for i=1,100 do sim.coords=tostring(45.2+i*.005)..'|-75.1|0.38';step()end;assert((sim.vars.te_movement_fail or 0)==0)
--- SCENARIO accidental 180 arrival preserves the Plateau point rather than crediting cliff failure
-start();sim.navName='<embedded:Hub_275_01>';sim.targets=2;sim.coords='43.5416666667|-85.4083333333|0.0833541667';step(10);assert(cp().probe==1 and sim.vars.te_movement_fail==0 and sim.settings.EnableNavigation==0)
-sim.onResumeCoords='45.20794|-75.06323|0.384';sim.targets=0;step(15);assert(cp().probe==1 and sim.state=='WAIT_275_01')
+-- SCENARIO accidental arrival recovers through the hub even with respawning targets
+start();sim.navName='<embedded:Hub_275_01>';sim.targets=2;sim.coords='43.5416666667|-85.4083333333|0.0833541667'
+sim.onResumeCoords='45.20794|-75.06323|0.384';step(10)
+assert(cp().probe==1 and sim.state=='WAIT_275_01'and not cp().results['275_01'])
 -- SCENARIO current status appears in the user-facing chat even while recording is repairing
 start();sim.failWrites=true;report(1,1,1);local n=#sim.logs;sim.request('status');assert(#sim.logs>n)
 -- SCENARIO old one-shot no-progress outcomes are preserved as unverified and scheduled for recheck
@@ -113,11 +114,11 @@ sim.hp=429;sim.nativeRecovery=false;send('[RynthAi] Own corpse: recovered everyt
 -- SCENARIO stopping during recovery restores temporarily enabled looting
 start();sim.settings.EnableLooting=0;sim.hp=0;step();assert(sim.settings.EnableLooting==1);request('stop');assert(sim.settings.EnableLooting==0 and not require('rynth.ai').MacroRunning)
 -- SCENARIO wrong-area recovery protects an 180 survey after taking the 225 portal
-start();local c,n=cp();c.stage=1;sim.files[n]=encodeNative(c);sim.vars.te_stage=1;sim.navName='<embedded:Hub_180_01>';sim.targets=2;sim.coords='52.1650468826294|-80.568896484375|0.0888588825861613';reloadScript()
-assert(cp().stage==1 and cp().probe==1 and sim.settings.EnableNavigation==0);sim.onResumeCoords='43.5416666667|-85.4083333333|0.0833541667';sim.targets=0;step(15);assert(cp().stage==1 and cp().probe==1 and next(cp().results)==nil)
+start();local c,n=cp();c.stage=1;sim.files[n]=encodeNative(c);sim.vars.te_stage=1;sim.navName='<embedded:Hub_180_01>';sim.targets=2;sim.coords='52.1650468826294|-80.568896484375|0.0888588825861613';sim.onResumeCoords='43.5416666667|-85.4083333333|0.0833541667';reloadScript()
+assert(cp().stage==1 and cp().probe==1);sim.onResumeCoords='43.5416666667|-85.4083333333|0.0833541667';sim.targets=0;step(15);assert(cp().stage==1 and cp().probe==1 and next(cp().results)==nil)
 -- SCENARIO wrong-area recovery protects a 225 survey after taking the Plateau portal
-start();local c,n=cp();c.stage=2;sim.files[n]=encodeNative(c);sim.vars.te_stage=2;sim.navName='<embedded:Hub_225_01>';sim.targets=2;sim.coords='45.20794|-75.06323|0.383354';reloadScript()
-assert(cp().stage==2 and cp().probe==1 and sim.settings.EnableNavigation==0);sim.onResumeCoords='53.528333|-79.802500|0.300021';sim.targets=0;step(15);assert(cp().stage==2 and cp().probe==1)
+start();local c,n=cp();c.stage=2;sim.files[n]=encodeNative(c);sim.vars.te_stage=2;sim.navName='<embedded:Hub_225_01>';sim.targets=2;sim.coords='45.20794|-75.06323|0.383354';sim.onResumeCoords='53.528333|-79.802500|0.300021';reloadScript()
+assert(cp().stage==2 and cp().probe==1);sim.onResumeCoords='53.528333|-79.802500|0.300021';sim.targets=0;step(15);assert(cp().stage==2 and cp().probe==1)
 -- SCENARIO repeated misroutes are bounded without blacklisting the terrain
 start();sim.navName='<embedded:Hub_275_01>';sim.coords='43.5416666667|-85.4083333333|0.0833541667';step(10);assert(cp().probe>1 and cp().results['275_01']and cp().results['275_01'].outcome=='deferred'and cp().routeRecoveries['275_01']==3,'probe '..cp().probe..' count '..tostring(cp().routeRecoveries and cp().routeRecoveries['275_01'])..' state '..sim.state)
 -- SCENARIO native portal radius is raised to ten metres after a smaller reported setting
@@ -125,19 +126,18 @@ start();assert(sim.avoidRadius==10 and countCommand('/rnav avoid portals 10')==1
 -- SCENARIO a larger existing native portal avoidance radius is preserved
 sim.avoidRadius=14;start();assert(sim.avoidRadius==14 and countCommand('/rnav avoid portals 10')==0)
 -- SCENARIO a lower floor under a survey route is recovered without serializing infinity
-start();sim.navName='<embedded:Hub_275_01>';sim.coords='45.20794|-75.06323|0.01';sim.targets=2;step(3);assert(cp().probe==1 and sim.settings.EnableNavigation==0)
+start();sim.navName='<embedded:Hub_275_01>';sim.coords='45.20794|-75.06323|0.01';sim.targets=2;sim.onResumeCoords='45.20794|-75.06323|0.383354';step(3);assert(cp().probe==1)
 -- SCENARIO an idle open container cannot block travel when ordinary looting is disabled
 start();sim.settings.EnableLooting=0;game.World.OpenContainer={Id=123};step(12);assert(sim.vars.te_can_travel==1)
 
 -- SCENARIO a stale open container stops holding travel after the bounded grace
-start();sim.settings.EnableLooting=1;game.World.OpenContainer={Id=123};step(35);assert(sim.vars.te_can_travel==1)
+start();sim.settings.EnableLooting=1;game.World.OpenContainer={Id=123};local resumed=false;for i=1,70 do step();if sim.vars.te_can_travel==1 then resumed=true end end;assert(resumed)
 -- SCENARIO nothing-matched loot completion does not continually extend the grace
 start();sim.settings.EnableLooting=1;game.World.OpenContainer={Id=123};step();for i=1,20 do send('[RynthAi] Nothing on Corpse of Siberite Fragment matches the loot profile.');step()end;assert(sim.vars.te_can_travel==1)
 -- SCENARIO the running recorder exposes its exact version for short diagnostics
-assert(TerrainSurveyVersion=='0.4.1')
--- SCENARIO runtime mesh route needs a fresh companion and exact request acknowledgment
-start();sim.ignoreMesh=true;sim.vars.te_mesh_request=0;sim.targets=2;step(3);sim.targets=0;step(10)
-assert(sim.settings.EnableNavigation==0);local req=sim.vars.te_mesh_request;assert(req>0)
+assert(TerrainSurveyVersion=='0.4.2')
+-- SCENARIO runtime mesh route needs an exact acknowledgment even with persistent targets
+sim.ignoreMesh=true;sim.targets=20;start();for i=1,5 do if sim.vars.te_mesh_request>0 then break end;step()end;assert(sim.settings.EnableNavigation==0);local req=sim.vars.te_mesh_request;assert(req>0)
 sim.vars.te_mesh_ack=req-1;sim.vars.te_mesh_status=1;step();assert(sim.settings.EnableNavigation==0)
 sim.ignoreMesh=false;step(3);assert(sim.settings.EnableNavigation==1 and sim.vars.te_mesh_walking==1)
 -- SCENARIO missing mesh companion holds movement then stops with progress intact
@@ -145,13 +145,11 @@ sim.noMeshCompanion=true;start();step(25);assert(not cp().active and cp().probe=
 -- SCENARIO a blocked live raycast triggers a checked side approach
 start();freshMesh();local first=sim.vars.te_mesh_request;local prior=sim.vars.te_mesh_variant;sim.vars.te_mesh_blocked=first;step(6)
 assert(cp().active and sim.vars.te_mesh_request>first and sim.vars.te_mesh_variant==prior+1)
--- SCENARIO stalled movement tries bounded side approaches before terrain failure
-start();step(70);assert(sim.vars.te_mesh_variant==4 and sim.vars.te_movement_fail==0);step(50);assert(sim.vars.te_movement_fail==1)
--- SCENARIO combat holds navigation and a new mesh request follows settling
-start();step(4);local first=sim.vars.te_mesh_request;sim.targets=3;step(20)
-assert(sim.settings.EnableNavigation==0 and sim.vars.te_mesh_walking==0)
-sim.coords='45.2001|-75.1000|0.38';sim.targets=0;step(15)
-assert(sim.vars.te_mesh_request>first and sim.settings.EnableNavigation==1)
+-- SCENARIO stalled movement still exhausts bounded side approaches
+start();step(300);assert(sim.vars.te_mesh_variant==4 and sim.vars.te_movement_fail==1)
+-- SCENARIO persistent combat candidates do not prevent the first checked travel request
+sim.targets=20;step();request('new');step(14)
+assert(sim.vars.te_mesh_request>0 and sim.settings.BoostNavPriority==1 and sim.settings.EnableNavigation==1)
 -- SCENARIO planner rejects every approach without enabling a straight fallback
 sim.meshFailure=-1;start();step(40);assert(sim.vars.te_movement_fail==1 and sim.settings.EnableNavigation==0 and cp().probe==1)
 -- SCENARIO a foreign route replacing an accepted mesh walk stops the survey
@@ -167,10 +165,9 @@ start();freshMesh();local n=sim.vars.te_mesh_request;sim.vars.te_mesh_instance=2
 assert(sim.vars.te_mesh_request>n and sim.vars.te_mesh_walking==1)
 -- SCENARIO New retains increasing mesh generations while replacing survey results
 start();local n=cp().meshGeneration;request('new');step(20);assert(cp().meshGeneration>n)
--- SCENARIO local return active budget pauses for combat and buffing
-start();sim.state='RETURN_WAIT_275';sim.vars.te_corridor='Return_275';sim.targets=2;step(150);assert(sim.vars.te_return_timeout==0)
-sim.targets=0;sim.buffs=12;step(150);assert(sim.vars.te_return_timeout==0)
-sim.buffs=0;step(20);assert(sim.vars.te_return_timeout==0)
+-- SCENARIO local return pauses for buffs but can resume with combat candidates present
+start();sim.state='RETURN_WAIT_275';sim.vars.te_corridor='Return_275';sim.buffs=12;step(150);assert(sim.vars.te_return_timeout==0)
+sim.buffs=0;sim.targets=20;step(20);assert(sim.vars.te_return_timeout==0 and sim.vars.te_can_travel==1)
 -- SCENARIO local return eventually expires its active travel budget
 start();sim.state='RETURN_WAIT_275';sim.vars.te_corridor='Return_275';step(180);assert(sim.vars.te_return_timeout==1)
 -- SCENARIO final return confirms the live Plateau position before finishing
@@ -210,8 +207,8 @@ for i=1,100 do send('[RynthAi] Nothing on Corpse of private-name matches the loo
 local summaries=0
 for name,text in pairs(sim.files)do if name:find('^diagnostics%-')then assert(not text:find('private%-name'));for line in text:gmatch('[^\n]+')do if decodeNative(line).event=='loot_activity_summary'then summaries=summaries+1 end end end end
 assert(summaries>=1 and summaries<=3)
--- SCENARIO unchanged combat samples checkpoint at most once a minute
-start();sim.targets=3;step(10);local initial=sim.writes;step(120);assert(sim.writes-initial<=3,'unnecessary checkpoint writes: '..(sim.writes-initial))
+-- SCENARIO unchanged buffing samples checkpoint at most once a minute
+start();sim.buffs=12;step(10);local initial=sim.writes;step(120);assert(sim.writes-initial<=3,'unnecessary checkpoint writes: '..(sim.writes-initial))
 -- SCENARIO old companion protocol is rejected rather than silently losing geometry
 start();sim.noMeshCompanion=true;sim.vars.te_mesh_schema=1;step(25);assert(not cp().active and cp().probe==1)
 -- SCENARIO another native navigation trip stops survey dispatch without stopping that trip
@@ -235,3 +232,17 @@ for name,text in pairs(sim.files)do if name:find('^diagnostics%-')then for line 
 assert(count>=1 and count<=2 and sim.vars.te_movement_fail==0)
 -- SCENARIO malformed optional resource telemetry never fails the recorder
 start();sim.vars.te_resources='broken json';sim.targets=3;step(70);assert(cp().active and sim.vars.te_logger_active==1)
+-- SCENARIO moving through populated packs alternates native travel and bounded fight loot windows
+sim.targets=20;start(12);local before=sim.vars.te_mesh_request
+for i=1,25 do sim.coords=(45.2+i*.0025)..'|-75.1|0.38';step()end
+assert(sim.settings.BoostNavPriority==0 and sim.settings.EnableNavigation==0,'must release native combat and loot after travel')
+local resumed=false;for i=1,31 do step();if sim.vars.te_mesh_request>before and sim.settings.BoostNavPriority==1 and sim.settings.EnableNavigation==1 then resumed=true end end;assert(sim.targets==20 and resumed,'must travel again without empty radar')
+-- SCENARIO stopping from the fight loot window restores an originally enabled priority
+sim.settings.BoostNavPriority=1;sim.targets=20;start(12)
+for i=1,25 do sim.coords=(45.2+i*.0025)..'|-75.1|0.38';step()end
+assert(sim.settings.BoostNavPriority==0);request('stop');assert(sim.settings.BoostNavPriority==1)
+-- SCENARIO stopping from travel restores the original disabled priority
+start();assert(sim.settings.BoostNavPriority==1);request('stop');assert(sim.settings.BoostNavPriority==0)
+-- SCENARIO buffs still pause a travel burst while native busy heals retain native ownership
+start();sim.buffs=12;step(30);assert(sim.settings.EnableNavigation==0 and sim.vars.te_can_travel==0)
+sim.buffs=0;sim.busy=1;step(5);assert(sim.settings.EnableNavigation==1 and sim.vars.te_can_travel==1)

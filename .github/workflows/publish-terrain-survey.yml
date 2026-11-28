@@ -49,16 +49,16 @@ jobs:
           Remove-Item artifacts/terrain-plugin/*.pdb -ErrorAction SilentlyContinue
           python tools/ACAI2.TerrainSurvey/package_survey.py --out artifacts/terrain-release --plugin artifacts/terrain-plugin
           if($LASTEXITCODE){throw 'Packaging failed'}
-          & tools/ACAI2.TerrainSurvey/Test-Installer.ps1 -Package "$env:GITHUB_WORKSPACE/artifacts/terrain-release/Terrain Access Survey v0.4.1"
+          & tools/ACAI2.TerrainSurvey/Test-Installer.ps1 -Package "$env:GITHUB_WORKSPACE/artifacts/terrain-release/Terrain Access Survey v0.4.2"
           if($LASTEXITCODE){throw 'Windows installer checks failed'}
       - uses: actions/upload-artifact@v4
         with:
-          name: TerrainSurvey-v0.4.1-Windows
+          name: TerrainSurvey-v0.4.2-Windows
           path: artifacts/terrain-release/*.zip
       - name: Release complete Windows pilot
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create terrain-survey-v0.4.1 artifacts/terrain-release/Terrain-Access-Survey-v0.4.1.zip artifacts/terrain-release/Terrain-Access-Survey-Sources-v0.4.1.zip --repo '${{ github.repository }}' --target '${{ github.sha }}' --title 'TerrainSurvey v0.4.1 - bounded route evidence and verified final return' --notes-file docs/TERRAIN-SURVEY-V041.md --prerelease --latest=false
+          gh release create terrain-survey-v0.4.2 artifacts/terrain-release/Terrain-Access-Survey-v0.4.2.zip artifacts/terrain-release/Terrain-Access-Survey-Sources-v0.4.2.zip --repo '${{ github.repository }}' --target '${{ github.sha }}' --title 'TerrainSurvey v0.4.2 - bounded travel through respawning packs' --notes-file docs/TERRAIN-SURVEY-V042.md --prerelease --latest=false
           if($LASTEXITCODE){throw 'Release publication failed'}

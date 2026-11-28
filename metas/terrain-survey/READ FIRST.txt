@@ -1,4 +1,4 @@
-TERRAIN ACCESS SURVEY v0.4.1 — RUNTIME MESH PILOT
+TERRAIN ACCESS SURVEY v0.4.2 — RUNTIME MESH PILOT
 
 UPDATING YOUR RUN
 1. In game: /terrainsurvey stop
@@ -18,20 +18,23 @@ Use Resume to keep your existing inspection results and checkpoint. Only a
 first-ever run, or an intentional replacement of the old run, uses:
 /terrainsurvey new
 
-WHAT CHANGED IN 0.4.1
-The local return's 120-second budget now counts active travel only. Combat,
-buffs, loot activity, native busy actions and mesh planning pause it. After
-all sectors, the survey attempts /ls and verifies the live Plateau position
-and elevation before stopping. Two unsuccessful recalls exhaust this final
-return; the result is explicitly unconfirmed, with inspection data preserved.
-Final-return progress and attempt counts survive reconnect or script restart.
+WHAT CHANGED IN 0.4.2
+Dense respawns no longer keep the survey waiting for an empty radar.
+While walking inspection routes, the survey uses native Boost Nav Priority
+for 15 seconds of actual movement, then releases navigation for up to 30
+seconds of normal fighting and looting. This window ends early after at
+least 3 seconds when targets and nearby loot work clear. A blocked travel
+attempt with nearby targets also releases navigation to fight before retrying.
 
-Accepted runtime routes now write their actual mesh corners once to the
-rotating log. These are labeled planned geometry, not proof of a walked path.
-Five-second live position samples and endpoint arrivals are labeled separately.
-This lets us distinguish a blocked route from combat displacement later. The
-location guard also recognizes the current checked detour, so a valid mesh
-approach can leave the original predicted corridor without a false misroute.
+Rynth still owns healing, buffs, combat, looting and movement. Healing and
+buffs take priority over boosted navigation. Fight/loot windows are bounded:
+a fresh pack does not keep resetting the wait. Ordinary loot remains subject
+to your loot setting and profile; a window does not promise every corpse.
+Your original Boost Nav Priority setting is saved and restored on Stop.
+
+Local return travel, bounded final recall, accepted mesh geometry and live
+position diagnostics from 0.4.1 are retained. Status now shows the current
+travel or fight_loot cycle. Mesh idle during a fight window is expected.
 
 Resource housekeeping: eight rotating 512-Ki-character log slots (about 4 MiB
 ASCII; at most about 16 MiB of UTF-8), maximum 256 corners per accepted route,
@@ -46,8 +49,8 @@ include all apps in the process, so they cannot isolate survey resource use.
 
 If already installed: update the COMPLETE package, then reload ACAI2.Terrain
 through RynthCore Plugins, or restart that client, so the new DLL is loaded.
-The new Lua helper requires the new companion protocol. A mixed installation
-stops clearly rather than walking without its required diagnostics.
+The Lua helper requires companion protocol 2, also used by 0.4.1. Missing or
+incompatible companions stop clearly instead of walking without diagnostics.
 
 RUNTIME MESH BEHAVIOR
 The original survey followed fixed waypoints prepared from mesh data. This
@@ -88,7 +91,9 @@ maps are used. The data is intended to improve future treasure-map routing.
 YOUR SETTINGS AND RECOVERY
 Ordinary Enable Looting is preserved. You may leave it off in dense packs.
 It is temporarily enabled only for native own-corpse recovery, then restored.
-Buffs, native busy actions, combat and portal transitions pause survey travel.
+Buffs, death/recovery and portal transitions pause survey travel. Native busy
+actions pause progress checks; Rynth handles their priority. Combat candidates
+do not block a walking burst. Fight/loot windows temporarily disable navigation.
 HP fluctuations from buffs do not count as death; zero HP does.
 
 Native RynthAi must remember the death to find its corpse. The survey waits
