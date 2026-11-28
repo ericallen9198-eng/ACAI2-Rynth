@@ -10,7 +10,7 @@ void Check(MetaRule r){
  foreach(var c in r.Children.Concat(r.ActionChildren))Check(c);
 }
 foreach(var rule in meta.Rules)Check(rule);
-foreach(var (name,lines)in meta.EmbeddedNavs){var nav=NavRouteParser.LoadFromLines(lines);if(nav.LoadWarning!=null||nav.RouteType!=NavRouteType.Once)throw new Exception("Invalid terrain nav "+name);foreach(var p in nav.Points){if(p.Type==NavPointType.Npc)throw new Exception("Unexpected NPC");if(p.Type==NavPointType.PortalNPC)portals++;if(!double.IsFinite(p.NS)||!double.IsFinite(p.EW)||!double.IsFinite(p.Z))throw new Exception("Nonfinite coordinate");points++;}}
+foreach(var (name,lines)in meta.EmbeddedNavs){var nav=NavRouteParser.LoadFromLines(lines);if(nav.LoadWarning!=null||nav.RouteType!=NavRouteType.Once)throw new Exception("Invalid terrain nav "+name);foreach(var p in nav.Points){if(!name.StartsWith("Hub_to_")&&(p.Type==NavPointType.Pause||p.Type==NavPointType.Chat))throw new Exception("Survey inspection has an artificial pause/chat waypoint");if(p.Type==NavPointType.Npc)throw new Exception("Unexpected NPC");if(p.Type==NavPointType.PortalNPC)portals++;if(!double.IsFinite(p.NS)||!double.IsFinite(p.EW)||!double.IsFinite(p.Z))throw new Exception("Nonfinite coordinate");points++;}}
 if(portals!=2||meta.EmbeddedNavs.Count!=77)throw new Exception("Missing terrain/hub connections");
 if(args.Length>1)File.WriteAllText(args[1],JsonSerializer.Serialize(new{rules=meta.Rules.Count,states=states.Count,navs=meta.EmbeddedNavs.Count,refs,points,portals,warnings=meta.Warnings.Count}));
 Console.WriteLine($"PASS genuine upstream AF/nav parsers: {meta.Rules.Count} rules, {states.Count} states, {refs} refs, {points} points; 2 deliberate portals; no one-shot movement monitor.");

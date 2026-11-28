@@ -49,7 +49,7 @@ foreach ($file in $files) {
     Copy-Item -LiteralPath $source -Destination $file.Target -Force
     if ((Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash -ne (Get-FileHash -LiteralPath $file.Target -Algorithm SHA256).Hash) { throw "Installed file verification failed: $($file.Target)" }
 }
-Write-Host 'TerrainSurvey v0.3 installed and verified. No DLLs or saved character data were changed.' -ForegroundColor Green
+Write-Host 'TerrainSurvey v0.3.1 installed and verified. No DLLs or saved character data were changed.' -ForegroundColor Green
 if (Test-Path -LiteralPath $backupRoot) { Write-Host "Previous survey files: $backupRoot" }
 Write-Host 'In game: /lua start TerrainSurvey'
 Write-Host 'Then:    /terrainsurvey new'

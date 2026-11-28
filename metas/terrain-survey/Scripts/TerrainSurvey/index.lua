@@ -1,4 +1,4 @@
--- TerrainSurvey v0.3. Stock RynthLua/RynthAi only; streamed local diagnostics.
+-- TerrainSurvey v0.3.1. Stock RynthLua/RynthAi only; streamed local diagnostics.
 local ai,fsmod,json,info=require('rynth.ai'),require('filesystem'),require('json'),require('rynthlua')
 local fs=fsmod.GetData()
 local META='Terrain Access Survey'
@@ -17,7 +17,7 @@ local stableSince=0
 local lastPosition=nil
 local transport=nil
 local lootUntil=0
-local settings={FollowNavMin=0.5,NavResumeNearest=0,StopMacroOnDeath=0,DeathRecallMode=0,LootOwnCorpse=1,TravelToOwnCorpse=1,EnableLooting=1,EnableMeta=1}
+local settings={FollowNavMin=0.5,NavResumeNearest=0,StopMacroOnDeath=0,DeathRecallMode=0,LootOwnCorpse=1,TravelToOwnCorpse=1,EnableMeta=1}
 local zones={[0]=275,[1]=180,[2]=225}
 local planned={}
 local raw,readErr=fsmod.GetScript().ReadText('probe-index.json')
@@ -61,6 +61,23 @@ local function log(kind,data)
  if not ok then error('Diagnostic append failed: '..tostring(err))end
  cp.logChars=cp.logChars+#line
 end
+local function enableRecoveryLoot()
+ if not cp or not cp.recovery then return end
+ local r=cp.recovery
+ if r.lootBefore~=nil then return end
+ local before=ai.GetSetting('EnableLooting')
+ if before==false or before==0 then
+  r.lootBefore=before;save() -- remember the user's choice before changing it
+  assert(ai.SetSetting('EnableLooting',1),'Cannot enable native own-corpse recovery looting')
+  log('recovery_loot_enabled')
+ end
+end
+local function restoreRecoveryLoot()
+ if not cp or not cp.recovery or cp.recovery.lootBefore==nil then return end
+ local r=cp.recovery;local live=ai.GetSetting('EnableLooting')
+ if live==1 or live==true then ai.SetSetting('EnableLooting',r.lootBefore)end
+ r.lootBefore=nil
+end
 local function restoreSettings()
  if not cp or not cp.oldSettings then return end
  for n,v in pairs(cp.oldSettings)do
@@ -76,7 +93,7 @@ local function deactivate(reason)
  cp.active=false;phase=''
  -- A Stop must work even if the log disk is full. Native intent also blocks watchdog restart.
  pcall(function()val('setpvar[te_user_stop,1]')end)
- if owned then pcall(function()set('te_logger_active',0);ai.Stop();restoreSettings()end)end
+ if owned then pcall(function()set('te_logger_active',0);ai.Stop();restoreRecoveryLoot();restoreSettings()end)end
  local ok,err=pcall(function()log('stopped',{reason=reason});save()end)
  notice(reason..'. Progress retained. Logs: '..tostring(info.DataFolder))
  if not ok then notice('Stop is active, but its disk record could not be written: '..tostring(err))end
@@ -153,7 +170,7 @@ local function startRecovery(t,reason)
  movement=nil;transport=nil
  if cp.recovery then return end
  cp.recovery={started=t,reason=reason,settleUntil=t+8,statusWaitSince=t,queryAt=0,status='',statusAt=0,sentGo=false,done=false,ended=false}
- if reason=='death'then cp.deaths=cp.deaths+1 end
+ if reason=='death'then cp.deaths=cp.deaths+1;enableRecoveryLoot()end
  log('recovery_started',{reason=reason,coordinates=tostring(val('getplayercoordinates[]'))});save()
  set('te_recovery_busy',1)
  if owns()then val('vtsetsetting[EnableNavigation,0]');val('vtsetmetastate[RECOVERY_WAIT]')end
@@ -168,6 +185,7 @@ local function drainEvents(t)
    log('native_diagnostic',{message=s})
    if cp.recovery then
     local r=cp.recovery
+    if s:find('^%[RynthAi%] Your corpse is at ') and not s:find(', recovered',1,true) and not s:find('nothing dropped',1,true) then enableRecoveryLoot()end
     if s:find('^%[RynthAi%] Recover My Corpse:')then
      r.status=s:match('; travel: (.-)%. /ra owncorpse')or'';r.statusAt=t
     end
@@ -197,11 +215,11 @@ local function recoveryTick(t,s)
   return
  end
  if not r.done and not r.ended and not r.sentGo and not r.lootStarted then
-  ai.Command('/ra owncorpse go');r.sentGo=true;r.settleUntil=t+10;save();return
+  enableRecoveryLoot();ai.Command('/ra owncorpse go');r.sentGo=true;r.settleUntil=t+10;save();return
  end
  if not r.done and not r.ended and t-r.started<960 then return end
  log('recovery_finished',{confirmed=r.done and not r.noCorpseMemory,no_native_death_memory=r.noCorpseMemory or false,reason=r.reason,native_ended=r.ended})
- cp.recovery=nil;save();set('te_recovery_busy',0)
+ restoreRecoveryLoot();cp.recovery=nil;save();set('te_recovery_busy',0)
  -- Rebuild the unfinished point's approach from the known hub, never restart point 1.
  set('te_stage',cp.stage);set('te_probe',cp.probe);set('te_attempt',cp.attempt);set('te_seq',cp.sequence)
  val('vtsetmetastate[RESUME]')
@@ -397,14 +415,14 @@ local function guardedTick()
 end
 game.RegisterCommand('/terrainsurvey',function(args)
  local r=tostring(args or ''):lower():match('^%s*(%S+)')or'status'
- if r=='status'then notice((cp and cp.active and 'Active' or 'Stopped')..'; phase '..phase..'; '..(cp and ('zone '..tostring(zones[cp.stage])..', point '..cp.probe)or'no checkpoint')..'; logs: '..tostring(info.DataFolder));return end
+ if r=='status'then local last=cp and cp.lastSample or {};notice('v0.3.1; state '..tostring(last.state or phase)..'; wait '..tostring(last.pause_reason or 'none')..'; '..(cp and cp.active and 'Active' or 'Stopped')..'; phase '..phase..'; '..(cp and ('zone '..tostring(zones[cp.stage])..', point '..cp.probe)or'no checkpoint')..'; logs: '..tostring(info.DataFolder));return end
  if #requests<4 then requests[#requests+1]=r end
 end)
 game.OnTick.Add(guardedTick)
 game.World.OnChatText.Add(function(e)
  if not cp or not cp.active or #events>=32 then return end
  local s=tostring(e.Message or '')
- if s:find('^%[RynthAi%] Own corpse:')or s:find('^%[RynthAi%] Your corpse is at ')or s:find('^%[RynthAi%] Recover My Corpse:')or s:find('^Terrain survey:')or s:find('^%[TERRAIN')or s:find('^%[RynthAi%] Loot')or s:find('^%[RynthAi%] Nothing on Corpse')or s:find('^%[RynthNav%] avoid')or s:find('^Nav: ')or s:find('^%[RynthAi%] Nav:')or s=='You have retained all your items. You do not need to recover your corpse!'then
+ if s:find('^%[RynthAi%] Own corpse:')or s:find('^%[RynthAi%] Your corpse is at ')or s:find('^%[RynthAi%] Recover My Corpse:')or s:find('^Terrain survey:')or s:find('^%[TERRAIN')or s:find('^%[TerrainSurvey%] Hub recall:')or s:find('^%[RynthAi%] Loot')or s:find('^%[RynthAi%] Nothing on Corpse')or s:find('^%[RynthNav%] avoid')or s:find('^Nav: ')or s:find('^%[RynthAi%] Nav:')or s=='You have retained all your items. You do not need to recover your corpse!'then
   events[#events+1]={message=s:sub(1,600)}
  end
 end)

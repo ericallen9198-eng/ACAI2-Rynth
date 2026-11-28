@@ -35,6 +35,7 @@ STATE: {RESUME} ~~ {
 				SetState {RECOVERY_WAIT}
 	IF: Always
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`resume_current_point`]}
 				DoExpr {setvar[te_entry_hub,1]}
 				DoExpr {setvar[te_recall_attempts,0]}
 				SetState {RECALL}
@@ -57,6 +58,7 @@ STATE: {RECALL} ~~ {
 				DoExpr {setvar[te_transport_timeout,0]}
 				DoExpr {setvar[te_recall_attempts,getvar[te_recall_attempts]+1]}
 				DoExpr {setvar[te_settle,getunixtime[]+5]}
+				DoExpr {echo[`[TerrainSurvey] Hub recall: `+getvar[te_return_reason]+`; last movement result: `+getvar[te_reason]]}
 				Chat {/ls}
 				SetState {HUB_WAIT}
 ~~ }
@@ -368,6 +370,7 @@ STATE: {COMMIT_FAILED_275_01} ~~ {
 				SetState {RECOVERY_WAIT}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==2}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`retry_different_hub_approach`]}
 				DoExpr {setvar[te_attempt,1]}
 				DoExpr {setvar[te_entry_hub,1]}
 				DoExpr {setvar[te_recall_attempts,0]}
@@ -375,6 +378,7 @@ STATE: {COMMIT_FAILED_275_01} ~~ {
 				SetState {RECALL}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==3}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`defer_failed_approach`]}
 				SetOpt {EnableNav} {False}
 				DoExpr {setvar[te_probe,getvar[te_probe]+1]}
 				DoExpr {setvar[te_attempt,0]}
@@ -496,6 +500,7 @@ STATE: {COMMIT_FAILED_275_02} ~~ {
 				SetState {RECOVERY_WAIT}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==2}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`retry_different_hub_approach`]}
 				DoExpr {setvar[te_attempt,1]}
 				DoExpr {setvar[te_entry_hub,1]}
 				DoExpr {setvar[te_recall_attempts,0]}
@@ -503,6 +508,7 @@ STATE: {COMMIT_FAILED_275_02} ~~ {
 				SetState {RECALL}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==3}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`defer_failed_approach`]}
 				SetOpt {EnableNav} {False}
 				DoExpr {setvar[te_probe,getvar[te_probe]+1]}
 				DoExpr {setvar[te_attempt,0]}
@@ -624,6 +630,7 @@ STATE: {COMMIT_FAILED_275_03} ~~ {
 				SetState {RECOVERY_WAIT}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==2}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`retry_different_hub_approach`]}
 				DoExpr {setvar[te_attempt,1]}
 				DoExpr {setvar[te_entry_hub,1]}
 				DoExpr {setvar[te_recall_attempts,0]}
@@ -631,6 +638,7 @@ STATE: {COMMIT_FAILED_275_03} ~~ {
 				SetState {RECALL}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==3}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`defer_failed_approach`]}
 				SetOpt {EnableNav} {False}
 				DoExpr {setvar[te_probe,getvar[te_probe]+1]}
 				DoExpr {setvar[te_attempt,0]}
@@ -752,6 +760,7 @@ STATE: {COMMIT_FAILED_275_04} ~~ {
 				SetState {RECOVERY_WAIT}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==2}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`retry_different_hub_approach`]}
 				DoExpr {setvar[te_attempt,1]}
 				DoExpr {setvar[te_entry_hub,1]}
 				DoExpr {setvar[te_recall_attempts,0]}
@@ -759,6 +768,7 @@ STATE: {COMMIT_FAILED_275_04} ~~ {
 				SetState {RECALL}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==3}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`defer_failed_approach`]}
 				SetOpt {EnableNav} {False}
 				DoExpr {setvar[te_probe,getvar[te_probe]+1]}
 				DoExpr {setvar[te_attempt,0]}
@@ -880,6 +890,7 @@ STATE: {COMMIT_FAILED_275_05} ~~ {
 				SetState {RECOVERY_WAIT}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==2}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`retry_different_hub_approach`]}
 				DoExpr {setvar[te_attempt,1]}
 				DoExpr {setvar[te_entry_hub,1]}
 				DoExpr {setvar[te_recall_attempts,0]}
@@ -887,6 +898,7 @@ STATE: {COMMIT_FAILED_275_05} ~~ {
 				SetState {RECALL}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==3}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`defer_failed_approach`]}
 				SetOpt {EnableNav} {False}
 				DoExpr {setvar[te_probe,getvar[te_probe]+1]}
 				DoExpr {setvar[te_attempt,0]}
@@ -1008,6 +1020,7 @@ STATE: {COMMIT_FAILED_275_06} ~~ {
 				SetState {RECOVERY_WAIT}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==2}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`retry_different_hub_approach`]}
 				DoExpr {setvar[te_attempt,1]}
 				DoExpr {setvar[te_entry_hub,1]}
 				DoExpr {setvar[te_recall_attempts,0]}
@@ -1015,6 +1028,7 @@ STATE: {COMMIT_FAILED_275_06} ~~ {
 				SetState {RECALL}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==3}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`defer_failed_approach`]}
 				SetOpt {EnableNav} {False}
 				DoExpr {setvar[te_probe,getvar[te_probe]+1]}
 				DoExpr {setvar[te_attempt,0]}
@@ -1136,6 +1150,7 @@ STATE: {COMMIT_FAILED_275_07} ~~ {
 				SetState {RECOVERY_WAIT}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==2}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`retry_different_hub_approach`]}
 				DoExpr {setvar[te_attempt,1]}
 				DoExpr {setvar[te_entry_hub,1]}
 				DoExpr {setvar[te_recall_attempts,0]}
@@ -1143,6 +1158,7 @@ STATE: {COMMIT_FAILED_275_07} ~~ {
 				SetState {RECALL}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==3}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`defer_failed_approach`]}
 				SetOpt {EnableNav} {False}
 				DoExpr {setvar[te_probe,getvar[te_probe]+1]}
 				DoExpr {setvar[te_attempt,0]}
@@ -1264,6 +1280,7 @@ STATE: {COMMIT_FAILED_275_08} ~~ {
 				SetState {RECOVERY_WAIT}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==2}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`retry_different_hub_approach`]}
 				DoExpr {setvar[te_attempt,1]}
 				DoExpr {setvar[te_entry_hub,1]}
 				DoExpr {setvar[te_recall_attempts,0]}
@@ -1271,6 +1288,7 @@ STATE: {COMMIT_FAILED_275_08} ~~ {
 				SetState {RECALL}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==3}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`defer_failed_approach`]}
 				SetOpt {EnableNav} {False}
 				DoExpr {setvar[te_probe,getvar[te_probe]+1]}
 				DoExpr {setvar[te_attempt,0]}
@@ -1392,6 +1410,7 @@ STATE: {COMMIT_FAILED_275_09} ~~ {
 				SetState {RECOVERY_WAIT}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==2}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`retry_different_hub_approach`]}
 				DoExpr {setvar[te_attempt,1]}
 				DoExpr {setvar[te_entry_hub,1]}
 				DoExpr {setvar[te_recall_attempts,0]}
@@ -1399,6 +1418,7 @@ STATE: {COMMIT_FAILED_275_09} ~~ {
 				SetState {RECALL}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==3}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`defer_failed_approach`]}
 				SetOpt {EnableNav} {False}
 				DoExpr {setvar[te_probe,getvar[te_probe]+1]}
 				DoExpr {setvar[te_attempt,0]}
@@ -1520,6 +1540,7 @@ STATE: {COMMIT_FAILED_275_10} ~~ {
 				SetState {RECOVERY_WAIT}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==2}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`retry_different_hub_approach`]}
 				DoExpr {setvar[te_attempt,1]}
 				DoExpr {setvar[te_entry_hub,1]}
 				DoExpr {setvar[te_recall_attempts,0]}
@@ -1527,6 +1548,7 @@ STATE: {COMMIT_FAILED_275_10} ~~ {
 				SetState {RECALL}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==3}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`defer_failed_approach`]}
 				SetOpt {EnableNav} {False}
 				DoExpr {setvar[te_probe,getvar[te_probe]+1]}
 				DoExpr {setvar[te_attempt,0]}
@@ -1648,6 +1670,7 @@ STATE: {COMMIT_FAILED_275_11} ~~ {
 				SetState {RECOVERY_WAIT}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==2}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`retry_different_hub_approach`]}
 				DoExpr {setvar[te_attempt,1]}
 				DoExpr {setvar[te_entry_hub,1]}
 				DoExpr {setvar[te_recall_attempts,0]}
@@ -1655,6 +1678,7 @@ STATE: {COMMIT_FAILED_275_11} ~~ {
 				SetState {RECALL}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==3}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`defer_failed_approach`]}
 				SetOpt {EnableNav} {False}
 				DoExpr {setvar[te_probe,getvar[te_probe]+1]}
 				DoExpr {setvar[te_attempt,0]}
@@ -1776,6 +1800,7 @@ STATE: {COMMIT_FAILED_275_12} ~~ {
 				SetState {RECOVERY_WAIT}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==2}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`retry_different_hub_approach`]}
 				DoExpr {setvar[te_attempt,1]}
 				DoExpr {setvar[te_entry_hub,1]}
 				DoExpr {setvar[te_recall_attempts,0]}
@@ -1783,6 +1808,7 @@ STATE: {COMMIT_FAILED_275_12} ~~ {
 				SetState {RECALL}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==3}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`defer_failed_approach`]}
 				SetOpt {EnableNav} {False}
 				DoExpr {setvar[te_probe,getvar[te_probe]+1]}
 				DoExpr {setvar[te_attempt,0]}
@@ -1994,6 +2020,7 @@ STATE: {COMMIT_FAILED_180_01} ~~ {
 				SetState {RECOVERY_WAIT}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==2}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`retry_different_hub_approach`]}
 				DoExpr {setvar[te_attempt,1]}
 				DoExpr {setvar[te_entry_hub,1]}
 				DoExpr {setvar[te_recall_attempts,0]}
@@ -2001,6 +2028,7 @@ STATE: {COMMIT_FAILED_180_01} ~~ {
 				SetState {RECALL}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==3}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`defer_failed_approach`]}
 				SetOpt {EnableNav} {False}
 				DoExpr {setvar[te_probe,getvar[te_probe]+1]}
 				DoExpr {setvar[te_attempt,0]}
@@ -2122,6 +2150,7 @@ STATE: {COMMIT_FAILED_180_02} ~~ {
 				SetState {RECOVERY_WAIT}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==2}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`retry_different_hub_approach`]}
 				DoExpr {setvar[te_attempt,1]}
 				DoExpr {setvar[te_entry_hub,1]}
 				DoExpr {setvar[te_recall_attempts,0]}
@@ -2129,6 +2158,7 @@ STATE: {COMMIT_FAILED_180_02} ~~ {
 				SetState {RECALL}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==3}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`defer_failed_approach`]}
 				SetOpt {EnableNav} {False}
 				DoExpr {setvar[te_probe,getvar[te_probe]+1]}
 				DoExpr {setvar[te_attempt,0]}
@@ -2250,6 +2280,7 @@ STATE: {COMMIT_FAILED_180_03} ~~ {
 				SetState {RECOVERY_WAIT}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==2}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`retry_different_hub_approach`]}
 				DoExpr {setvar[te_attempt,1]}
 				DoExpr {setvar[te_entry_hub,1]}
 				DoExpr {setvar[te_recall_attempts,0]}
@@ -2257,6 +2288,7 @@ STATE: {COMMIT_FAILED_180_03} ~~ {
 				SetState {RECALL}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==3}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`defer_failed_approach`]}
 				SetOpt {EnableNav} {False}
 				DoExpr {setvar[te_probe,getvar[te_probe]+1]}
 				DoExpr {setvar[te_attempt,0]}
@@ -2378,6 +2410,7 @@ STATE: {COMMIT_FAILED_180_04} ~~ {
 				SetState {RECOVERY_WAIT}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==2}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`retry_different_hub_approach`]}
 				DoExpr {setvar[te_attempt,1]}
 				DoExpr {setvar[te_entry_hub,1]}
 				DoExpr {setvar[te_recall_attempts,0]}
@@ -2385,6 +2418,7 @@ STATE: {COMMIT_FAILED_180_04} ~~ {
 				SetState {RECALL}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==3}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`defer_failed_approach`]}
 				SetOpt {EnableNav} {False}
 				DoExpr {setvar[te_probe,getvar[te_probe]+1]}
 				DoExpr {setvar[te_attempt,0]}
@@ -2506,6 +2540,7 @@ STATE: {COMMIT_FAILED_180_05} ~~ {
 				SetState {RECOVERY_WAIT}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==2}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`retry_different_hub_approach`]}
 				DoExpr {setvar[te_attempt,1]}
 				DoExpr {setvar[te_entry_hub,1]}
 				DoExpr {setvar[te_recall_attempts,0]}
@@ -2513,6 +2548,7 @@ STATE: {COMMIT_FAILED_180_05} ~~ {
 				SetState {RECALL}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==3}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`defer_failed_approach`]}
 				SetOpt {EnableNav} {False}
 				DoExpr {setvar[te_probe,getvar[te_probe]+1]}
 				DoExpr {setvar[te_attempt,0]}
@@ -2634,6 +2670,7 @@ STATE: {COMMIT_FAILED_180_06} ~~ {
 				SetState {RECOVERY_WAIT}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==2}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`retry_different_hub_approach`]}
 				DoExpr {setvar[te_attempt,1]}
 				DoExpr {setvar[te_entry_hub,1]}
 				DoExpr {setvar[te_recall_attempts,0]}
@@ -2641,6 +2678,7 @@ STATE: {COMMIT_FAILED_180_06} ~~ {
 				SetState {RECALL}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==3}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`defer_failed_approach`]}
 				SetOpt {EnableNav} {False}
 				DoExpr {setvar[te_probe,getvar[te_probe]+1]}
 				DoExpr {setvar[te_attempt,0]}
@@ -2762,6 +2800,7 @@ STATE: {COMMIT_FAILED_180_07} ~~ {
 				SetState {RECOVERY_WAIT}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==2}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`retry_different_hub_approach`]}
 				DoExpr {setvar[te_attempt,1]}
 				DoExpr {setvar[te_entry_hub,1]}
 				DoExpr {setvar[te_recall_attempts,0]}
@@ -2769,6 +2808,7 @@ STATE: {COMMIT_FAILED_180_07} ~~ {
 				SetState {RECALL}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==3}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`defer_failed_approach`]}
 				SetOpt {EnableNav} {False}
 				DoExpr {setvar[te_probe,getvar[te_probe]+1]}
 				DoExpr {setvar[te_attempt,0]}
@@ -2890,6 +2930,7 @@ STATE: {COMMIT_FAILED_180_08} ~~ {
 				SetState {RECOVERY_WAIT}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==2}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`retry_different_hub_approach`]}
 				DoExpr {setvar[te_attempt,1]}
 				DoExpr {setvar[te_entry_hub,1]}
 				DoExpr {setvar[te_recall_attempts,0]}
@@ -2897,6 +2938,7 @@ STATE: {COMMIT_FAILED_180_08} ~~ {
 				SetState {RECALL}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==3}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`defer_failed_approach`]}
 				SetOpt {EnableNav} {False}
 				DoExpr {setvar[te_probe,getvar[te_probe]+1]}
 				DoExpr {setvar[te_attempt,0]}
@@ -3018,6 +3060,7 @@ STATE: {COMMIT_FAILED_180_09} ~~ {
 				SetState {RECOVERY_WAIT}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==2}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`retry_different_hub_approach`]}
 				DoExpr {setvar[te_attempt,1]}
 				DoExpr {setvar[te_entry_hub,1]}
 				DoExpr {setvar[te_recall_attempts,0]}
@@ -3025,6 +3068,7 @@ STATE: {COMMIT_FAILED_180_09} ~~ {
 				SetState {RECALL}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==3}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`defer_failed_approach`]}
 				SetOpt {EnableNav} {False}
 				DoExpr {setvar[te_probe,getvar[te_probe]+1]}
 				DoExpr {setvar[te_attempt,0]}
@@ -3146,6 +3190,7 @@ STATE: {COMMIT_FAILED_180_10} ~~ {
 				SetState {RECOVERY_WAIT}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==2}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`retry_different_hub_approach`]}
 				DoExpr {setvar[te_attempt,1]}
 				DoExpr {setvar[te_entry_hub,1]}
 				DoExpr {setvar[te_recall_attempts,0]}
@@ -3153,6 +3198,7 @@ STATE: {COMMIT_FAILED_180_10} ~~ {
 				SetState {RECALL}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==3}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`defer_failed_approach`]}
 				SetOpt {EnableNav} {False}
 				DoExpr {setvar[te_probe,getvar[te_probe]+1]}
 				DoExpr {setvar[te_attempt,0]}
@@ -3274,6 +3320,7 @@ STATE: {COMMIT_FAILED_180_11} ~~ {
 				SetState {RECOVERY_WAIT}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==2}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`retry_different_hub_approach`]}
 				DoExpr {setvar[te_attempt,1]}
 				DoExpr {setvar[te_entry_hub,1]}
 				DoExpr {setvar[te_recall_attempts,0]}
@@ -3281,6 +3328,7 @@ STATE: {COMMIT_FAILED_180_11} ~~ {
 				SetState {RECALL}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==3}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`defer_failed_approach`]}
 				SetOpt {EnableNav} {False}
 				DoExpr {setvar[te_probe,getvar[te_probe]+1]}
 				DoExpr {setvar[te_attempt,0]}
@@ -3402,6 +3450,7 @@ STATE: {COMMIT_FAILED_180_12} ~~ {
 				SetState {RECOVERY_WAIT}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==2}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`retry_different_hub_approach`]}
 				DoExpr {setvar[te_attempt,1]}
 				DoExpr {setvar[te_entry_hub,1]}
 				DoExpr {setvar[te_recall_attempts,0]}
@@ -3409,6 +3458,7 @@ STATE: {COMMIT_FAILED_180_12} ~~ {
 				SetState {RECALL}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==3}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`defer_failed_approach`]}
 				SetOpt {EnableNav} {False}
 				DoExpr {setvar[te_probe,getvar[te_probe]+1]}
 				DoExpr {setvar[te_attempt,0]}
@@ -3620,6 +3670,7 @@ STATE: {COMMIT_FAILED_225_01} ~~ {
 				SetState {RECOVERY_WAIT}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==2}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`retry_different_hub_approach`]}
 				DoExpr {setvar[te_attempt,1]}
 				DoExpr {setvar[te_entry_hub,1]}
 				DoExpr {setvar[te_recall_attempts,0]}
@@ -3627,6 +3678,7 @@ STATE: {COMMIT_FAILED_225_01} ~~ {
 				SetState {RECALL}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==3}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`defer_failed_approach`]}
 				SetOpt {EnableNav} {False}
 				DoExpr {setvar[te_probe,getvar[te_probe]+1]}
 				DoExpr {setvar[te_attempt,0]}
@@ -3748,6 +3800,7 @@ STATE: {COMMIT_FAILED_225_02} ~~ {
 				SetState {RECOVERY_WAIT}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==2}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`retry_different_hub_approach`]}
 				DoExpr {setvar[te_attempt,1]}
 				DoExpr {setvar[te_entry_hub,1]}
 				DoExpr {setvar[te_recall_attempts,0]}
@@ -3755,6 +3808,7 @@ STATE: {COMMIT_FAILED_225_02} ~~ {
 				SetState {RECALL}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==3}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`defer_failed_approach`]}
 				SetOpt {EnableNav} {False}
 				DoExpr {setvar[te_probe,getvar[te_probe]+1]}
 				DoExpr {setvar[te_attempt,0]}
@@ -3876,6 +3930,7 @@ STATE: {COMMIT_FAILED_225_03} ~~ {
 				SetState {RECOVERY_WAIT}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==2}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`retry_different_hub_approach`]}
 				DoExpr {setvar[te_attempt,1]}
 				DoExpr {setvar[te_entry_hub,1]}
 				DoExpr {setvar[te_recall_attempts,0]}
@@ -3883,6 +3938,7 @@ STATE: {COMMIT_FAILED_225_03} ~~ {
 				SetState {RECALL}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==3}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`defer_failed_approach`]}
 				SetOpt {EnableNav} {False}
 				DoExpr {setvar[te_probe,getvar[te_probe]+1]}
 				DoExpr {setvar[te_attempt,0]}
@@ -4004,6 +4060,7 @@ STATE: {COMMIT_FAILED_225_04} ~~ {
 				SetState {RECOVERY_WAIT}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==2}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`retry_different_hub_approach`]}
 				DoExpr {setvar[te_attempt,1]}
 				DoExpr {setvar[te_entry_hub,1]}
 				DoExpr {setvar[te_recall_attempts,0]}
@@ -4011,6 +4068,7 @@ STATE: {COMMIT_FAILED_225_04} ~~ {
 				SetState {RECALL}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==3}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`defer_failed_approach`]}
 				SetOpt {EnableNav} {False}
 				DoExpr {setvar[te_probe,getvar[te_probe]+1]}
 				DoExpr {setvar[te_attempt,0]}
@@ -4132,6 +4190,7 @@ STATE: {COMMIT_FAILED_225_05} ~~ {
 				SetState {RECOVERY_WAIT}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==2}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`retry_different_hub_approach`]}
 				DoExpr {setvar[te_attempt,1]}
 				DoExpr {setvar[te_entry_hub,1]}
 				DoExpr {setvar[te_recall_attempts,0]}
@@ -4139,6 +4198,7 @@ STATE: {COMMIT_FAILED_225_05} ~~ {
 				SetState {RECALL}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==3}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`defer_failed_approach`]}
 				SetOpt {EnableNav} {False}
 				DoExpr {setvar[te_probe,getvar[te_probe]+1]}
 				DoExpr {setvar[te_attempt,0]}
@@ -4260,6 +4320,7 @@ STATE: {COMMIT_FAILED_225_06} ~~ {
 				SetState {RECOVERY_WAIT}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==2}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`retry_different_hub_approach`]}
 				DoExpr {setvar[te_attempt,1]}
 				DoExpr {setvar[te_entry_hub,1]}
 				DoExpr {setvar[te_recall_attempts,0]}
@@ -4267,6 +4328,7 @@ STATE: {COMMIT_FAILED_225_06} ~~ {
 				SetState {RECALL}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==3}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`defer_failed_approach`]}
 				SetOpt {EnableNav} {False}
 				DoExpr {setvar[te_probe,getvar[te_probe]+1]}
 				DoExpr {setvar[te_attempt,0]}
@@ -4388,6 +4450,7 @@ STATE: {COMMIT_FAILED_225_07} ~~ {
 				SetState {RECOVERY_WAIT}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==2}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`retry_different_hub_approach`]}
 				DoExpr {setvar[te_attempt,1]}
 				DoExpr {setvar[te_entry_hub,1]}
 				DoExpr {setvar[te_recall_attempts,0]}
@@ -4395,6 +4458,7 @@ STATE: {COMMIT_FAILED_225_07} ~~ {
 				SetState {RECALL}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==3}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`defer_failed_approach`]}
 				SetOpt {EnableNav} {False}
 				DoExpr {setvar[te_probe,getvar[te_probe]+1]}
 				DoExpr {setvar[te_attempt,0]}
@@ -4516,6 +4580,7 @@ STATE: {COMMIT_FAILED_225_08} ~~ {
 				SetState {RECOVERY_WAIT}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==2}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`retry_different_hub_approach`]}
 				DoExpr {setvar[te_attempt,1]}
 				DoExpr {setvar[te_entry_hub,1]}
 				DoExpr {setvar[te_recall_attempts,0]}
@@ -4523,6 +4588,7 @@ STATE: {COMMIT_FAILED_225_08} ~~ {
 				SetState {RECALL}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==3}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`defer_failed_approach`]}
 				SetOpt {EnableNav} {False}
 				DoExpr {setvar[te_probe,getvar[te_probe]+1]}
 				DoExpr {setvar[te_attempt,0]}
@@ -4644,6 +4710,7 @@ STATE: {COMMIT_FAILED_225_09} ~~ {
 				SetState {RECOVERY_WAIT}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==2}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`retry_different_hub_approach`]}
 				DoExpr {setvar[te_attempt,1]}
 				DoExpr {setvar[te_entry_hub,1]}
 				DoExpr {setvar[te_recall_attempts,0]}
@@ -4651,6 +4718,7 @@ STATE: {COMMIT_FAILED_225_09} ~~ {
 				SetState {RECALL}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==3}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`defer_failed_approach`]}
 				SetOpt {EnableNav} {False}
 				DoExpr {setvar[te_probe,getvar[te_probe]+1]}
 				DoExpr {setvar[te_attempt,0]}
@@ -4772,6 +4840,7 @@ STATE: {COMMIT_FAILED_225_10} ~~ {
 				SetState {RECOVERY_WAIT}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==2}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`retry_different_hub_approach`]}
 				DoExpr {setvar[te_attempt,1]}
 				DoExpr {setvar[te_entry_hub,1]}
 				DoExpr {setvar[te_recall_attempts,0]}
@@ -4779,6 +4848,7 @@ STATE: {COMMIT_FAILED_225_10} ~~ {
 				SetState {RECALL}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==3}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`defer_failed_approach`]}
 				SetOpt {EnableNav} {False}
 				DoExpr {setvar[te_probe,getvar[te_probe]+1]}
 				DoExpr {setvar[te_attempt,0]}
@@ -4900,6 +4970,7 @@ STATE: {COMMIT_FAILED_225_11} ~~ {
 				SetState {RECOVERY_WAIT}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==2}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`retry_different_hub_approach`]}
 				DoExpr {setvar[te_attempt,1]}
 				DoExpr {setvar[te_entry_hub,1]}
 				DoExpr {setvar[te_recall_attempts,0]}
@@ -4907,6 +4978,7 @@ STATE: {COMMIT_FAILED_225_11} ~~ {
 				SetState {RECALL}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==3}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`defer_failed_approach`]}
 				SetOpt {EnableNav} {False}
 				DoExpr {setvar[te_probe,getvar[te_probe]+1]}
 				DoExpr {setvar[te_attempt,0]}
@@ -5028,6 +5100,7 @@ STATE: {COMMIT_FAILED_225_12} ~~ {
 				SetState {RECOVERY_WAIT}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==2}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`retry_different_hub_approach`]}
 				DoExpr {setvar[te_attempt,1]}
 				DoExpr {setvar[te_entry_hub,1]}
 				DoExpr {setvar[te_recall_attempts,0]}
@@ -5035,6 +5108,7 @@ STATE: {COMMIT_FAILED_225_12} ~~ {
 				SetState {RECALL}
 	IF: Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==3}
 		DO: DoAll
+				DoExpr {setvar[te_return_reason,`defer_failed_approach`]}
 				SetOpt {EnableNav} {False}
 				DoExpr {setvar[te_probe,getvar[te_probe]+1]}
 				DoExpr {setvar[te_attempt,0]}
@@ -5092,6 +5166,7 @@ STATE: {NEXT_SECTOR} ~~ {
 	IF: Always
 		DO: DoAll
 				SetOpt {EnableNav} {False}
+				DoExpr {setvar[te_return_reason,`next_sector`]}
 				DoExpr {setvar[te_stage,getvar[te_stage]+1]}
 				DoExpr {setvar[te_probe,1]}
 				DoExpr {setvar[te_attempt,0]}
@@ -5247,10 +5322,10 @@ False
 0.387226675
 ~~ }
 
-NAVDATA: Leg_275_01 80 ~~ {
+NAVDATA: Leg_275_01 68 ~~ {
 uTank2 NAV 1.2
 4
-15
+13
 0
 -75.063232421875
 45.207942708333334
@@ -5316,24 +5391,12 @@ uTank2 NAV 1.2
 44.318050130208334
 0.3510868708292643
 0
-4
--73.93333333333334
-44.318050130208334
-0.3510868708292643
-0
-/ra mexec echo[`[TERRAIN] 275_01 `+getplayercoordinates[]]
-3
--73.93333333333334
-44.318050130208334
-0.3510868708292643
-0
-3000
 ~~ }
 
-NAVDATA: Hub_275_01 80 ~~ {
+NAVDATA: Hub_275_01 68 ~~ {
 uTank2 NAV 1.2
 4
-15
+13
 0
 -75.063232421875
 45.207942708333334
@@ -5399,24 +5462,12 @@ uTank2 NAV 1.2
 44.318050130208334
 0.3510868708292643
 0
-4
--73.93333333333334
-44.318050130208334
-0.3510868708292643
-0
-/ra mexec echo[`[TERRAIN] 275_01 `+getplayercoordinates[]]
-3
--73.93333333333334
-44.318050130208334
-0.3510868708292643
-0
-3000
 ~~ }
 
-NAVDATA: Leg_275_02 1695 ~~ {
+NAVDATA: Leg_275_02 1683 ~~ {
 uTank2 NAV 1.2
 4
-338
+336
 0
 -73.93333333333334
 44.318050130208334
@@ -7097,24 +7148,12 @@ uTank2 NAV 1.2
 43.77478841145833
 0.33471810022989906
 0
-4
--74.447705078125
-43.77478841145833
-0.33471810022989906
-0
-/ra mexec echo[`[TERRAIN] 275_02 `+getplayercoordinates[]]
-3
--74.447705078125
-43.77478841145833
-0.33471810022989906
-0
-3000
 ~~ }
 
-NAVDATA: Hub_275_02 245 ~~ {
+NAVDATA: Hub_275_02 233 ~~ {
 uTank2 NAV 1.2
 4
-48
+46
 0
 -75.063232421875
 45.207942708333334
@@ -7345,24 +7384,12 @@ uTank2 NAV 1.2
 43.77478841145833
 0.33471810022989906
 0
-4
--74.447705078125
-43.77478841145833
-0.33471810022989906
-0
-/ra mexec echo[`[TERRAIN] 275_02 `+getplayercoordinates[]]
-3
--74.447705078125
-43.77478841145833
-0.33471810022989906
-0
-3000
 ~~ }
 
-NAVDATA: Leg_275_03 60 ~~ {
+NAVDATA: Leg_275_03 48 ~~ {
 uTank2 NAV 1.2
 4
-11
+9
 0
 -74.447705078125
 43.77478841145833
@@ -7408,24 +7435,12 @@ uTank2 NAV 1.2
 43.336279296875
 0.32202749252319335
 0
-4
--74.46319173177083
-43.336279296875
-0.32202749252319335
-0
-/ra mexec echo[`[TERRAIN] 275_03 `+getplayercoordinates[]]
-3
--74.46319173177083
-43.336279296875
-0.32202749252319335
-0
-3000
 ~~ }
 
-NAVDATA: Hub_275_03 260 ~~ {
+NAVDATA: Hub_275_03 248 ~~ {
 uTank2 NAV 1.2
 4
-51
+49
 0
 -75.063232421875
 45.207942708333334
@@ -7671,24 +7686,12 @@ uTank2 NAV 1.2
 43.336279296875
 0.32202749252319335
 0
-4
--74.46319173177083
-43.336279296875
-0.32202749252319335
-0
-/ra mexec echo[`[TERRAIN] 275_03 `+getplayercoordinates[]]
-3
--74.46319173177083
-43.336279296875
-0.32202749252319335
-0
-3000
 ~~ }
 
-NAVDATA: Leg_275_04 85 ~~ {
+NAVDATA: Leg_275_04 73 ~~ {
 uTank2 NAV 1.2
 4
-16
+14
 0
 -74.46319173177083
 43.336279296875
@@ -7759,24 +7762,12 @@ uTank2 NAV 1.2
 42.59353841145833
 0.2853873252868652
 0
-4
--74.692919921875
-42.59353841145833
-0.2853873252868652
-0
-/ra mexec echo[`[TERRAIN] 275_04 `+getplayercoordinates[]]
-3
--74.692919921875
-42.59353841145833
-0.2853873252868652
-0
-3000
 ~~ }
 
-NAVDATA: Hub_275_04 290 ~~ {
+NAVDATA: Hub_275_04 278 ~~ {
 uTank2 NAV 1.2
 4
-57
+55
 0
 -75.063232421875
 45.207942708333334
@@ -8052,24 +8043,12 @@ uTank2 NAV 1.2
 42.59353841145833
 0.2853873252868652
 0
-4
--74.692919921875
-42.59353841145833
-0.2853873252868652
-0
-/ra mexec echo[`[TERRAIN] 275_04 `+getplayercoordinates[]]
-3
--74.692919921875
-42.59353841145833
-0.2853873252868652
-0
-3000
 ~~ }
 
-NAVDATA: Leg_275_05 30 ~~ {
+NAVDATA: Leg_275_05 18 ~~ {
 uTank2 NAV 1.2
 4
-5
+3
 0
 -74.692919921875
 42.59353841145833
@@ -8085,24 +8064,12 @@ uTank2 NAV 1.2
 42.385205078125
 0.27676569620768227
 0
-4
--74.32374674479166
-42.385205078125
-0.27676569620768227
-0
-/ra mexec echo[`[TERRAIN] 275_05 `+getplayercoordinates[]]
-3
--74.32374674479166
-42.385205078125
-0.27676569620768227
-0
-3000
 ~~ }
 
-NAVDATA: Hub_275_05 290 ~~ {
+NAVDATA: Hub_275_05 278 ~~ {
 uTank2 NAV 1.2
 4
-57
+55
 0
 -75.063232421875
 45.207942708333334
@@ -8378,24 +8345,12 @@ uTank2 NAV 1.2
 42.385205078125
 0.27676569620768227
 0
-4
--74.32374674479166
-42.385205078125
-0.27676569620768227
-0
-/ra mexec echo[`[TERRAIN] 275_05 `+getplayercoordinates[]]
-3
--74.32374674479166
-42.385205078125
-0.27676569620768227
-0
-3000
 ~~ }
 
-NAVDATA: Leg_275_06 30 ~~ {
+NAVDATA: Leg_275_06 18 ~~ {
 uTank2 NAV 1.2
 4
-5
+3
 0
 -74.32374674479166
 42.385205078125
@@ -8411,24 +8366,12 @@ uTank2 NAV 1.2
 42.635416666666664
 0.32064940134684244
 0
-4
--73.66875
-42.635416666666664
-0.32064940134684244
-0
-/ra mexec echo[`[TERRAIN] 275_06 `+getplayercoordinates[]]
-3
--73.66875
-42.635416666666664
-0.32064940134684244
-0
-3000
 ~~ }
 
-NAVDATA: Hub_275_06 2170 ~~ {
+NAVDATA: Hub_275_06 2158 ~~ {
 uTank2 NAV 1.2
 4
-433
+431
 0
 -75.063232421875
 45.207942708333334
@@ -10584,24 +10527,12 @@ uTank2 NAV 1.2
 42.635416666666664
 0.32064940134684244
 0
-4
--73.66875
-42.635416666666664
-0.32064940134684244
-0
-/ra mexec echo[`[TERRAIN] 275_06 `+getplayercoordinates[]]
-3
--73.66875
-42.635416666666664
-0.32064940134684244
-0
-3000
 ~~ }
 
-NAVDATA: Leg_275_07 45 ~~ {
+NAVDATA: Leg_275_07 33 ~~ {
 uTank2 NAV 1.2
 4
-8
+6
 0
 -73.66875
 42.635416666666664
@@ -10632,24 +10563,12 @@ uTank2 NAV 1.2
 42.584554036458336
 0.28779904047648114
 0
-4
--75.20885416666667
-42.584554036458336
-0.28779904047648114
-0
-/ra mexec echo[`[TERRAIN] 275_07 `+getplayercoordinates[]]
-3
--75.20885416666667
-42.584554036458336
-0.28779904047648114
-0
-3000
 ~~ }
 
-NAVDATA: Hub_275_07 260 ~~ {
+NAVDATA: Hub_275_07 248 ~~ {
 uTank2 NAV 1.2
 4
-51
+49
 0
 -75.063232421875
 45.207942708333334
@@ -10895,24 +10814,12 @@ uTank2 NAV 1.2
 42.584554036458336
 0.28779904047648114
 0
-4
--75.20885416666667
-42.584554036458336
-0.28779904047648114
-0
-/ra mexec echo[`[TERRAIN] 275_07 `+getplayercoordinates[]]
-3
--75.20885416666667
-42.584554036458336
-0.28779904047648114
-0
-3000
 ~~ }
 
-NAVDATA: Leg_275_08 25 ~~ {
+NAVDATA: Leg_275_08 13 ~~ {
 uTank2 NAV 1.2
 4
-4
+2
 0
 -75.20885416666667
 42.584554036458336
@@ -10923,24 +10830,12 @@ uTank2 NAV 1.2
 42.315966796875
 0.33184967041015623
 0
-4
--75.77135416666667
-42.315966796875
-0.33184967041015623
-0
-/ra mexec echo[`[TERRAIN] 275_08 `+getplayercoordinates[]]
-3
--75.77135416666667
-42.315966796875
-0.33184967041015623
-0
-3000
 ~~ }
 
-NAVDATA: Hub_275_08 225 ~~ {
+NAVDATA: Hub_275_08 213 ~~ {
 uTank2 NAV 1.2
 4
-44
+42
 0
 -75.063232421875
 45.207942708333334
@@ -11151,24 +11046,12 @@ uTank2 NAV 1.2
 42.315966796875
 0.33184967041015623
 0
-4
--75.77135416666667
-42.315966796875
-0.33184967041015623
-0
-/ra mexec echo[`[TERRAIN] 275_08 `+getplayercoordinates[]]
-3
--75.77135416666667
-42.315966796875
-0.33184967041015623
-0
-3000
 ~~ }
 
-NAVDATA: Leg_275_09 125 ~~ {
+NAVDATA: Leg_275_09 113 ~~ {
 uTank2 NAV 1.2
 4
-24
+22
 0
 -75.77135416666667
 42.315966796875
@@ -11279,24 +11162,12 @@ uTank2 NAV 1.2
 44.32578125
 0.38184776306152346
 0
-4
--77.61875
-44.32578125
-0.38184776306152346
-0
-/ra mexec echo[`[TERRAIN] 275_09 `+getplayercoordinates[]]
-3
--77.61875
-44.32578125
-0.38184776306152346
-0
-3000
 ~~ }
 
-NAVDATA: Hub_275_09 100 ~~ {
+NAVDATA: Hub_275_09 88 ~~ {
 uTank2 NAV 1.2
 4
-19
+17
 0
 -75.063232421875
 45.207942708333334
@@ -11382,24 +11253,12 @@ uTank2 NAV 1.2
 44.32578125
 0.38184776306152346
 0
-4
--77.61875
-44.32578125
-0.38184776306152346
-0
-/ra mexec echo[`[TERRAIN] 275_09 `+getplayercoordinates[]]
-3
--77.61875
-44.32578125
-0.38184776306152346
-0
-3000
 ~~ }
 
-NAVDATA: Leg_275_10 45 ~~ {
+NAVDATA: Leg_275_10 33 ~~ {
 uTank2 NAV 1.2
 4
-8
+6
 0
 -77.61875
 44.32578125
@@ -11430,24 +11289,12 @@ uTank2 NAV 1.2
 44.66875
 0.3792536735534668
 0
-4
--77.99131673177084
-44.66875
-0.3792536735534668
-0
-/ra mexec echo[`[TERRAIN] 275_10 `+getplayercoordinates[]]
-3
--77.99131673177084
-44.66875
-0.3792536735534668
-0
-3000
 ~~ }
 
-NAVDATA: Hub_275_10 130 ~~ {
+NAVDATA: Hub_275_10 118 ~~ {
 uTank2 NAV 1.2
 4
-25
+23
 0
 -75.063232421875
 45.207942708333334
@@ -11563,24 +11410,12 @@ uTank2 NAV 1.2
 44.66875
 0.3792536735534668
 0
-4
--77.99131673177084
-44.66875
-0.3792536735534668
-0
-/ra mexec echo[`[TERRAIN] 275_10 `+getplayercoordinates[]]
-3
--77.99131673177084
-44.66875
-0.3792536735534668
-0
-3000
 ~~ }
 
-NAVDATA: Leg_275_11 120 ~~ {
+NAVDATA: Leg_275_11 108 ~~ {
 uTank2 NAV 1.2
 4
-23
+21
 0
 -77.99131673177084
 44.66875
@@ -11686,24 +11521,12 @@ uTank2 NAV 1.2
 43.88819986979167
 0.34286616643269857
 0
-4
--73.4
-43.88819986979167
-0.34286616643269857
-0
-/ra mexec echo[`[TERRAIN] 275_11 `+getplayercoordinates[]]
-3
--73.4
-43.88819986979167
-0.34286616643269857
-0
-3000
 ~~ }
 
-NAVDATA: Hub_275_11 80 ~~ {
+NAVDATA: Hub_275_11 68 ~~ {
 uTank2 NAV 1.2
 4
-15
+13
 0
 -75.063232421875
 45.207942708333334
@@ -11769,24 +11592,12 @@ uTank2 NAV 1.2
 43.88819986979167
 0.34286616643269857
 0
-4
--73.4
-43.88819986979167
-0.34286616643269857
-0
-/ra mexec echo[`[TERRAIN] 275_11 `+getplayercoordinates[]]
-3
--73.4
-43.88819986979167
-0.34286616643269857
-0
-3000
 ~~ }
 
-NAVDATA: Leg_275_12 30 ~~ {
+NAVDATA: Leg_275_12 18 ~~ {
 uTank2 NAV 1.2
 4
-5
+3
 0
 -73.4
 43.88819986979167
@@ -11802,24 +11613,12 @@ uTank2 NAV 1.2
 43.57604166666667
 0.3445839564005534
 0
-4
--73.04270833333334
-43.57604166666667
-0.3445839564005534
-0
-/ra mexec echo[`[TERRAIN] 275_12 `+getplayercoordinates[]]
-3
--73.04270833333334
-43.57604166666667
-0.3445839564005534
-0
-3000
 ~~ }
 
-NAVDATA: Hub_275_12 85 ~~ {
+NAVDATA: Hub_275_12 73 ~~ {
 uTank2 NAV 1.2
 4
-16
+14
 0
 -75.063232421875
 45.207942708333334
@@ -11890,18 +11689,6 @@ uTank2 NAV 1.2
 43.57604166666667
 0.3445839564005534
 0
-4
--73.04270833333334
-43.57604166666667
-0.3445839564005534
-0
-/ra mexec echo[`[TERRAIN] 275_12 `+getplayercoordinates[]]
-3
--73.04270833333334
-43.57604166666667
-0.3445839564005534
-0
-3000
 ~~ }
 
 NAVDATA: Return_275 73 ~~ {
@@ -11980,10 +11767,10 @@ uTank2 NAV 1.2
 0
 ~~ }
 
-NAVDATA: Leg_180_01 80 ~~ {
+NAVDATA: Leg_180_01 68 ~~ {
 uTank2 NAV 1.2
 4
-15
+13
 0
 -85.40833333333333
 43.541666666666664
@@ -12049,24 +11836,12 @@ uTank2 NAV 1.2
 43.49461263020833
 0.095158584912618
 0
-4
--83.03697916666667
-43.49461263020833
-0.095158584912618
-0
-/ra mexec echo[`[TERRAIN] 180_01 `+getplayercoordinates[]]
-3
--83.03697916666667
-43.49461263020833
-0.095158584912618
-0
-3000
 ~~ }
 
-NAVDATA: Hub_180_01 80 ~~ {
+NAVDATA: Hub_180_01 68 ~~ {
 uTank2 NAV 1.2
 4
-15
+13
 0
 -85.40833333333333
 43.541666666666664
@@ -12132,24 +11907,12 @@ uTank2 NAV 1.2
 43.49461263020833
 0.095158584912618
 0
-4
--83.03697916666667
-43.49461263020833
-0.095158584912618
-0
-/ra mexec echo[`[TERRAIN] 180_01 `+getplayercoordinates[]]
-3
--83.03697916666667
-43.49461263020833
-0.095158584912618
-0
-3000
 ~~ }
 
-NAVDATA: Leg_180_02 25 ~~ {
+NAVDATA: Leg_180_02 13 ~~ {
 uTank2 NAV 1.2
 4
-4
+2
 0
 -83.03697916666667
 43.49461263020833
@@ -12160,24 +11923,12 @@ uTank2 NAV 1.2
 43.974658203125
 0.09289784431457519
 0
-4
--83.0623291015625
-43.974658203125
-0.09289784431457519
-0
-/ra mexec echo[`[TERRAIN] 180_02 `+getplayercoordinates[]]
-3
--83.0623291015625
-43.974658203125
-0.09289784431457519
-0
-3000
 ~~ }
 
-NAVDATA: Hub_180_02 115 ~~ {
+NAVDATA: Hub_180_02 103 ~~ {
 uTank2 NAV 1.2
 4
-22
+20
 0
 -85.40833333333333
 43.541666666666664
@@ -12278,24 +12029,12 @@ uTank2 NAV 1.2
 43.974658203125
 0.09289784431457519
 0
-4
--83.0623291015625
-43.974658203125
-0.09289784431457519
-0
-/ra mexec echo[`[TERRAIN] 180_02 `+getplayercoordinates[]]
-3
--83.0623291015625
-43.974658203125
-0.09289784431457519
-0
-3000
 ~~ }
 
-NAVDATA: Leg_180_03 30 ~~ {
+NAVDATA: Leg_180_03 18 ~~ {
 uTank2 NAV 1.2
 4
-5
+3
 0
 -83.0623291015625
 43.974658203125
@@ -12311,24 +12050,12 @@ uTank2 NAV 1.2
 44.50955403645833
 0.0846847136815389
 0
-4
--83.21475423177084
-44.50955403645833
-0.0846847136815389
-0
-/ra mexec echo[`[TERRAIN] 180_03 `+getplayercoordinates[]]
-3
--83.21475423177084
-44.50955403645833
-0.0846847136815389
-0
-3000
 ~~ }
 
-NAVDATA: Hub_180_03 145 ~~ {
+NAVDATA: Hub_180_03 133 ~~ {
 uTank2 NAV 1.2
 4
-28
+26
 0
 -85.40833333333333
 43.541666666666664
@@ -12459,24 +12186,12 @@ uTank2 NAV 1.2
 44.50955403645833
 0.0846847136815389
 0
-4
--83.21475423177084
-44.50955403645833
-0.0846847136815389
-0
-/ra mexec echo[`[TERRAIN] 180_03 `+getplayercoordinates[]]
-3
--83.21475423177084
-44.50955403645833
-0.0846847136815389
-0
-3000
 ~~ }
 
-NAVDATA: Leg_180_04 50 ~~ {
+NAVDATA: Leg_180_04 38 ~~ {
 uTank2 NAV 1.2
 4
-9
+7
 0
 -83.21475423177084
 44.50955403645833
@@ -12512,24 +12227,12 @@ uTank2 NAV 1.2
 45.690625
 0.0978862206141154
 0
-4
--82.78771158854167
-45.690625
-0.0978862206141154
-0
-/ra mexec echo[`[TERRAIN] 180_04 `+getplayercoordinates[]]
-3
--82.78771158854167
-45.690625
-0.0978862206141154
-0
-3000
 ~~ }
 
-NAVDATA: Hub_180_04 130 ~~ {
+NAVDATA: Hub_180_04 118 ~~ {
 uTank2 NAV 1.2
 4
-25
+23
 0
 -85.40833333333333
 43.541666666666664
@@ -12645,24 +12348,12 @@ uTank2 NAV 1.2
 45.690625
 0.0978862206141154
 0
-4
--82.78771158854167
-45.690625
-0.0978862206141154
-0
-/ra mexec echo[`[TERRAIN] 180_04 `+getplayercoordinates[]]
-3
--82.78771158854167
-45.690625
-0.0978862206141154
-0
-3000
 ~~ }
 
-NAVDATA: Leg_180_05 45 ~~ {
+NAVDATA: Leg_180_05 33 ~~ {
 uTank2 NAV 1.2
 4
-8
+6
 0
 -82.78771158854167
 45.690625
@@ -12693,24 +12384,12 @@ uTank2 NAV 1.2
 46.238199869791664
 0.14437055587768555
 0
-4
--82.3595458984375
-46.238199869791664
-0.14437055587768555
-0
-/ra mexec echo[`[TERRAIN] 180_05 `+getplayercoordinates[]]
-3
--82.3595458984375
-46.238199869791664
-0.14437055587768555
-0
-3000
 ~~ }
 
-NAVDATA: Hub_180_05 1040 ~~ {
+NAVDATA: Hub_180_05 1028 ~~ {
 uTank2 NAV 1.2
 4
-207
+205
 0
 -85.40833333333333
 43.541666666666664
@@ -13736,24 +13415,12 @@ uTank2 NAV 1.2
 46.238199869791664
 0.14437055587768555
 0
-4
--82.3595458984375
-46.238199869791664
-0.14437055587768555
-0
-/ra mexec echo[`[TERRAIN] 180_05 `+getplayercoordinates[]]
-3
--82.3595458984375
-46.238199869791664
-0.14437055587768555
-0
-3000
 ~~ }
 
-NAVDATA: Leg_180_06 35 ~~ {
+NAVDATA: Leg_180_06 23 ~~ {
 uTank2 NAV 1.2
 4
-6
+4
 0
 -82.3595458984375
 46.238199869791664
@@ -13774,24 +13441,12 @@ uTank2 NAV 1.2
 46.621875
 0.15438051223754884
 0
-4
--82.10555826822916
-46.621875
-0.15438051223754884
-0
-/ra mexec echo[`[TERRAIN] 180_06 `+getplayercoordinates[]]
-3
--82.10555826822916
-46.621875
-0.15438051223754884
-0
-3000
 ~~ }
 
-NAVDATA: Hub_180_06 1105 ~~ {
+NAVDATA: Hub_180_06 1093 ~~ {
 uTank2 NAV 1.2
 4
-220
+218
 0
 -85.40833333333333
 43.541666666666664
@@ -14882,24 +14537,12 @@ uTank2 NAV 1.2
 46.621875
 0.15438051223754884
 0
-4
--82.10555826822916
-46.621875
-0.15438051223754884
-0
-/ra mexec echo[`[TERRAIN] 180_06 `+getplayercoordinates[]]
-3
--82.10555826822916
-46.621875
-0.15438051223754884
-0
-3000
 ~~ }
 
-NAVDATA: Leg_180_07 30 ~~ {
+NAVDATA: Leg_180_07 18 ~~ {
 uTank2 NAV 1.2
 4
-5
+3
 0
 -82.10555826822916
 46.621875
@@ -14915,24 +14558,12 @@ uTank2 NAV 1.2
 47.45
 0.09301697413126628
 0
-4
--82.51006673177083
-47.45
-0.09301697413126628
-0
-/ra mexec echo[`[TERRAIN] 180_07 `+getplayercoordinates[]]
-3
--82.51006673177083
-47.45
-0.09301697413126628
-0
-3000
 ~~ }
 
-NAVDATA: Hub_180_07 185 ~~ {
+NAVDATA: Hub_180_07 173 ~~ {
 uTank2 NAV 1.2
 4
-36
+34
 0
 -85.40833333333333
 43.541666666666664
@@ -15103,24 +14734,12 @@ uTank2 NAV 1.2
 47.45
 0.09301697413126628
 0
-4
--82.51006673177083
-47.45
-0.09301697413126628
-0
-/ra mexec echo[`[TERRAIN] 180_07 `+getplayercoordinates[]]
-3
--82.51006673177083
-47.45
-0.09301697413126628
-0
-3000
 ~~ }
 
-NAVDATA: Leg_180_08 40 ~~ {
+NAVDATA: Leg_180_08 28 ~~ {
 uTank2 NAV 1.2
 4
-7
+5
 0
 -82.51006673177083
 47.45
@@ -15146,24 +14765,12 @@ uTank2 NAV 1.2
 47.850260416666664
 0.09787335395812988
 0
-4
--82.69270833333333
-47.850260416666664
-0.09787335395812988
-0
-/ra mexec echo[`[TERRAIN] 180_08 `+getplayercoordinates[]]
-3
--82.69270833333333
-47.850260416666664
-0.09787335395812988
-0
-3000
 ~~ }
 
-NAVDATA: Hub_180_08 215 ~~ {
+NAVDATA: Hub_180_08 203 ~~ {
 uTank2 NAV 1.2
 4
-42
+40
 0
 -85.40833333333333
 43.541666666666664
@@ -15364,24 +14971,12 @@ uTank2 NAV 1.2
 47.850260416666664
 0.09787335395812988
 0
-4
--82.69270833333333
-47.850260416666664
-0.09787335395812988
-0
-/ra mexec echo[`[TERRAIN] 180_08 `+getplayercoordinates[]]
-3
--82.69270833333333
-47.850260416666664
-0.09787335395812988
-0
-3000
 ~~ }
 
-NAVDATA: Leg_180_09 120 ~~ {
+NAVDATA: Leg_180_09 108 ~~ {
 uTank2 NAV 1.2
 4
-23
+21
 0
 -82.69270833333333
 47.850260416666664
@@ -15487,24 +15082,12 @@ uTank2 NAV 1.2
 43.0125
 0.1271679401397705
 0
-4
--82.89937337239583
-43.0125
-0.1271679401397705
-0
-/ra mexec echo[`[TERRAIN] 180_09 `+getplayercoordinates[]]
-3
--82.89937337239583
-43.0125
-0.1271679401397705
-0
-3000
 ~~ }
 
-NAVDATA: Hub_180_09 115 ~~ {
+NAVDATA: Hub_180_09 103 ~~ {
 uTank2 NAV 1.2
 4
-22
+20
 0
 -85.40833333333333
 43.541666666666664
@@ -15605,24 +15188,12 @@ uTank2 NAV 1.2
 43.0125
 0.1271679401397705
 0
-4
--82.89937337239583
-43.0125
-0.1271679401397705
-0
-/ra mexec echo[`[TERRAIN] 180_09 `+getplayercoordinates[]]
-3
--82.89937337239583
-43.0125
-0.1271679401397705
-0
-3000
 ~~ }
 
-NAVDATA: Leg_180_10 45 ~~ {
+NAVDATA: Leg_180_10 33 ~~ {
 uTank2 NAV 1.2
 4
-8
+6
 0
 -82.89937337239583
 43.0125
@@ -15653,24 +15224,12 @@ uTank2 NAV 1.2
 42.63194986979167
 0.13782410621643065
 0
-4
--82.66840006510417
-42.63194986979167
-0.13782410621643065
-0
-/ra mexec echo[`[TERRAIN] 180_10 `+getplayercoordinates[]]
-3
--82.66840006510417
-42.63194986979167
-0.13782410621643065
-0
-3000
 ~~ }
 
-NAVDATA: Hub_180_10 125 ~~ {
+NAVDATA: Hub_180_10 113 ~~ {
 uTank2 NAV 1.2
 4
-24
+22
 0
 -85.40833333333333
 43.541666666666664
@@ -15781,24 +15340,12 @@ uTank2 NAV 1.2
 42.63194986979167
 0.13782410621643065
 0
-4
--82.66840006510417
-42.63194986979167
-0.13782410621643065
-0
-/ra mexec echo[`[TERRAIN] 180_10 `+getplayercoordinates[]]
-3
--82.66840006510417
-42.63194986979167
-0.13782410621643065
-0
-3000
 ~~ }
 
-NAVDATA: Leg_180_11 45 ~~ {
+NAVDATA: Leg_180_11 33 ~~ {
 uTank2 NAV 1.2
 4
-8
+6
 0
 -82.66840006510417
 42.63194986979167
@@ -15829,24 +15376,12 @@ uTank2 NAV 1.2
 42.63125
 0.16254571278889973
 0
-4
--82.23159993489584
-42.63125
-0.16254571278889973
-0
-/ra mexec echo[`[TERRAIN] 180_11 `+getplayercoordinates[]]
-3
--82.23159993489584
-42.63125
-0.16254571278889973
-0
-3000
 ~~ }
 
-NAVDATA: Hub_180_11 140 ~~ {
+NAVDATA: Hub_180_11 128 ~~ {
 uTank2 NAV 1.2
 4
-27
+25
 0
 -85.40833333333333
 43.541666666666664
@@ -15972,24 +15507,12 @@ uTank2 NAV 1.2
 42.63125
 0.16254571278889973
 0
-4
--82.23159993489584
-42.63125
-0.16254571278889973
-0
-/ra mexec echo[`[TERRAIN] 180_11 `+getplayercoordinates[]]
-3
--82.23159993489584
-42.63125
-0.16254571278889973
-0
-3000
 ~~ }
 
-NAVDATA: Leg_180_12 30 ~~ {
+NAVDATA: Leg_180_12 18 ~~ {
 uTank2 NAV 1.2
 4
-5
+3
 0
 -82.23159993489584
 42.63125
@@ -16005,24 +15528,12 @@ uTank2 NAV 1.2
 42.717919921875
 0.13942082722981772
 0
-4
--81.8214599609375
-42.717919921875
-0.13942082722981772
-0
-/ra mexec echo[`[TERRAIN] 180_12 `+getplayercoordinates[]]
-3
--81.8214599609375
-42.717919921875
-0.13942082722981772
-0
-3000
 ~~ }
 
-NAVDATA: Hub_180_12 125 ~~ {
+NAVDATA: Hub_180_12 113 ~~ {
 uTank2 NAV 1.2
 4
-24
+22
 0
 -85.40833333333333
 43.541666666666664
@@ -16133,18 +15644,6 @@ uTank2 NAV 1.2
 42.717919921875
 0.13942082722981772
 0
-4
--81.8214599609375
-42.717919921875
-0.13942082722981772
-0
-/ra mexec echo[`[TERRAIN] 180_12 `+getplayercoordinates[]]
-3
--81.8214599609375
-42.717919921875
-0.13942082722981772
-0
-3000
 ~~ }
 
 NAVDATA: Return_180 123 ~~ {
@@ -16273,10 +15772,10 @@ uTank2 NAV 1.2
 0
 ~~ }
 
-NAVDATA: Leg_225_01 65 ~~ {
+NAVDATA: Leg_225_01 53 ~~ {
 uTank2 NAV 1.2
 4
-12
+10
 0
 -79.80249837239583
 53.52833658854167
@@ -16327,24 +15826,12 @@ uTank2 NAV 1.2
 52.31188151041667
 0.09926930268605551
 0
-4
--79.66666666666667
-52.31188151041667
-0.09926930268605551
-0
-/ra mexec echo[`[TERRAIN] 225_01 `+getplayercoordinates[]]
-3
--79.66666666666667
-52.31188151041667
-0.09926930268605551
-0
-3000
 ~~ }
 
-NAVDATA: Hub_225_01 65 ~~ {
+NAVDATA: Hub_225_01 53 ~~ {
 uTank2 NAV 1.2
 4
-12
+10
 0
 -79.80249837239583
 53.52833658854167
@@ -16395,24 +15882,12 @@ uTank2 NAV 1.2
 52.31188151041667
 0.09926930268605551
 0
-4
--79.66666666666667
-52.31188151041667
-0.09926930268605551
-0
-/ra mexec echo[`[TERRAIN] 225_01 `+getplayercoordinates[]]
-3
--79.66666666666667
-52.31188151041667
-0.09926930268605551
-0
-3000
 ~~ }
 
-NAVDATA: Leg_225_02 30 ~~ {
+NAVDATA: Leg_225_02 18 ~~ {
 uTank2 NAV 1.2
 4
-5
+3
 0
 -79.66666666666667
 52.31188151041667
@@ -16428,24 +15903,12 @@ uTank2 NAV 1.2
 52.32986653645833
 0.10496190388997396
 0
-4
--79.12708333333333
-52.32986653645833
-0.10496190388997396
-0
-/ra mexec echo[`[TERRAIN] 225_02 `+getplayercoordinates[]]
-3
--79.12708333333333
-52.32986653645833
-0.10496190388997396
-0
-3000
 ~~ }
 
-NAVDATA: Hub_225_02 70 ~~ {
+NAVDATA: Hub_225_02 58 ~~ {
 uTank2 NAV 1.2
 4
-13
+11
 0
 -79.80249837239583
 53.52833658854167
@@ -16501,24 +15964,12 @@ uTank2 NAV 1.2
 52.32986653645833
 0.10496190388997396
 0
-4
--79.12708333333333
-52.32986653645833
-0.10496190388997396
-0
-/ra mexec echo[`[TERRAIN] 225_02 `+getplayercoordinates[]]
-3
--79.12708333333333
-52.32986653645833
-0.10496190388997396
-0
-3000
 ~~ }
 
-NAVDATA: Leg_225_03 165 ~~ {
+NAVDATA: Leg_225_03 153 ~~ {
 uTank2 NAV 1.2
 4
-32
+30
 0
 -79.12708333333333
 52.32986653645833
@@ -16669,24 +16120,12 @@ uTank2 NAV 1.2
 52.68507486979167
 0.09585385322570801
 0
-4
--78.80625
-52.68507486979167
-0.09585385322570801
-0
-/ra mexec echo[`[TERRAIN] 225_03 `+getplayercoordinates[]]
-3
--78.80625
-52.68507486979167
-0.09585385322570801
-0
-3000
 ~~ }
 
-NAVDATA: Hub_225_03 95 ~~ {
+NAVDATA: Hub_225_03 83 ~~ {
 uTank2 NAV 1.2
 4
-18
+16
 0
 -79.80249837239583
 53.52833658854167
@@ -16767,24 +16206,12 @@ uTank2 NAV 1.2
 52.68507486979167
 0.09585385322570801
 0
-4
--78.80625
-52.68507486979167
-0.09585385322570801
-0
-/ra mexec echo[`[TERRAIN] 225_03 `+getplayercoordinates[]]
-3
--78.80625
-52.68507486979167
-0.09585385322570801
-0
-3000
 ~~ }
 
-NAVDATA: Leg_225_04 60 ~~ {
+NAVDATA: Leg_225_04 48 ~~ {
 uTank2 NAV 1.2
 4
-11
+9
 0
 -78.80625
 52.68507486979167
@@ -16830,24 +16257,12 @@ uTank2 NAV 1.2
 53.106038411458336
 0.11145220597585043
 0
-4
--78.60499674479166
-53.106038411458336
-0.11145220597585043
-0
-/ra mexec echo[`[TERRAIN] 225_04 `+getplayercoordinates[]]
-3
--78.60499674479166
-53.106038411458336
-0.11145220597585043
-0
-3000
 ~~ }
 
-NAVDATA: Hub_225_04 110 ~~ {
+NAVDATA: Hub_225_04 98 ~~ {
 uTank2 NAV 1.2
 4
-21
+19
 0
 -79.80249837239583
 53.52833658854167
@@ -16943,24 +16358,12 @@ uTank2 NAV 1.2
 53.106038411458336
 0.11145220597585043
 0
-4
--78.60499674479166
-53.106038411458336
-0.11145220597585043
-0
-/ra mexec echo[`[TERRAIN] 225_04 `+getplayercoordinates[]]
-3
--78.60499674479166
-53.106038411458336
-0.11145220597585043
-0
-3000
 ~~ }
 
-NAVDATA: Leg_225_05 60 ~~ {
+NAVDATA: Leg_225_05 48 ~~ {
 uTank2 NAV 1.2
 4
-11
+9
 0
 -78.60499674479166
 53.106038411458336
@@ -17006,24 +16409,12 @@ uTank2 NAV 1.2
 53.68385416666667
 0.09558278719584147
 0
-4
--77.97864583333333
-53.68385416666667
-0.09558278719584147
-0
-/ra mexec echo[`[TERRAIN] 225_05 `+getplayercoordinates[]]
-3
--77.97864583333333
-53.68385416666667
-0.09558278719584147
-0
-3000
 ~~ }
 
-NAVDATA: Hub_225_05 60 ~~ {
+NAVDATA: Hub_225_05 48 ~~ {
 uTank2 NAV 1.2
 4
-11
+9
 0
 -79.80249837239583
 53.52833658854167
@@ -17069,24 +16460,12 @@ uTank2 NAV 1.2
 53.68385416666667
 0.09558278719584147
 0
-4
--77.97864583333333
-53.68385416666667
-0.09558278719584147
-0
-/ra mexec echo[`[TERRAIN] 225_05 `+getplayercoordinates[]]
-3
--77.97864583333333
-53.68385416666667
-0.09558278719584147
-0
-3000
 ~~ }
 
-NAVDATA: Leg_225_06 50 ~~ {
+NAVDATA: Leg_225_06 38 ~~ {
 uTank2 NAV 1.2
 4
-9
+7
 0
 -77.97864583333333
 53.68385416666667
@@ -17122,24 +16501,12 @@ uTank2 NAV 1.2
 53.794970703125
 0.10629169940948487
 0
-4
--77.5767333984375
-53.794970703125
-0.10629169940948487
-0
-/ra mexec echo[`[TERRAIN] 225_06 `+getplayercoordinates[]]
-3
--77.5767333984375
-53.794970703125
-0.10629169940948487
-0
-3000
 ~~ }
 
-NAVDATA: Hub_225_06 95 ~~ {
+NAVDATA: Hub_225_06 83 ~~ {
 uTank2 NAV 1.2
 4
-18
+16
 0
 -79.80249837239583
 53.52833658854167
@@ -17220,24 +16587,12 @@ uTank2 NAV 1.2
 53.794970703125
 0.10629169940948487
 0
-4
--77.5767333984375
-53.794970703125
-0.10629169940948487
-0
-/ra mexec echo[`[TERRAIN] 225_06 `+getplayercoordinates[]]
-3
--77.5767333984375
-53.794970703125
-0.10629169940948487
-0
-3000
 ~~ }
 
-NAVDATA: Leg_225_07 25 ~~ {
+NAVDATA: Leg_225_07 13 ~~ {
 uTank2 NAV 1.2
 4
-4
+2
 0
 -77.5767333984375
 53.794970703125
@@ -17248,24 +16603,12 @@ uTank2 NAV 1.2
 53.78771158854167
 0.1239891767501831
 0
-4
--77.10770670572917
-53.78771158854167
-0.1239891767501831
-0
-/ra mexec echo[`[TERRAIN] 225_07 `+getplayercoordinates[]]
-3
--77.10770670572917
-53.78771158854167
-0.1239891767501831
-0
-3000
 ~~ }
 
-NAVDATA: Hub_225_07 95 ~~ {
+NAVDATA: Hub_225_07 83 ~~ {
 uTank2 NAV 1.2
 4
-18
+16
 0
 -79.80249837239583
 53.52833658854167
@@ -17346,24 +16689,12 @@ uTank2 NAV 1.2
 53.78771158854167
 0.1239891767501831
 0
-4
--77.10770670572917
-53.78771158854167
-0.1239891767501831
-0
-/ra mexec echo[`[TERRAIN] 225_07 `+getplayercoordinates[]]
-3
--77.10770670572917
-53.78771158854167
-0.1239891767501831
-0
-3000
 ~~ }
 
-NAVDATA: Leg_225_08 30 ~~ {
+NAVDATA: Leg_225_08 18 ~~ {
 uTank2 NAV 1.2
 4
-5
+3
 0
 -77.10770670572917
 53.78771158854167
@@ -17379,24 +16710,12 @@ uTank2 NAV 1.2
 53.875
 0.15516832669576008
 0
-4
--76.45479329427083
-53.875
-0.15516832669576008
-0
-/ra mexec echo[`[TERRAIN] 225_08 `+getplayercoordinates[]]
-3
--76.45479329427083
-53.875
-0.15516832669576008
-0
-3000
 ~~ }
 
-NAVDATA: Hub_225_08 80 ~~ {
+NAVDATA: Hub_225_08 68 ~~ {
 uTank2 NAV 1.2
 4
-15
+13
 0
 -79.80249837239583
 53.52833658854167
@@ -17462,24 +16781,12 @@ uTank2 NAV 1.2
 53.875
 0.15516832669576008
 0
-4
--76.45479329427083
-53.875
-0.15516832669576008
-0
-/ra mexec echo[`[TERRAIN] 225_08 `+getplayercoordinates[]]
-3
--76.45479329427083
-53.875
-0.15516832669576008
-0
-3000
 ~~ }
 
-NAVDATA: Leg_225_09 25 ~~ {
+NAVDATA: Leg_225_09 13 ~~ {
 uTank2 NAV 1.2
 4
-4
+2
 0
 -76.45479329427083
 53.875
@@ -17490,24 +16797,12 @@ uTank2 NAV 1.2
 53.80555013020833
 0.11618026892344156
 0
-4
--76.00590006510417
-53.80555013020833
-0.11618026892344156
-0
-/ra mexec echo[`[TERRAIN] 225_09 `+getplayercoordinates[]]
-3
--76.00590006510417
-53.80555013020833
-0.11618026892344156
-0
-3000
 ~~ }
 
-NAVDATA: Hub_225_09 80 ~~ {
+NAVDATA: Hub_225_09 68 ~~ {
 uTank2 NAV 1.2
 4
-15
+13
 0
 -79.80249837239583
 53.52833658854167
@@ -17573,24 +16868,12 @@ uTank2 NAV 1.2
 53.80555013020833
 0.11618026892344156
 0
-4
--76.00590006510417
-53.80555013020833
-0.11618026892344156
-0
-/ra mexec echo[`[TERRAIN] 225_09 `+getplayercoordinates[]]
-3
--76.00590006510417
-53.80555013020833
-0.11618026892344156
-0
-3000
 ~~ }
 
-NAVDATA: Leg_225_10 195 ~~ {
+NAVDATA: Leg_225_10 183 ~~ {
 uTank2 NAV 1.2
 4
-38
+36
 0
 -76.00590006510417
 53.80555013020833
@@ -17771,24 +17054,12 @@ uTank2 NAV 1.2
 51.995052083333334
 0.11461309591929118
 0
-4
--80.21979166666667
-51.995052083333334
-0.11461309591929118
-0
-/ra mexec echo[`[TERRAIN] 225_10 `+getplayercoordinates[]]
-3
--80.21979166666667
-51.995052083333334
-0.11461309591929118
-0
-3000
 ~~ }
 
-NAVDATA: Hub_225_10 60 ~~ {
+NAVDATA: Hub_225_10 48 ~~ {
 uTank2 NAV 1.2
 4
-11
+9
 0
 -79.80249837239583
 53.52833658854167
@@ -17834,24 +17105,12 @@ uTank2 NAV 1.2
 51.995052083333334
 0.11461309591929118
 0
-4
--80.21979166666667
-51.995052083333334
-0.11461309591929118
-0
-/ra mexec echo[`[TERRAIN] 225_10 `+getplayercoordinates[]]
-3
--80.21979166666667
-51.995052083333334
-0.11461309591929118
-0
-3000
 ~~ }
 
-NAVDATA: Leg_225_11 85 ~~ {
+NAVDATA: Leg_225_11 73 ~~ {
 uTank2 NAV 1.2
 4
-16
+14
 0
 -80.21979166666667
 51.995052083333334
@@ -17922,24 +17181,12 @@ uTank2 NAV 1.2
 51.52916666666667
 0.10391036669413249
 0
-4
--80.79253743489583
-51.52916666666667
-0.10391036669413249
-0
-/ra mexec echo[`[TERRAIN] 225_11 `+getplayercoordinates[]]
-3
--80.79253743489583
-51.52916666666667
-0.10391036669413249
-0
-3000
 ~~ }
 
-NAVDATA: Hub_225_11 190 ~~ {
+NAVDATA: Hub_225_11 178 ~~ {
 uTank2 NAV 1.2
 4
-37
+35
 0
 -79.80249837239583
 53.52833658854167
@@ -18115,24 +17362,12 @@ uTank2 NAV 1.2
 51.52916666666667
 0.10391036669413249
 0
-4
--80.79253743489583
-51.52916666666667
-0.10391036669413249
-0
-/ra mexec echo[`[TERRAIN] 225_11 `+getplayercoordinates[]]
-3
--80.79253743489583
-51.52916666666667
-0.10391036669413249
-0
-3000
 ~~ }
 
-NAVDATA: Leg_225_12 30 ~~ {
+NAVDATA: Leg_225_12 18 ~~ {
 uTank2 NAV 1.2
 4
-5
+3
 0
 -80.79253743489583
 51.52916666666667
@@ -18148,24 +17383,12 @@ uTank2 NAV 1.2
 51.06424153645833
 0.18350184758504232
 0
-4
--80.86840006510417
-51.06424153645833
-0.18350184758504232
-0
-/ra mexec echo[`[TERRAIN] 225_12 `+getplayercoordinates[]]
-3
--80.86840006510417
-51.06424153645833
-0.18350184758504232
-0
-3000
 ~~ }
 
-NAVDATA: Hub_225_12 180 ~~ {
+NAVDATA: Hub_225_12 168 ~~ {
 uTank2 NAV 1.2
 4
-35
+33
 0
 -79.80249837239583
 53.52833658854167
@@ -18331,18 +17554,6 @@ uTank2 NAV 1.2
 51.06424153645833
 0.18350184758504232
 0
-4
--80.86840006510417
-51.06424153645833
-0.18350184758504232
-0
-/ra mexec echo[`[TERRAIN] 225_12 `+getplayercoordinates[]]
-3
--80.86840006510417
-51.06424153645833
-0.18350184758504232
-0
-3000
 ~~ }
 
 NAVDATA: Return_225 113 ~~ {

@@ -1,10 +1,16 @@
-TERRAIN ACCESS SURVEY v0.3 — RECORDED OVERNIGHT PILOT
+TERRAIN ACCESS SURVEY v0.3.1 — RECORDED OVERNIGHT PILOT
 
-UPDATING FROM v0.2
+UPDATING FROM v0.2 OR v0.3
 Run /terrainsurvey stop, then /lua stop TerrainSurvey. Install the new files.
 Run /lua start TerrainSurvey and /terrainsurvey resume. Keep the Data folder;
 use Resume to preserve the run. Old v0.2 no-progress failures are retained as
 unverified evidence and queued for recheck. Confirmed reached points stay reached.
+
+v0.3.1 removes the coordinate-echo and three-second pause waypoints. Inspection
+positions/results are already recorded automatically by the recorder and meta.
+Your ordinary Enable Looting choice is now preserved across starts/resumes.
+If looting is off, it is temporarily enabled only for native own-corpse recovery,
+then restored. Hub recalls now print their reason; status includes state/wait.
 
 WHAT IT DOES
 Tests 36 new cliff/elevation approaches, using /ls to Plateau and the two known
@@ -104,7 +110,7 @@ The recorder saves original values before applying:
 - FollowNavMin = 0.5 yd; Go To Closest Waypoint / NavResumeNearest = off
 - Stop Macro On Death = off; extra Death Recall Mode = off
 - Recover My Corpse = on; Travel Back To My Corpse = on
-- Enable Looting = on; Enable Meta = on
+- Enable Meta = on
 Your existing combat, buffs and loot profile remain in use. Original values
 are restored on an owned normal completion/stop, provided those settings still
 have the survey's values. If another controller changes a value, it is left

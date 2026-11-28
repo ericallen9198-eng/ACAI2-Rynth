@@ -103,3 +103,10 @@ start();sim.state='HUB_WAIT';sim.buffs=16;step(120);assert(sim.vars.te_transport
 -- SCENARIO repeated recall in the same sampled wait state gets a fresh transport budget
 start();sim.state='HUB_WAIT';sim.vars.te_transport_generation=1;step(50);assert(sim.vars.te_transport_timeout==1)
 sim.vars.te_transport_generation=2;sim.vars.te_transport_timeout=0;step();assert(sim.vars.te_transport_timeout==0)
+-- SCENARIO ordinary start and resume preserve a player's disabled looting setting
+sim.settings.EnableLooting=0;start();assert(sim.settings.EnableLooting==0);request('resume');step(20);assert(sim.settings.EnableLooting==0)
+-- SCENARIO death temporarily permits native corpse looting then restores the player's choice
+start();sim.settings.EnableLooting=0;sim.hp=0;sim.rememberCorpse=true;sim.nativeRecovery=true;step();assert(sim.settings.EnableLooting==1 and cp().recovery.lootBefore==0)
+sim.hp=429;sim.nativeRecovery=false;send('[RynthAi] Own corpse: recovered everything (2 items).');step(25);assert(sim.settings.EnableLooting==0 and not cp().recovery)
+-- SCENARIO stopping during recovery restores temporarily enabled looting
+start();sim.settings.EnableLooting=0;sim.hp=0;step();assert(sim.settings.EnableLooting==1);request('stop');assert(sim.settings.EnableLooting==0 and not require('rynth.ai').MacroRunning)

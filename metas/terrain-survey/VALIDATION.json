@@ -1,5 +1,5 @@
 {
-  "pilot": "Terrain Access Survey v0.3 \u2014 combat/buff/loot-aware portal clearance fix",
+  "pilot": "Terrain Access Survey v0.3.1 \u2014 continuous inspection and loot preference fix",
   "live_game_tested": false,
   "upstream_rynth_suite_commit": "4602d9267d0892da7179cac9f70ea5622e3a1b7e",
   "navdata_release": "2026102103",
@@ -11,7 +11,7 @@
     "states": 211,
     "navs": 77,
     "refs": 77,
-    "points": 2528,
+    "points": 2384,
     "portals": 2,
     "warnings": 0
   },
@@ -29,7 +29,7 @@
     "225": 3694
   },
   "runtime_limits": "Live game/Windows installer unverified. Native corpse travel requires Rynth to remember the death. Disk recording and AF watchdog use bounded automatic repair.",
-  "controlled_scenarios": 39,
+  "controlled_scenarios": 42,
   "logging": {
     "sample_seconds": 5,
     "ring_slots": 8,
@@ -59,5 +59,7 @@
     "native_avoid_command": "/rnav avoid portals on",
     "intentional_portals_preserved": 2
   },
-  "monitor": "Recurring Lua tick; AF rules fire once per state entry. Combat, buffing, busy, container/loot activity and settling pause movement checks. Stable arrival gates hub/portal transitions."
+  "monitor": "Recurring Lua tick; AF rules fire once per state entry. Combat, buffing, busy, container/loot activity and settling pause movement checks. Stable arrival gates hub/portal transitions.",
+  "loot_setting": "Ordinary EnableLooting preserved; temporarily enable only for native own-corpse recovery, then restore.",
+  "inspection": "No coordinate-echo/chat or pause waypoints in embedded inspection paths; positions/results still recorded and committed."
 }

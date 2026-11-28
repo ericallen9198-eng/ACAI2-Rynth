@@ -14,12 +14,10 @@ def coord(p):return f"{p['north']:.12f}|{p['east']:.12f}|{p['z']/240:.12f}"
 def nav(name,points,label=None):
  pts=[]
  for p in points:pts.append(['0',str(p['east']),str(p['north']),str(p['z']/240),'0'])
- if label:
-  p=points[-1];pts.append(['4',str(p['east']),str(p['north']),str(p['z']/240),'0','/ra mexec echo[`[TERRAIN] '+label+' `+getplayercoordinates[]]']);pts.append(['3',str(p['east']),str(p['north']),str(p['z']/240),'0','3000'])
  navs[name]=['uTank2 NAV 1.2','4',str(len(pts))]+[v for p in pts for v in p]
 S('Default',D+R('Expr {ragetsetting[FollowNavMin]>0.75 || ragetsetting[NavResumeNearest]!=0}',[E('echo[`Terrain survey needs FollowNavMin=0.5 and NavResumeNearest=0 before starting. See READ FIRST.`]'),'SetState {FINISH}'])+A([E('setvar[te_stage,0]'),E('setvar[te_probe,1]'),E('setvar[te_attempt,0]'),E('setvar[te_entry_hub,1]'),E('setvar[te_recall_attempts,0]'),E('echo[`Terrain Access Survey: fresh mesh-planned cliff approaches, no hunt loops. Probe results are provisional.`]'),'SetState {RECALL}']))
-S('RESUME',D+A([E('setvar[te_entry_hub,1]'),E('setvar[te_recall_attempts,0]'),'SetState {RECALL}']))
-S('RECALL',D+R('Expr {getvar[te_can_travel]==1}',['SetOpt {EnableNav} {False}',E('setvar[te_transport_generation,getvar[te_transport_generation]+1]'),E('setvar[te_transport_timeout,0]'),E('setvar[te_recall_attempts,getvar[te_recall_attempts]+1]'),E('setvar[te_settle,getunixtime[]+5]'),'Chat {/ls}','SetState {HUB_WAIT}']))
+S('RESUME',D+A([E('setvar[te_return_reason,`resume_current_point`]'),E('setvar[te_entry_hub,1]'),E('setvar[te_recall_attempts,0]'),'SetState {RECALL}']))
+S('RECALL',D+R('Expr {getvar[te_can_travel]==1}',['SetOpt {EnableNav} {False}',E('setvar[te_transport_generation,getvar[te_transport_generation]+1]'),E('setvar[te_transport_timeout,0]'),E('setvar[te_recall_attempts,getvar[te_recall_attempts]+1]'),E('setvar[te_settle,getunixtime[]+5]'),E('echo[`[TerrainSurvey] Hub recall: `+getvar[te_return_reason]+`; last movement result: `+getvar[te_reason]]'),'Chat {/ls}','SetState {HUB_WAIT}']))
 S('HUB_WAIT',D+R('Expr {getvar[te_location_stable]==1 && getcharvital_current[1]>0 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],`'+pos[275]+'`]<15 && abs[coordinategetz[getplayercoordinates[]]*240-92.005]<8 && getunixtime[]>getvar[te_settle]}',['SetOpt {EnableNav} {False}','SetState {DISPATCH}'])+R('Expr {getvar[te_transport_timeout]==1}',['SetState {RECALL_CHECK}']))
 S('RECALL_CHECK',D+R('Expr {getvar[te_recall_attempts]<2}',['SetState {RECALL}'])+A([E('echo[`Terrain survey: /ls arrival unconfirmed after two attempts. No wrong-area walking was started.`]'),'SetState {FINISH}']))
 S('DISPATCH',D+R('Expr {getvar[te_stage]==0}',['SetState {SELECT_275}'])+R('Expr {getvar[te_stage]==1}',['SetState {PORTAL_180}'])+R('Expr {getvar[te_stage]==2}',['SetState {PORTAL_225}'])+A(['SetState {FINISH}']))
@@ -58,15 +56,15 @@ for z in [275,180,225]:
   body+=R('Expr {getvar[te_movement_fail]==1}',[f'SetState {{FAILED_{ident}}}'])
   S('WAIT_'+ident,body)
   failure=[]
-  retry_actions=[E('setvar[te_attempt,1]'),E('setvar[te_entry_hub,1]'),E('setvar[te_recall_attempts,0]'),'SetOpt {EnableNav} {False}','SetState {RECALL}']
-  skip_actions=['SetOpt {EnableNav} {False}',E('setvar[te_probe,getvar[te_probe]+1]'),E('setvar[te_attempt,0]'),E('setvar[te_entry_hub,1]'),E('setvar[te_recall_attempts,0]'),('SetState {NEXT_SECTOR}' if i==len(legs) else 'SetState {RECALL}')]
+  retry_actions=[E('setvar[te_return_reason,`retry_different_hub_approach`]'),E('setvar[te_attempt,1]'),E('setvar[te_entry_hub,1]'),E('setvar[te_recall_attempts,0]'),'SetOpt {EnableNav} {False}','SetState {RECALL}']
+  skip_actions=[E('setvar[te_return_reason,`defer_failed_approach`]'),'SetOpt {EnableNav} {False}',E('setvar[te_probe,getvar[te_probe]+1]'),E('setvar[te_attempt,0]'),E('setvar[te_entry_hub,1]'),E('setvar[te_recall_attempts,0]'),('SetState {NEXT_SECTOR}' if i==len(legs) else 'SetState {RECALL}')]
   S('FAILED_'+ident,D+A(['SetOpt {EnableNav} {False}',E('setvar[te_report,'+('if[getvar[te_attempt]==0,2,3]' if different else '3')+']'),E('setvar[te_commit,0]'),E('setvar[te_seq,getvar[te_seq]+1]'),E('setvar[te_report_coords,getplayercoordinates[]]'),f'SetState {{COMMIT_FAILED_{ident}}}']))
   S('COMMIT_FAILED_'+ident,D+R('Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==2}',retry_actions)+R('Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==3}',skip_actions))
   report.append(dict(id=ident,zone=z,distinct_hub_retry=different,approach=approach,boundaryA=leg['boundaryA'],boundaryB=leg['boundaryB'],opposite=leg['opposite'],heightDifference=leg['heightDifference'],route_length=leg['length'],status='mesh_predicted_not_live_verified'))
  nav('Return_'+str(z),route['returnCorners'])
  S('RETURN_'+str(z),D+A([f'EmbedNav Return_{z} {{once}}','SetOpt {EnableNav} {True}',f'SetState {{RETURN_WAIT_{z}}}']))
  S('RETURN_WAIT_'+str(z),D+R('Expr {getvar[te_location_stable]==1 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],`'+pos[z]+'`]<5}',['SetState {NEXT_SECTOR}'])+R('SecsInStateGE 120',[E(f'echo[`Terrain survey: {z} local return did not finish; using the lifestone hub for the next sector.`]'),'SetState {NEXT_SECTOR}']))
-S('NEXT_SECTOR',D+A(['SetOpt {EnableNav} {False}',E('setvar[te_stage,getvar[te_stage]+1]'),E('setvar[te_probe,1]'),E('setvar[te_attempt,0]'),E('setvar[te_entry_hub,1]'),E('setvar[te_recall_attempts,0]'),'SetState {NEXT_CHECK}']))
+S('NEXT_SECTOR',D+A(['SetOpt {EnableNav} {False}',E('setvar[te_return_reason,`next_sector`]'),E('setvar[te_stage,getvar[te_stage]+1]'),E('setvar[te_probe,1]'),E('setvar[te_attempt,0]'),E('setvar[te_entry_hub,1]'),E('setvar[te_recall_attempts,0]'),'SetState {NEXT_CHECK}']))
 S('NEXT_CHECK',R('Expr {getvar[te_stage]>=3}',['SetState {FINISH}'])+A(['SetState {RECALL}']))
 # Native corpse recovery keeps the macro running; no survey route is active here.
 S('RECOVERY_WAIT',R('Expr {getvar[te_logger_schema]!=3 || getvar[te_logger_active]!=1 || getunixtime[]-getvar[te_logger_heartbeat]>20}',['SetState {LOGGER_LOST}'])+A(['SetOpt {EnableNav} {False}']))
