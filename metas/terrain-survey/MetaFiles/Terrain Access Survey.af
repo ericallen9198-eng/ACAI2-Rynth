@@ -275,6 +275,7 @@ STATE: {PROBE_275_1} ~~ {
 	IF: Expr {getvar[te_entry_hub]==1}
 		DO: DoAll
 				EmbedNav Hub_275_01 {once}
+				DoExpr {setvar[te_corridor,`Hub_275_01`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -283,11 +284,12 @@ STATE: {PROBE_275_1} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_275_01}
 	IF: Always
 		DO: DoAll
 				EmbedNav Leg_275_01 {once}
+				DoExpr {setvar[te_corridor,`Leg_275_01`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -296,7 +298,7 @@ STATE: {PROBE_275_1} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_275_01}
 ~~ }
 
@@ -403,6 +405,7 @@ STATE: {PROBE_275_2} ~~ {
 	IF: Expr {getvar[te_entry_hub]==1}
 		DO: DoAll
 				EmbedNav Hub_275_02 {once}
+				DoExpr {setvar[te_corridor,`Hub_275_02`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -411,11 +414,12 @@ STATE: {PROBE_275_2} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_275_02}
 	IF: Always
 		DO: DoAll
 				EmbedNav Leg_275_02 {once}
+				DoExpr {setvar[te_corridor,`Leg_275_02`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -424,7 +428,7 @@ STATE: {PROBE_275_2} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_275_02}
 ~~ }
 
@@ -531,6 +535,7 @@ STATE: {PROBE_275_3} ~~ {
 	IF: Expr {getvar[te_entry_hub]==1}
 		DO: DoAll
 				EmbedNav Hub_275_03 {once}
+				DoExpr {setvar[te_corridor,`Hub_275_03`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -539,11 +544,12 @@ STATE: {PROBE_275_3} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_275_03}
 	IF: Always
 		DO: DoAll
 				EmbedNav Leg_275_03 {once}
+				DoExpr {setvar[te_corridor,`Leg_275_03`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -552,7 +558,7 @@ STATE: {PROBE_275_3} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_275_03}
 ~~ }
 
@@ -659,6 +665,7 @@ STATE: {PROBE_275_4} ~~ {
 	IF: Expr {getvar[te_entry_hub]==1}
 		DO: DoAll
 				EmbedNav Hub_275_04 {once}
+				DoExpr {setvar[te_corridor,`Hub_275_04`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -667,11 +674,12 @@ STATE: {PROBE_275_4} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_275_04}
 	IF: Always
 		DO: DoAll
 				EmbedNav Leg_275_04 {once}
+				DoExpr {setvar[te_corridor,`Leg_275_04`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -680,7 +688,7 @@ STATE: {PROBE_275_4} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_275_04}
 ~~ }
 
@@ -787,6 +795,7 @@ STATE: {PROBE_275_5} ~~ {
 	IF: Expr {getvar[te_entry_hub]==1}
 		DO: DoAll
 				EmbedNav Hub_275_05 {once}
+				DoExpr {setvar[te_corridor,`Hub_275_05`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -795,11 +804,12 @@ STATE: {PROBE_275_5} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_275_05}
 	IF: Always
 		DO: DoAll
 				EmbedNav Leg_275_05 {once}
+				DoExpr {setvar[te_corridor,`Leg_275_05`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -808,7 +818,7 @@ STATE: {PROBE_275_5} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_275_05}
 ~~ }
 
@@ -915,6 +925,7 @@ STATE: {PROBE_275_6} ~~ {
 	IF: Expr {getvar[te_entry_hub]==1}
 		DO: DoAll
 				EmbedNav Hub_275_06 {once}
+				DoExpr {setvar[te_corridor,`Hub_275_06`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -923,11 +934,12 @@ STATE: {PROBE_275_6} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_275_06}
 	IF: Always
 		DO: DoAll
 				EmbedNav Leg_275_06 {once}
+				DoExpr {setvar[te_corridor,`Leg_275_06`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -936,7 +948,7 @@ STATE: {PROBE_275_6} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_275_06}
 ~~ }
 
@@ -1043,6 +1055,7 @@ STATE: {PROBE_275_7} ~~ {
 	IF: Expr {getvar[te_entry_hub]==1}
 		DO: DoAll
 				EmbedNav Hub_275_07 {once}
+				DoExpr {setvar[te_corridor,`Hub_275_07`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -1051,11 +1064,12 @@ STATE: {PROBE_275_7} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_275_07}
 	IF: Always
 		DO: DoAll
 				EmbedNav Leg_275_07 {once}
+				DoExpr {setvar[te_corridor,`Leg_275_07`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -1064,7 +1078,7 @@ STATE: {PROBE_275_7} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_275_07}
 ~~ }
 
@@ -1171,6 +1185,7 @@ STATE: {PROBE_275_8} ~~ {
 	IF: Expr {getvar[te_entry_hub]==1}
 		DO: DoAll
 				EmbedNav Hub_275_08 {once}
+				DoExpr {setvar[te_corridor,`Hub_275_08`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -1179,11 +1194,12 @@ STATE: {PROBE_275_8} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_275_08}
 	IF: Always
 		DO: DoAll
 				EmbedNav Leg_275_08 {once}
+				DoExpr {setvar[te_corridor,`Leg_275_08`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -1192,7 +1208,7 @@ STATE: {PROBE_275_8} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_275_08}
 ~~ }
 
@@ -1299,6 +1315,7 @@ STATE: {PROBE_275_9} ~~ {
 	IF: Expr {getvar[te_entry_hub]==1}
 		DO: DoAll
 				EmbedNav Hub_275_09 {once}
+				DoExpr {setvar[te_corridor,`Hub_275_09`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -1307,11 +1324,12 @@ STATE: {PROBE_275_9} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_275_09}
 	IF: Always
 		DO: DoAll
 				EmbedNav Leg_275_09 {once}
+				DoExpr {setvar[te_corridor,`Leg_275_09`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -1320,7 +1338,7 @@ STATE: {PROBE_275_9} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_275_09}
 ~~ }
 
@@ -1427,6 +1445,7 @@ STATE: {PROBE_275_10} ~~ {
 	IF: Expr {getvar[te_entry_hub]==1}
 		DO: DoAll
 				EmbedNav Hub_275_10 {once}
+				DoExpr {setvar[te_corridor,`Hub_275_10`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -1435,11 +1454,12 @@ STATE: {PROBE_275_10} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_275_10}
 	IF: Always
 		DO: DoAll
 				EmbedNav Leg_275_10 {once}
+				DoExpr {setvar[te_corridor,`Leg_275_10`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -1448,7 +1468,7 @@ STATE: {PROBE_275_10} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_275_10}
 ~~ }
 
@@ -1555,6 +1575,7 @@ STATE: {PROBE_275_11} ~~ {
 	IF: Expr {getvar[te_entry_hub]==1}
 		DO: DoAll
 				EmbedNav Hub_275_11 {once}
+				DoExpr {setvar[te_corridor,`Hub_275_11`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -1563,11 +1584,12 @@ STATE: {PROBE_275_11} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_275_11}
 	IF: Always
 		DO: DoAll
 				EmbedNav Leg_275_11 {once}
+				DoExpr {setvar[te_corridor,`Leg_275_11`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -1576,7 +1598,7 @@ STATE: {PROBE_275_11} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_275_11}
 ~~ }
 
@@ -1683,6 +1705,7 @@ STATE: {PROBE_275_12} ~~ {
 	IF: Expr {getvar[te_entry_hub]==1}
 		DO: DoAll
 				EmbedNav Hub_275_12 {once}
+				DoExpr {setvar[te_corridor,`Hub_275_12`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -1691,11 +1714,12 @@ STATE: {PROBE_275_12} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_275_12}
 	IF: Always
 		DO: DoAll
 				EmbedNav Leg_275_12 {once}
+				DoExpr {setvar[te_corridor,`Leg_275_12`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -1704,7 +1728,7 @@ STATE: {PROBE_275_12} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_275_12}
 ~~ }
 
@@ -1811,7 +1835,8 @@ STATE: {RETURN_275} ~~ {
 	IF: Always
 		DO: DoAll
 				EmbedNav Return_275 {once}
-				SetOpt {EnableNav} {True}
+				DoExpr {setvar[te_corridor,`Return_275`]}
+				SetOpt {EnableNav} {False}
 				SetState {RETURN_WAIT_275}
 ~~ }
 
@@ -1901,6 +1926,7 @@ STATE: {PROBE_180_1} ~~ {
 	IF: Expr {getvar[te_entry_hub]==1}
 		DO: DoAll
 				EmbedNav Hub_180_01 {once}
+				DoExpr {setvar[te_corridor,`Hub_180_01`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -1909,11 +1935,12 @@ STATE: {PROBE_180_1} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_180_01}
 	IF: Always
 		DO: DoAll
 				EmbedNav Leg_180_01 {once}
+				DoExpr {setvar[te_corridor,`Leg_180_01`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -1922,7 +1949,7 @@ STATE: {PROBE_180_1} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_180_01}
 ~~ }
 
@@ -2029,6 +2056,7 @@ STATE: {PROBE_180_2} ~~ {
 	IF: Expr {getvar[te_entry_hub]==1}
 		DO: DoAll
 				EmbedNav Hub_180_02 {once}
+				DoExpr {setvar[te_corridor,`Hub_180_02`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -2037,11 +2065,12 @@ STATE: {PROBE_180_2} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_180_02}
 	IF: Always
 		DO: DoAll
 				EmbedNav Leg_180_02 {once}
+				DoExpr {setvar[te_corridor,`Leg_180_02`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -2050,7 +2079,7 @@ STATE: {PROBE_180_2} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_180_02}
 ~~ }
 
@@ -2157,6 +2186,7 @@ STATE: {PROBE_180_3} ~~ {
 	IF: Expr {getvar[te_entry_hub]==1}
 		DO: DoAll
 				EmbedNav Hub_180_03 {once}
+				DoExpr {setvar[te_corridor,`Hub_180_03`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -2165,11 +2195,12 @@ STATE: {PROBE_180_3} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_180_03}
 	IF: Always
 		DO: DoAll
 				EmbedNav Leg_180_03 {once}
+				DoExpr {setvar[te_corridor,`Leg_180_03`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -2178,7 +2209,7 @@ STATE: {PROBE_180_3} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_180_03}
 ~~ }
 
@@ -2285,6 +2316,7 @@ STATE: {PROBE_180_4} ~~ {
 	IF: Expr {getvar[te_entry_hub]==1}
 		DO: DoAll
 				EmbedNav Hub_180_04 {once}
+				DoExpr {setvar[te_corridor,`Hub_180_04`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -2293,11 +2325,12 @@ STATE: {PROBE_180_4} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_180_04}
 	IF: Always
 		DO: DoAll
 				EmbedNav Leg_180_04 {once}
+				DoExpr {setvar[te_corridor,`Leg_180_04`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -2306,7 +2339,7 @@ STATE: {PROBE_180_4} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_180_04}
 ~~ }
 
@@ -2413,6 +2446,7 @@ STATE: {PROBE_180_5} ~~ {
 	IF: Expr {getvar[te_entry_hub]==1}
 		DO: DoAll
 				EmbedNav Hub_180_05 {once}
+				DoExpr {setvar[te_corridor,`Hub_180_05`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -2421,11 +2455,12 @@ STATE: {PROBE_180_5} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_180_05}
 	IF: Always
 		DO: DoAll
 				EmbedNav Leg_180_05 {once}
+				DoExpr {setvar[te_corridor,`Leg_180_05`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -2434,7 +2469,7 @@ STATE: {PROBE_180_5} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_180_05}
 ~~ }
 
@@ -2541,6 +2576,7 @@ STATE: {PROBE_180_6} ~~ {
 	IF: Expr {getvar[te_entry_hub]==1}
 		DO: DoAll
 				EmbedNav Hub_180_06 {once}
+				DoExpr {setvar[te_corridor,`Hub_180_06`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -2549,11 +2585,12 @@ STATE: {PROBE_180_6} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_180_06}
 	IF: Always
 		DO: DoAll
 				EmbedNav Leg_180_06 {once}
+				DoExpr {setvar[te_corridor,`Leg_180_06`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -2562,7 +2599,7 @@ STATE: {PROBE_180_6} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_180_06}
 ~~ }
 
@@ -2669,6 +2706,7 @@ STATE: {PROBE_180_7} ~~ {
 	IF: Expr {getvar[te_entry_hub]==1}
 		DO: DoAll
 				EmbedNav Hub_180_07 {once}
+				DoExpr {setvar[te_corridor,`Hub_180_07`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -2677,11 +2715,12 @@ STATE: {PROBE_180_7} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_180_07}
 	IF: Always
 		DO: DoAll
 				EmbedNav Leg_180_07 {once}
+				DoExpr {setvar[te_corridor,`Leg_180_07`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -2690,7 +2729,7 @@ STATE: {PROBE_180_7} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_180_07}
 ~~ }
 
@@ -2797,6 +2836,7 @@ STATE: {PROBE_180_8} ~~ {
 	IF: Expr {getvar[te_entry_hub]==1}
 		DO: DoAll
 				EmbedNav Hub_180_08 {once}
+				DoExpr {setvar[te_corridor,`Hub_180_08`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -2805,11 +2845,12 @@ STATE: {PROBE_180_8} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_180_08}
 	IF: Always
 		DO: DoAll
 				EmbedNav Leg_180_08 {once}
+				DoExpr {setvar[te_corridor,`Leg_180_08`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -2818,7 +2859,7 @@ STATE: {PROBE_180_8} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_180_08}
 ~~ }
 
@@ -2925,6 +2966,7 @@ STATE: {PROBE_180_9} ~~ {
 	IF: Expr {getvar[te_entry_hub]==1}
 		DO: DoAll
 				EmbedNav Hub_180_09 {once}
+				DoExpr {setvar[te_corridor,`Hub_180_09`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -2933,11 +2975,12 @@ STATE: {PROBE_180_9} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_180_09}
 	IF: Always
 		DO: DoAll
 				EmbedNav Leg_180_09 {once}
+				DoExpr {setvar[te_corridor,`Leg_180_09`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -2946,7 +2989,7 @@ STATE: {PROBE_180_9} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_180_09}
 ~~ }
 
@@ -3053,6 +3096,7 @@ STATE: {PROBE_180_10} ~~ {
 	IF: Expr {getvar[te_entry_hub]==1}
 		DO: DoAll
 				EmbedNav Hub_180_10 {once}
+				DoExpr {setvar[te_corridor,`Hub_180_10`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -3061,11 +3105,12 @@ STATE: {PROBE_180_10} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_180_10}
 	IF: Always
 		DO: DoAll
 				EmbedNav Leg_180_10 {once}
+				DoExpr {setvar[te_corridor,`Leg_180_10`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -3074,7 +3119,7 @@ STATE: {PROBE_180_10} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_180_10}
 ~~ }
 
@@ -3181,6 +3226,7 @@ STATE: {PROBE_180_11} ~~ {
 	IF: Expr {getvar[te_entry_hub]==1}
 		DO: DoAll
 				EmbedNav Hub_180_11 {once}
+				DoExpr {setvar[te_corridor,`Hub_180_11`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -3189,11 +3235,12 @@ STATE: {PROBE_180_11} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_180_11}
 	IF: Always
 		DO: DoAll
 				EmbedNav Leg_180_11 {once}
+				DoExpr {setvar[te_corridor,`Leg_180_11`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -3202,7 +3249,7 @@ STATE: {PROBE_180_11} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_180_11}
 ~~ }
 
@@ -3309,6 +3356,7 @@ STATE: {PROBE_180_12} ~~ {
 	IF: Expr {getvar[te_entry_hub]==1}
 		DO: DoAll
 				EmbedNav Hub_180_12 {once}
+				DoExpr {setvar[te_corridor,`Hub_180_12`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -3317,11 +3365,12 @@ STATE: {PROBE_180_12} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_180_12}
 	IF: Always
 		DO: DoAll
 				EmbedNav Leg_180_12 {once}
+				DoExpr {setvar[te_corridor,`Leg_180_12`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -3330,7 +3379,7 @@ STATE: {PROBE_180_12} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_180_12}
 ~~ }
 
@@ -3437,7 +3486,8 @@ STATE: {RETURN_180} ~~ {
 	IF: Always
 		DO: DoAll
 				EmbedNav Return_180 {once}
-				SetOpt {EnableNav} {True}
+				DoExpr {setvar[te_corridor,`Return_180`]}
+				SetOpt {EnableNav} {False}
 				SetState {RETURN_WAIT_180}
 ~~ }
 
@@ -3527,6 +3577,7 @@ STATE: {PROBE_225_1} ~~ {
 	IF: Expr {getvar[te_entry_hub]==1}
 		DO: DoAll
 				EmbedNav Hub_225_01 {once}
+				DoExpr {setvar[te_corridor,`Hub_225_01`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -3535,11 +3586,12 @@ STATE: {PROBE_225_1} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_225_01}
 	IF: Always
 		DO: DoAll
 				EmbedNav Leg_225_01 {once}
+				DoExpr {setvar[te_corridor,`Leg_225_01`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -3548,7 +3600,7 @@ STATE: {PROBE_225_1} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_225_01}
 ~~ }
 
@@ -3655,6 +3707,7 @@ STATE: {PROBE_225_2} ~~ {
 	IF: Expr {getvar[te_entry_hub]==1}
 		DO: DoAll
 				EmbedNav Hub_225_02 {once}
+				DoExpr {setvar[te_corridor,`Hub_225_02`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -3663,11 +3716,12 @@ STATE: {PROBE_225_2} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_225_02}
 	IF: Always
 		DO: DoAll
 				EmbedNav Leg_225_02 {once}
+				DoExpr {setvar[te_corridor,`Leg_225_02`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -3676,7 +3730,7 @@ STATE: {PROBE_225_2} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_225_02}
 ~~ }
 
@@ -3783,6 +3837,7 @@ STATE: {PROBE_225_3} ~~ {
 	IF: Expr {getvar[te_entry_hub]==1}
 		DO: DoAll
 				EmbedNav Hub_225_03 {once}
+				DoExpr {setvar[te_corridor,`Hub_225_03`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -3791,11 +3846,12 @@ STATE: {PROBE_225_3} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_225_03}
 	IF: Always
 		DO: DoAll
 				EmbedNav Leg_225_03 {once}
+				DoExpr {setvar[te_corridor,`Leg_225_03`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -3804,7 +3860,7 @@ STATE: {PROBE_225_3} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_225_03}
 ~~ }
 
@@ -3911,6 +3967,7 @@ STATE: {PROBE_225_4} ~~ {
 	IF: Expr {getvar[te_entry_hub]==1}
 		DO: DoAll
 				EmbedNav Hub_225_04 {once}
+				DoExpr {setvar[te_corridor,`Hub_225_04`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -3919,11 +3976,12 @@ STATE: {PROBE_225_4} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_225_04}
 	IF: Always
 		DO: DoAll
 				EmbedNav Leg_225_04 {once}
+				DoExpr {setvar[te_corridor,`Leg_225_04`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -3932,7 +3990,7 @@ STATE: {PROBE_225_4} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_225_04}
 ~~ }
 
@@ -4039,6 +4097,7 @@ STATE: {PROBE_225_5} ~~ {
 	IF: Expr {getvar[te_entry_hub]==1}
 		DO: DoAll
 				EmbedNav Hub_225_05 {once}
+				DoExpr {setvar[te_corridor,`Hub_225_05`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -4047,11 +4106,12 @@ STATE: {PROBE_225_5} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_225_05}
 	IF: Always
 		DO: DoAll
 				EmbedNav Leg_225_05 {once}
+				DoExpr {setvar[te_corridor,`Leg_225_05`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -4060,7 +4120,7 @@ STATE: {PROBE_225_5} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_225_05}
 ~~ }
 
@@ -4167,6 +4227,7 @@ STATE: {PROBE_225_6} ~~ {
 	IF: Expr {getvar[te_entry_hub]==1}
 		DO: DoAll
 				EmbedNav Hub_225_06 {once}
+				DoExpr {setvar[te_corridor,`Hub_225_06`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -4175,11 +4236,12 @@ STATE: {PROBE_225_6} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_225_06}
 	IF: Always
 		DO: DoAll
 				EmbedNav Leg_225_06 {once}
+				DoExpr {setvar[te_corridor,`Leg_225_06`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -4188,7 +4250,7 @@ STATE: {PROBE_225_6} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_225_06}
 ~~ }
 
@@ -4295,6 +4357,7 @@ STATE: {PROBE_225_7} ~~ {
 	IF: Expr {getvar[te_entry_hub]==1}
 		DO: DoAll
 				EmbedNav Hub_225_07 {once}
+				DoExpr {setvar[te_corridor,`Hub_225_07`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -4303,11 +4366,12 @@ STATE: {PROBE_225_7} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_225_07}
 	IF: Always
 		DO: DoAll
 				EmbedNav Leg_225_07 {once}
+				DoExpr {setvar[te_corridor,`Leg_225_07`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -4316,7 +4380,7 @@ STATE: {PROBE_225_7} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_225_07}
 ~~ }
 
@@ -4423,6 +4487,7 @@ STATE: {PROBE_225_8} ~~ {
 	IF: Expr {getvar[te_entry_hub]==1}
 		DO: DoAll
 				EmbedNav Hub_225_08 {once}
+				DoExpr {setvar[te_corridor,`Hub_225_08`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -4431,11 +4496,12 @@ STATE: {PROBE_225_8} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_225_08}
 	IF: Always
 		DO: DoAll
 				EmbedNav Leg_225_08 {once}
+				DoExpr {setvar[te_corridor,`Leg_225_08`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -4444,7 +4510,7 @@ STATE: {PROBE_225_8} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_225_08}
 ~~ }
 
@@ -4551,6 +4617,7 @@ STATE: {PROBE_225_9} ~~ {
 	IF: Expr {getvar[te_entry_hub]==1}
 		DO: DoAll
 				EmbedNav Hub_225_09 {once}
+				DoExpr {setvar[te_corridor,`Hub_225_09`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -4559,11 +4626,12 @@ STATE: {PROBE_225_9} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_225_09}
 	IF: Always
 		DO: DoAll
 				EmbedNav Leg_225_09 {once}
+				DoExpr {setvar[te_corridor,`Leg_225_09`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -4572,7 +4640,7 @@ STATE: {PROBE_225_9} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_225_09}
 ~~ }
 
@@ -4679,6 +4747,7 @@ STATE: {PROBE_225_10} ~~ {
 	IF: Expr {getvar[te_entry_hub]==1}
 		DO: DoAll
 				EmbedNav Hub_225_10 {once}
+				DoExpr {setvar[te_corridor,`Hub_225_10`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -4687,11 +4756,12 @@ STATE: {PROBE_225_10} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_225_10}
 	IF: Always
 		DO: DoAll
 				EmbedNav Leg_225_10 {once}
+				DoExpr {setvar[te_corridor,`Leg_225_10`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -4700,7 +4770,7 @@ STATE: {PROBE_225_10} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_225_10}
 ~~ }
 
@@ -4807,6 +4877,7 @@ STATE: {PROBE_225_11} ~~ {
 	IF: Expr {getvar[te_entry_hub]==1}
 		DO: DoAll
 				EmbedNav Hub_225_11 {once}
+				DoExpr {setvar[te_corridor,`Hub_225_11`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -4815,11 +4886,12 @@ STATE: {PROBE_225_11} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_225_11}
 	IF: Always
 		DO: DoAll
 				EmbedNav Leg_225_11 {once}
+				DoExpr {setvar[te_corridor,`Leg_225_11`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -4828,7 +4900,7 @@ STATE: {PROBE_225_11} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_225_11}
 ~~ }
 
@@ -4935,6 +5007,7 @@ STATE: {PROBE_225_12} ~~ {
 	IF: Expr {getvar[te_entry_hub]==1}
 		DO: DoAll
 				EmbedNav Hub_225_12 {once}
+				DoExpr {setvar[te_corridor,`Hub_225_12`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -4943,11 +5016,12 @@ STATE: {PROBE_225_12} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_225_12}
 	IF: Always
 		DO: DoAll
 				EmbedNav Leg_225_12 {once}
+				DoExpr {setvar[te_corridor,`Leg_225_12`]}
 				DoExpr {setvar[te_movement_fail,0]}
 				DoExpr {setvar[te_reason,``]}
 				DoExpr {setvar[te_entry_hub,0]}
@@ -4956,7 +5030,7 @@ STATE: {PROBE_225_12} ~~ {
 				DoExpr {setvar[te_sample_at,getunixtime[]+6]}
 				DoExpr {setvar[te_last_pos,getplayercoordinates[]]}
 				DoExpr {setvar[te_last_progress,getunixtime[]]}
-				SetOpt {EnableNav} {True}
+				SetOpt {EnableNav} {False}
 				SetState {WAIT_225_12}
 ~~ }
 
@@ -5063,7 +5137,8 @@ STATE: {RETURN_225} ~~ {
 	IF: Always
 		DO: DoAll
 				EmbedNav Return_225 {once}
-				SetOpt {EnableNav} {True}
+				DoExpr {setvar[te_corridor,`Return_225`]}
+				SetOpt {EnableNav} {False}
 				SetState {RETURN_WAIT_225}
 ~~ }
 

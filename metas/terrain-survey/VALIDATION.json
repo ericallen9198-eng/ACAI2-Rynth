@@ -1,11 +1,11 @@
 {
-  "pilot": "Terrain Access Survey v0.3.4 \u2014 bounded container hold and already-at-hub dispatch",
+  "pilot": "Terrain Access Survey v0.4.0 - checked runtime mesh companion",
   "live_game_tested": false,
   "upstream_rynth_suite_commit": "4602d9267d0892da7179cac9f70ea5622e3a1b7e",
   "navdata_release": "2026102103",
   "navdata_tiles": 581,
   "tile_integrity": "Selected entries checked against ZIP CRC and uncompressed length; entire archive was not downloaded or hash-verified.",
-  "route_sources": "New Detour mesh corridors. Only Hub_to_180 and Hub_to_225 reuse established Marae hub connectors.",
+  "route_sources": "Terrain-only planned corridors select inspection goals/elevations. Stock runtime mesh plans actual walking steps. Established hub portal connectors remain native.",
   "genuine_upstream_parser": {
     "rules": 978,
     "states": 211,
@@ -28,8 +28,8 @@
     "180": 4404,
     "225": 3694
   },
-  "runtime_limits": "Live game/Windows installer unverified. Nearby portal standing positions are conservative exclusion anchors, not exact portal centres. Native corpse travel requires Rynth to remember the death.",
-  "controlled_scenarios": 52,
+  "runtime_limits": "Live game unverified. Windows release requires genuine publish, x86 load and installer checks. Native mesh cannot guarantee every landscape obstacle; portal anchor positions are conservative, not exact portal centers.",
+  "controlled_scenarios": 63,
   "logging": {
     "sample_seconds": 5,
     "ring_slots": 8,
@@ -73,5 +73,122 @@
   },
   "directed_portal_links": 6,
   "idle_container_hold": "Bounded 15-second opening/progress grace; no hold when ordinary looting is off; nothing-matched completion clears the grace.",
-  "already_at_hub": "Stable live Plateau hub arrival dispatches before the travel-ready recall gate."
+  "already_at_hub": "Stable live Plateau hub arrival dispatches before the travel-ready recall gate.",
+  "mesh_policy_checks": 16,
+  "runtime_mesh_checks": {
+    "passed": 12,
+    "cases": [
+      {
+        "zone": 275,
+        "variant": 0,
+        "accepted": true,
+        "corners": 3
+      },
+      {
+        "zone": 275,
+        "variant": 1,
+        "accepted": true,
+        "corners": 3
+      },
+      {
+        "zone": 275,
+        "variant": 2,
+        "accepted": true,
+        "corners": 6
+      },
+      {
+        "zone": 275,
+        "variant": 3,
+        "accepted": true,
+        "corners": 12
+      },
+      {
+        "zone": 275,
+        "variant": 4,
+        "accepted": false,
+        "reason": "Planned path enters a camp portal exclusion"
+      },
+      {
+        "zone": 180,
+        "variant": 0,
+        "accepted": true,
+        "corners": 2
+      },
+      {
+        "zone": 180,
+        "variant": 1,
+        "accepted": true,
+        "corners": 3
+      },
+      {
+        "zone": 180,
+        "variant": 2,
+        "accepted": true,
+        "corners": 3
+      },
+      {
+        "zone": 180,
+        "variant": 3,
+        "accepted": true,
+        "corners": 4
+      },
+      {
+        "zone": 180,
+        "variant": 4,
+        "accepted": true,
+        "corners": 3
+      },
+      {
+        "zone": 225,
+        "variant": 0,
+        "accepted": true,
+        "corners": 3
+      },
+      {
+        "zone": 225,
+        "variant": 1,
+        "accepted": false,
+        "reason": "Planned path enters a camp portal exclusion"
+      },
+      {
+        "zone": 225,
+        "variant": 2,
+        "accepted": true,
+        "corners": 4
+      },
+      {
+        "zone": 225,
+        "variant": 3,
+        "accepted": false,
+        "reason": "Planned path enters a camp portal exclusion"
+      },
+      {
+        "zone": 225,
+        "variant": 4,
+        "accepted": true,
+        "corners": 4
+      }
+    ],
+    "scope": "First survey mesh step at each camp; official 60 camp tiles; no live game"
+  },
+  "runtime_mesh": {
+    "interface": "Stock RynthNav.Path v2, complete paths only; no custom engine DLL",
+    "planner_companion": "ACAI2.Terrain v0.4.0; genuine pinned RynthCore SDK",
+    "live_segment_checks_per_second": 4,
+    "stationary_replan_seconds": 12,
+    "side_approaches_yards": [
+      10,
+      10,
+      18,
+      18
+    ],
+    "corner_count_per_leg_maximum": 128,
+    "actual_start_and_goal_heights": true,
+    "ground_layer_endpoint_slack_world_units": 4,
+    "portal_anchor_clearance_yards": 15,
+    "request_ack_before_enable_navigation": true,
+    "runtime_route_files_per_character": 2,
+    "disconnect_and_character_identity_bound": true,
+    "windows_publish": "Required; release workflow blocks on publish, x86 load and installer check failures."
+  }
 }

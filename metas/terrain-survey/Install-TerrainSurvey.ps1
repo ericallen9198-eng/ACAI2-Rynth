@@ -1,6 +1,6 @@
-# File-only installer. No Rynth DLL, loot profile, app or runtime data is replaced.
+# Survey installer. Adds its own companion plugin; never replaces any Rynth DLL or character data.
 [CmdletBinding()]
-param([string]$MetaFolder, [string]$ScriptsFolder)
+param([string]$MetaFolder, [string]$ScriptsFolder, [string]$Destination, [switch]$NoLaunch)
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 function Choose-Folder([string]$Prompt, [string]$Default) {
@@ -26,6 +26,11 @@ foreach ($folder in @($MetaFolder, $ScriptsFolder)) {
     $parent = Split-Path -Parent $folder
     if (-not (Test-Path -LiteralPath $parent -PathType Container)) { throw "Parent folder does not exist: $parent. Check the selected installation paths." }
 }
+if ([string]::IsNullOrWhiteSpace($Destination)) {
+    $Destination = Choose-Folder 'TerrainMesh companion folder' (Join-Path (Split-Path $SuiteRoot -Parent) 'ACAI2-Terrain')
+}
+$Destination = [IO.Path]::GetFullPath($Destination)
+if ($Destination.TrimEnd('\') -eq (Split-Path $MetaFolder -Parent).TrimEnd('\')) { throw 'Use a separate companion folder, not the RynthAi folder.' }
 $backupRoot = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) ('ACAI2-TerrainSurvey\Backups\' + (Get-Date -Format 'yyyyMMdd-HHmmss-fffffff'))
 $files = @(
     @{ Source='MetaFiles\Terrain Access Survey.af'; Target=(Join-Path $MetaFolder 'Terrain Access Survey.af'); Backup='Terrain Access Survey.af' },
@@ -33,6 +38,16 @@ $files = @(
     @{ Source='Scripts\TerrainSurvey\probe-index.json'; Target=(Join-Path $ScriptsFolder 'TerrainSurvey\probe-index.json'); Backup='probe-index.json' },
     @{ Source='Scripts\TerrainSurvey\route-index.json'; Target=(Join-Path $ScriptsFolder 'TerrainSurvey\route-index.json'); Backup='route-index.json' }
 )
+$pluginSource = Join-Path $PSScriptRoot 'Plugin'
+if (-not (Test-Path -LiteralPath (Join-Path $pluginSource 'ACAI2.Rynth.Terrain.Plugin.dll') -PathType Leaf)) { throw 'This package lacks the Windows companion. Download the Windows release ZIP and extract all files.' }
+$checks = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'SHA256.json') -Raw | ConvertFrom-Json
+foreach ($entry in $checks.PSObject.Properties) {
+    $source = Join-Path $PSScriptRoot $entry.Name
+    if ((Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash.ToLowerInvariant() -ne $entry.Value) { throw "Package checksum failed: $($entry.Name)" }
+}
+foreach ($pluginFile in @(Get-ChildItem -LiteralPath $pluginSource -File)) {
+    $files += @{ Source=('Plugin\' + $pluginFile.Name); Target=(Join-Path $Destination $pluginFile.Name); Backup=('Plugin-' + $pluginFile.Name) }
+}
 foreach ($file in $files) {
     $source = Join-Path $PSScriptRoot $file.Source
     if (-not (Test-Path -LiteralPath $source -PathType Leaf)) { throw "Incomplete extracted ZIP: missing $source" }
@@ -50,8 +65,18 @@ foreach ($file in $files) {
     Copy-Item -LiteralPath $source -Destination $file.Target -Force
     if ((Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash -ne (Get-FileHash -LiteralPath $file.Target -Algorithm SHA256).Hash) { throw "Installed file verification failed: $($file.Target)" }
 }
-Write-Host 'TerrainSurvey v0.3.4 installed and verified. No DLLs or saved character data were changed.' -ForegroundColor Green
+Write-Host 'TerrainSurvey v0.4.0 and its companion installed and verified. Rynth DLLs and saved character data were not replaced.' -ForegroundColor Green
 if (Test-Path -LiteralPath $backupRoot) { Write-Host "Previous survey files: $backupRoot" }
 Write-Host 'In game: /lua start TerrainSurvey'
-Write-Host 'Then:    /terrainsurvey new'
+Write-Host 'Existing survey: /terrainsurvey resume (keeps progress)'
+Write-Host 'First-ever survey: /terrainsurvey new'
 Write-Host 'For reconnect/restart: /lua autostart TerrainSurvey character'
+
+$installedDll = Join-Path $Destination 'ACAI2.Rynth.Terrain.Plugin.dll'
+Write-Host 'REQUIRED ONCE: RynthCore > Plugins > Add Plugin, then select:' -ForegroundColor Cyan
+Write-Host $installedDll -ForegroundColor Yellow
+Write-Host 'Enable ACAI2.Terrain, RynthAi and RynthNav. Keep the other macro controllers stopped.'
+if (-not $NoLaunch) {
+    try { Set-Clipboard -Value $installedDll } catch { }
+    Start-Process explorer.exe -ArgumentList ('/select,"' + $installedDll + '"')
+}

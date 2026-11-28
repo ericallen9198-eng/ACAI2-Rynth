@@ -192,3 +192,12 @@ Typed passive capture may use the existing bounded observation queue/route; no A
 request or automatic game echo per announcement. Keep native evidence separate
 from quoted player reports, preserve private/guild audiences and session identity,
 and bound in-memory retention. No new game actions or relaxed command safeguards.
+
+The user authorized the TerrainSurvey exploration pilot and a separate stock-SDK
+ACAI2.Terrain companion for strict runtime RynthNav paths. Keep RynthAi as the sole
+movement/combat/buff/loot/corpse owner; no movement-key controller or engine DLL
+patch. Bind planner requests to live identity, state, heartbeat and generation;
+require complete paths, expected elevations, mesh raycasts and camp portal
+clearance before loading a bounded temporary nav. Only Lua enables acknowledged
+walking. Preserve durable survey progress, native recovery and explicit Stop.
+Windows publish/load/installer checks are required before distributing its DLL.

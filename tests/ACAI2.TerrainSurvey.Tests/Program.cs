@@ -18,6 +18,6 @@ var tests=File.ReadAllText(Path.Combine(AppContext.BaseDirectory,"scenarios.lua"
 int count=0;
 foreach(var scenario in tests.Split("-- SCENARIO ").Skip(1)){
  var name=scenario[..scenario.IndexOf('\n')].Trim();var code=scenario[(scenario.IndexOf('\n')+1)..];
- try{var vm=New();vm.DoString(code);Console.WriteLine("PASS "+name);count++;}catch(InterpreterException ex){throw new Exception(name+": "+ex.DecoratedMessage,ex);}
+ var vm=New();try{vm.DoString(code);Console.WriteLine("PASS "+name);count++;}catch(InterpreterException ex){Console.Error.WriteLine(vm.DoString("return encodeNative({state=sim.state,logs=sim.logs,vars=sim.vars})").String);throw new Exception(name+": "+ex.DecoratedMessage,ex);}
 }
 Console.WriteLine($"PASS {count} TerrainSurvey scenarios using genuine MoonSharp; fake game and local filesystem only.");

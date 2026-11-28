@@ -86,7 +86,7 @@ start();sim.settings.EnableLooting=1;game.World.OpenContainer={Id=123}
 for i=1,12 do send('[RynthAi] Looted [Keep] Gold Pea');step(10)end
 assert((sim.vars.te_movement_fail or 0)==0);game.World.OpenContainer=nil;step(15);assert((sim.vars.te_movement_fail or 0)==0)
 -- SCENARIO genuine idle lack of progress still triggers after activity ends
-start();sim.targets=3;step(80);sim.targets=0;step(60);assert(sim.vars.te_movement_fail==1)
+start();sim.targets=3;step(80);sim.targets=0;step(150);assert(sim.vars.te_movement_fail==1)
 -- SCENARIO advancing route points counts as progress despite close positions
 start();for i=1,80 do sim.navIndex=i;step()end;assert((sim.vars.te_movement_fail or 0)==0)
 -- SCENARIO moving for longer than one old AF sample interval is repeatedly observed
@@ -134,4 +134,36 @@ start();sim.settings.EnableLooting=1;game.World.OpenContainer={Id=123};step(35);
 -- SCENARIO nothing-matched loot completion does not continually extend the grace
 start();sim.settings.EnableLooting=1;game.World.OpenContainer={Id=123};step();for i=1,20 do send('[RynthAi] Nothing on Corpse of Siberite Fragment matches the loot profile.');step()end;assert(sim.vars.te_can_travel==1)
 -- SCENARIO the running recorder exposes its exact version for short diagnostics
-assert(TerrainSurveyVersion=='0.3.4')
+assert(TerrainSurveyVersion=='0.4.0')
+-- SCENARIO runtime mesh route needs a fresh companion and exact request acknowledgment
+start();sim.ignoreMesh=true;sim.vars.te_mesh_request=0;sim.targets=2;step(3);sim.targets=0;step(10)
+assert(sim.settings.EnableNavigation==0);local req=sim.vars.te_mesh_request;assert(req>0)
+sim.vars.te_mesh_ack=req-1;sim.vars.te_mesh_status=1;step();assert(sim.settings.EnableNavigation==0)
+sim.ignoreMesh=false;step(3);assert(sim.settings.EnableNavigation==1 and sim.vars.te_mesh_walking==1)
+-- SCENARIO missing mesh companion holds movement then stops with progress intact
+sim.noMeshCompanion=true;start();step(25);assert(not cp().active and cp().probe==1 and sim.settings.EnableNavigation==0)
+-- SCENARIO a blocked live raycast triggers a checked side approach
+start();freshMesh();local first=sim.vars.te_mesh_request;local prior=sim.vars.te_mesh_variant;sim.vars.te_mesh_blocked=first;step(6)
+assert(cp().active and sim.vars.te_mesh_request>first and sim.vars.te_mesh_variant==prior+1)
+-- SCENARIO stalled movement tries bounded side approaches before terrain failure
+start();step(70);assert(sim.vars.te_mesh_variant==4 and sim.vars.te_movement_fail==0);step(50);assert(sim.vars.te_movement_fail==1)
+-- SCENARIO combat holds navigation and a new mesh request follows settling
+start();step(4);local first=sim.vars.te_mesh_request;sim.targets=3;step(20)
+assert(sim.settings.EnableNavigation==0 and sim.vars.te_mesh_walking==0)
+sim.coords='45.2001|-75.1000|0.38';sim.targets=0;step(15)
+assert(sim.vars.te_mesh_request>first and sim.settings.EnableNavigation==1)
+-- SCENARIO planner rejects every approach without enabling a straight fallback
+sim.meshFailure=-1;start();step(40);assert(sim.vars.te_movement_fail==1 and sim.settings.EnableNavigation==0 and cp().probe==1)
+-- SCENARIO a foreign route replacing an accepted mesh walk stops the survey
+start();freshMesh();sim.navName='someone-elses-route';step();assert(not cp().active and sim.settings.EnableNavigation==0)
+-- SCENARIO mesh generations survive a recorder restart and cannot accept an old acknowledgment
+start();step(5);local first=sim.vars.te_mesh_request;reloadScript();step(5)
+assert(sim.vars.te_mesh_request>first and cp().meshGeneration>=sim.vars.te_mesh_request)
+-- SCENARIO legacy controller revision is reloaded rather than adopting fixed paths
+start();sim.vars.te_controller_revision=0;local n=countCommand('/ra meta load Terrain Access Survey.af');request('resume');step(20)
+assert(countCommand('/ra meta load Terrain Access Survey.af')==n+1 and sim.vars.te_controller_revision==4)
+-- SCENARIO companion reload forces a fresh checked request rather than adopting stale ownership
+start();freshMesh();local n=sim.vars.te_mesh_request;sim.vars.te_mesh_instance=22;step(4)
+assert(sim.vars.te_mesh_request>n and sim.vars.te_mesh_walking==1)
+-- SCENARIO New retains increasing mesh generations while replacing survey results
+start();local n=cp().meshGeneration;request('new');step(20);assert(cp().meshGeneration>n)

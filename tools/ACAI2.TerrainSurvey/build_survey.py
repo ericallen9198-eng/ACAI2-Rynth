@@ -52,8 +52,8 @@ for z in [275,180,225]:
   angle=math.degrees(math.acos(max(-1,min(1,(ax*bx+ay*by)/denom)))) if denom else 0
   different=i>1 and math.hypot(a['east']-b['east'],a['north']-b['north'])*240>=20 and angle>=45
   nav('Leg_'+ident,leg['corners'],ident);nav('Hub_'+ident,direct['corners'],ident)
-  reset=[E('setvar[te_movement_fail,0]'),E('setvar[te_reason,``]'),E('setvar[te_entry_hub,0]'),E('setvar[te_travel_seconds,0]'),E('setvar[te_trace,listcreate[]]'),E('setvar[te_sample_at,getunixtime[]+6]'),E('setvar[te_last_pos,getplayercoordinates[]]'),E('setvar[te_last_progress,getunixtime[]]'),'SetOpt {EnableNav} {True}',f'SetState {{WAIT_{ident}}}']
-  S(f'PROBE_{z}_{i}',D+R('Expr {getvar[te_entry_hub]==1}',[f'EmbedNav Hub_{ident} {{once}}']+reset)+A([f'EmbedNav Leg_{ident} {{once}}']+reset))
+  reset=[E('setvar[te_movement_fail,0]'),E('setvar[te_reason,``]'),E('setvar[te_entry_hub,0]'),E('setvar[te_travel_seconds,0]'),E('setvar[te_trace,listcreate[]]'),E('setvar[te_sample_at,getunixtime[]+6]'),E('setvar[te_last_pos,getplayercoordinates[]]'),E('setvar[te_last_progress,getunixtime[]]'),'SetOpt {EnableNav} {False}',f'SetState {{WAIT_{ident}}}']
+  S(f'PROBE_{z}_{i}',D+R('Expr {getvar[te_entry_hub]==1}',[f'EmbedNav Hub_{ident} {{once}}',E(f'setvar[te_corridor,`Hub_{ident}`]')]+reset)+A([f'EmbedNav Leg_{ident} {{once}}',E(f'setvar[te_corridor,`Leg_{ident}`]')]+reset))
   done=['SetOpt {EnableNav} {False}',E('setvar[te_report,1]'),E('setvar[te_commit,0]'),E('setvar[te_seq,getvar[te_seq]+1]'),E('setvar[te_report_coords,getplayercoordinates[]]'),f'SetState {{COMMIT_REACHED_{ident}}}']
   S('COMMIT_REACHED_'+ident,D+R('Expr {getvar[te_commit]==getvar[te_seq]}',[E('setvar[te_probe,getvar[te_probe]+1]'),E('setvar[te_attempt,0]'),f'SetState {{SELECT_{z}}}']))
   body=D+'\tIF: All\n\t\t\tExpr {getvar[te_location_stable]==1 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],`'+coord(approach)+'`]<3 && abs[coordinategetz[getplayercoordinates[]]*240-'+str(approach['z'])+']<4}\n\t\tDO: DoAll\n'+''.join('\t\t\t\t'+x+'\n' for x in done)
@@ -66,7 +66,7 @@ for z in [275,180,225]:
   S('COMMIT_FAILED_'+ident,D+R('Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==2}',retry_actions)+R('Expr {getvar[te_commit]==getvar[te_seq] && getvar[te_report]==3}',skip_actions))
   report.append(dict(id=ident,zone=z,distinct_hub_retry=different,approach=approach,boundaryA=leg['boundaryA'],boundaryB=leg['boundaryB'],opposite=leg['opposite'],heightDifference=leg['heightDifference'],route_length=leg['length'],status='mesh_predicted_not_live_verified'))
  nav('Return_'+str(z),route['returnCorners'])
- S('RETURN_'+str(z),D+A([f'EmbedNav Return_{z} {{once}}','SetOpt {EnableNav} {True}',f'SetState {{RETURN_WAIT_{z}}}']))
+ S('RETURN_'+str(z),D+A([f'EmbedNav Return_{z} {{once}}',E(f'setvar[te_corridor,`Return_{z}`]'),'SetOpt {EnableNav} {False}',f'SetState {{RETURN_WAIT_{z}}}']))
  S('RETURN_WAIT_'+str(z),D+R('Expr {getvar[te_location_stable]==1 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],`'+pos[z]+'`]<5}',['SetState {NEXT_SECTOR}'])+R('SecsInStateGE 120',[E(f'echo[`Terrain survey: {z} local return did not finish; using the lifestone hub for the next sector.`]'),'SetState {NEXT_SECTOR}']))
 S('NEXT_SECTOR',D+A(['SetOpt {EnableNav} {False}',E('setvar[te_return_reason,`next_sector`]'),E('setvar[te_stage,getvar[te_stage]+1]'),E('setvar[te_probe,1]'),E('setvar[te_attempt,0]'),E('setvar[te_entry_hub,1]'),E('setvar[te_recall_attempts,0]'),'SetState {NEXT_CHECK}']))
 S('NEXT_CHECK',R('Expr {getvar[te_stage]>=3}',['SetState {FINISH}'])+A(['SetState {RECALL}']))

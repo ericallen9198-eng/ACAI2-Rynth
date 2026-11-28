@@ -31,7 +31,7 @@ ai.Evaluate=function(e)
  if e=='getplayercoordinates[]'then return sim.coords end
  if e=='getplayerlandcell[]'then return 565641256 end
  if e=='getcharvital_current[1]'then return sim.hp end
- if e=='ranav[]'then return encodeNative({name=sim.navName or 'synthetic',index=sim.navIndex or 0,points=15,finished=false})end
+ if e=='ranav[]'then if sim.navName and sim.navName:match('^<embedded:')then sim.vars.te_corridor=sim.navName:match('^<embedded:(.-)>$')end; return encodeNative({name=sim.navName or 'synthetic',index=sim.navIndex or 0,points=15,finished=sim.navFinished or false,nav=sim.settings.EnableNavigation==1})end
  if e=='getbusystate[]'then return sim.busy or 0 end
  if e=='ratargetcount[]'then return sim.targets or 0 end
  if e=='rabuffsdue[0]'then return sim.buffs or 0 end
@@ -51,9 +51,20 @@ print=function(s)sim.logs[#sim.logs+1]=s end
 game={State='InGame',ServerName='DreamWeave',Character={Name='Samm',InPortalSpace=false},World={OnChatText={Add=function(f)sim.chat=f end}},OnTick={Add=function(f)sim.tick=f end},RegisterCommand=function(n,f)sim.request=f end}
 function step(n)
  for i=1,n or 1 do
-  sim.time=sim.time+1;sim.tick()
+  sim.time=sim.time+1
+  if not sim.noMeshCompanion then
+   sim.vars.te_mesh_schema=1;sim.vars.te_mesh_heartbeat=sim.time
+   local request=sim.vars.te_mesh_request or 0
+   if request>0 and request~=(sim.meshHandled or -1)and not sim.ignoreMesh then
+    sim.meshHandled=request
+    sim.vars.te_mesh_name='Terrain_fake_'..request
+    sim.navName=sim.vars.te_mesh_name;sim.navFinished=false
+    sim.vars.te_mesh_points=15;sim.vars.te_mesh_ack=request;sim.vars.te_mesh_status=sim.meshFailure or 1
+   end
+  end
+  sim.tick()
   -- Minimal host macro lifecycle only. AF parsing/structure is checked separately.
-  if ai.MacroRunning and sim.state=='RESUME'and sim.vars.te_recovery_busy==0 then if sim.onResumeCoords then sim.coords=sim.onResumeCoords;sim.onResumeCoords=nil end;sim.state='WAIT_'..({[0]=275,[1]=180,[2]=225})[sim.vars.te_stage]..'_'..string.format('%02d',sim.vars.te_probe)end
+  if ai.MacroRunning and sim.state=='RESUME'and sim.vars.te_recovery_busy==0 then if sim.onResumeCoords then sim.coords=sim.onResumeCoords;sim.onResumeCoords=nil end;sim.state='WAIT_'..({[0]=275,[1]=180,[2]=225})[sim.vars.te_stage]..'_'..string.format('%02d',sim.vars.te_probe);sim.vars.te_corridor='Hub_'..({[0]=275,[1]=180,[2]=225})[sim.vars.te_stage]..'_'..string.format('%02d',sim.vars.te_probe)end
   if ai.MacroRunning and sim.state=='FINISH_COMMIT'and sim.vars.te_finish_ack==1 then ai.MacroRunning=false;sim.state='FINISHED'end
  end
 end
@@ -71,3 +82,7 @@ function report(kind,probe,seq)
 end
 
 function reloadScript()assert(load(scriptText))();step(40)end
+function freshMesh()
+ sim.targets=1;step(2);sim.targets=0;step(10)
+ assert(sim.vars.te_mesh_walking==1,'fresh acknowledged mesh walk required')
+end

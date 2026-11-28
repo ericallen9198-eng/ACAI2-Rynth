@@ -1,0 +1,64 @@
+name: Publish TerrainSurvey runtime mesh pilot
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/checkout@v4
+        with:
+          repository: tombohar/RynthSuite
+          ref: 4602d9267d0892da7179cac9f70ea5622e3a1b7e
+          path: upstream-suite
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check generated controller, Lua and strict mesh policy
+        shell: pwsh
+        run: |
+          python tools/ACAI2.TerrainSurvey/build_survey.py --data tools/ACAI2.TerrainSurvey/data --out metas/terrain-survey
+          if($LASTEXITCODE){throw 'Generation failed'}
+          dotnet run --project tests/ACAI2.TerrainSurvey.Tests -c Release -- metas/terrain-survey/Scripts/TerrainSurvey/index.lua
+          if($LASTEXITCODE){throw 'Lua scenarios failed'}
+          dotnet run --project tests/ACAI2.TerrainMesh.Tests -c Release -- "$env:RUNNER_TEMP/runtime-mesh.nav"
+          if($LASTEXITCODE){throw 'Mesh policy checks failed'}
+          dotnet run --project tools/ACAI2.TerrainSurvey/Verify -c Release "-p:RynthSuiteRoot=$env:GITHUB_WORKSPACE/upstream-suite" -- "metas/terrain-survey/MetaFiles/Terrain Access Survey.af" "$env:RUNNER_TEMP/terrain-parser.json" "$env:RUNNER_TEMP/runtime-mesh.nav"
+          if($LASTEXITCODE){throw 'Genuine stock parser check failed'}
+          foreach($name in @('RynthAiScriptApi.cs','RynthNavPathApi.cs')) {
+            $actual=(Get-Content "src/ACAI2.Rynth.Terrain.Plugin/Native/$name" -Raw).Replace("`r`n","`n")
+            $expected=(Get-Content "upstream-suite/Plugins/Shared/$name" -Raw).Replace("`r`n","`n")
+            if($actual -cne $expected){throw "Unmodified native ABI source differs: $name"}
+          }
+      - name: Publish genuine Windows x86 companion and exercise load
+        shell: pwsh
+        run: |
+          dotnet publish src/ACAI2.Rynth.Terrain.Plugin -c Release --no-self-contained -o artifacts/terrain-plugin
+          if($LASTEXITCODE){throw 'Windows publish failed'}
+          dotnet publish tools/ACAI2.TerrainSurvey/WindowsSmoke -c Release -r win-x86 --self-contained true -o "$env:RUNNER_TEMP/terrain-smoke"
+          if($LASTEXITCODE){throw 'Smoke tool publish failed'}
+          & "$env:RUNNER_TEMP/terrain-smoke/WindowsSmoke.exe" "$env:GITHUB_WORKSPACE/artifacts/terrain-plugin/ACAI2.Rynth.Terrain.Plugin.dll"
+          if($LASTEXITCODE){throw 'Actual x86 companion load failed'}
+          Remove-Item artifacts/terrain-plugin/*.pdb -ErrorAction SilentlyContinue
+          python tools/ACAI2.TerrainSurvey/package_survey.py --out artifacts/terrain-release --plugin artifacts/terrain-plugin
+          if($LASTEXITCODE){throw 'Packaging failed'}
+          & tools/ACAI2.TerrainSurvey/Test-Installer.ps1 -Package "$env:GITHUB_WORKSPACE/artifacts/terrain-release/Terrain Access Survey v0.4.0"
+          if($LASTEXITCODE){throw 'Windows installer checks failed'}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TerrainSurvey-v0.4.0-Windows
+          path: artifacts/terrain-release/*.zip
+      - name: Release complete Windows pilot
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create terrain-survey-v0.4.0 artifacts/terrain-release/Terrain-Access-Survey-v0.4.0.zip artifacts/terrain-release/Terrain-Access-Survey-Sources-v0.4.0.zip --repo '${{ github.repository }}' --target '${{ github.sha }}' --title 'TerrainSurvey v0.4.0 - checked runtime mesh and snag recovery' --notes-file docs/TERRAIN-SURVEY-V040.md --prerelease --latest=false
+          if($LASTEXITCODE){throw 'Release publication failed'}

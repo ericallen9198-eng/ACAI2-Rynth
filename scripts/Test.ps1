@@ -11,4 +11,8 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Keyfer chest Lua checks failed.' }
     dotnet run --project tests\ACAI2.TerrainSurvey.Tests -c Release -- metas\terrain-survey\Scripts\TerrainSurvey\index.lua
     if ($LASTEXITCODE -ne 0) { throw 'Terrain survey Lua checks failed.' }
+    dotnet run --project tests\ACAI2.TerrainMesh.Tests -c Release
+    if ($LASTEXITCODE -ne 0) { throw 'Terrain mesh policy checks failed.' }
+    dotnet build src\ACAI2.Rynth.Terrain.Plugin -c Release
+    if ($LASTEXITCODE -ne 0) { throw 'Terrain companion build failed.' }
 } finally { Pop-Location }

@@ -1,0 +1,96 @@
+{
+  "passed": 12,
+  "cases": [
+    {
+      "zone": 275,
+      "variant": 0,
+      "accepted": true,
+      "corners": 3
+    },
+    {
+      "zone": 275,
+      "variant": 1,
+      "accepted": true,
+      "corners": 3
+    },
+    {
+      "zone": 275,
+      "variant": 2,
+      "accepted": true,
+      "corners": 6
+    },
+    {
+      "zone": 275,
+      "variant": 3,
+      "accepted": true,
+      "corners": 12
+    },
+    {
+      "zone": 275,
+      "variant": 4,
+      "accepted": false,
+      "reason": "Planned path enters a camp portal exclusion"
+    },
+    {
+      "zone": 180,
+      "variant": 0,
+      "accepted": true,
+      "corners": 2
+    },
+    {
+      "zone": 180,
+      "variant": 1,
+      "accepted": true,
+      "corners": 3
+    },
+    {
+      "zone": 180,
+      "variant": 2,
+      "accepted": true,
+      "corners": 3
+    },
+    {
+      "zone": 180,
+      "variant": 3,
+      "accepted": true,
+      "corners": 4
+    },
+    {
+      "zone": 180,
+      "variant": 4,
+      "accepted": true,
+      "corners": 3
+    },
+    {
+      "zone": 225,
+      "variant": 0,
+      "accepted": true,
+      "corners": 3
+    },
+    {
+      "zone": 225,
+      "variant": 1,
+      "accepted": false,
+      "reason": "Planned path enters a camp portal exclusion"
+    },
+    {
+      "zone": 225,
+      "variant": 2,
+      "accepted": true,
+      "corners": 4
+    },
+    {
+      "zone": 225,
+      "variant": 3,
+      "accepted": false,
+      "reason": "Planned path enters a camp portal exclusion"
+    },
+    {
+      "zone": 225,
+      "variant": 4,
+      "accepted": true,
+      "corners": 4
+    }
+  ],
+  "scope": "First survey mesh step at each camp; official 60 camp tiles; no live game"
+}

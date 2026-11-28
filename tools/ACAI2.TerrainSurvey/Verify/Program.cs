@@ -15,3 +15,8 @@ foreach(var (name,lines)in meta.EmbeddedNavs){var nav=NavRouteParser.LoadFromLin
 if(portals!=2||meta.EmbeddedNavs.Count!=77)throw new Exception("Missing terrain/hub connections");
 if(args.Length>1)File.WriteAllText(args[1],JsonSerializer.Serialize(new{rules=meta.Rules.Count,states=states.Count,navs=meta.EmbeddedNavs.Count,refs,points,portals,warnings=meta.Warnings.Count}));
 Console.WriteLine($"PASS genuine upstream AF/nav parsers: {meta.Rules.Count} rules, {states.Count} states, {refs} refs, {points} points; 2 deliberate portals; no one-shot movement monitor.");
+
+var source=File.ReadAllText(args[0]);
+foreach(System.Text.RegularExpressions.Match block in System.Text.RegularExpressions.Regex.Matches(source,@"STATE: \{([^}]+)\} ~~ \{([\s\S]*?)~~ \}"))
+ if(block.Groups[2].Value.Contains("SetOpt {EnableNav} {True}")&&!block.Groups[1].Value.StartsWith("PORTAL_"))throw new Exception("Fixed walking enabled without mesh acknowledgment: "+block.Groups[1].Value);
+if(args.Length>2){var nav=NavRouteParser.Load(args[2]);if(nav.LoadWarning!=null||nav.RouteType!=NavRouteType.Once||nav.Points.Count!=3||nav.Points.Any(p=>p.Type!=NavPointType.Point))throw new Exception("Runtime mesh serializer is incompatible with the stock parser");Console.WriteLine("PASS runtime mesh serializer through genuine nav parser (side approach preserved).");}
