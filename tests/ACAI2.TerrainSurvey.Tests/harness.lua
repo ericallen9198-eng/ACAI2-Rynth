@@ -1,4 +1,4 @@
-sim={time=1000,files={},settings={FollowNavMin=1.5,NavResumeNearest=1,StopMacroOnDeath=1,DeathRecallMode=1,LootOwnCorpse=0,TravelToOwnCorpse=0,EnableLooting=0,EnableMeta=0,EnableNavigation=1},vars={},pvars={},state='HOLD',meta='other',commands={},logs={},hp=429,coords='45.2|-75.1|0.38',failWrites=false,nativeRecovery=false,rememberCorpse=false}
+sim={time=1000,files={},settings={FollowNavMin=1.5,NavResumeNearest=1,StopMacroOnDeath=1,DeathRecallMode=1,LootOwnCorpse=0,TravelToOwnCorpse=0,EnableLooting=0,EnableMeta=0,EnableBuffing=1,EnableNavigation=1},vars={},pvars={},state='HOLD',meta='other',commands={},logs={},hp=429,coords='45.2|-75.1|0.38',failWrites=false,nativeRecovery=false,rememberCorpse=false}
 local fs={}
 fs.ReadText=function(n)return sim.files[n],sim.files[n]and nil or 'missing'end
 fs.FileExists=function(n)return sim.files[n]~=nil end
@@ -12,6 +12,7 @@ local function emit(s)if sim.chat then sim.chat({Message=s})end end
 ai.Command=function(c)
  sim.commands[#sim.commands+1]=c
  if c=='/ra meta load Terrain Access Survey.af'then if not sim.ignoreLoad then sim.meta='Terrain Access Survey' end
+ elseif c=='/rnav avoid portals on'then sim.avoidPortals=true
  elseif c=='/ra start'then ai.MacroRunning=true
  elseif c=='/ra owncorpse'then
   if not sim.suppressStatus then
@@ -29,13 +30,14 @@ ai.Evaluate=function(e)
  if e=='getplayercoordinates[]'then return sim.coords end
  if e=='getplayerlandcell[]'then return 565641256 end
  if e=='getcharvital_current[1]'then return sim.hp end
+ if e=='ranav[]'then return encodeNative({name='embedded',index=sim.navIndex or 0,points=15,finished=false})end
  if e=='getbusystate[]'then return sim.busy or 0 end
  if e=='ratargetcount[]'then return sim.targets or 0 end
- if e=='rabuffsdue[0]'then return 0 end
+ if e=='rabuffsdue[0]'then return sim.buffs or 0 end
  local pn=e:match('^getpvar%[(.-)%]$');if pn then return sim.pvars[pn]or 0 end
  local pk,pv=e:match('^setpvar%[([^,]+),([^%]]+)%]$');if pk then sim.pvars[pk]=assert(tonumber(pv));return 1 end
  local n=e:match('^getvar%[(.-)%]$');if n then return sim.vars[n]or 0 end
- local k,v=e:match('^setvar%[([^,]+),([^%]]+)%]$');if k then sim.vars[k]=assert(tonumber(v));return 1 end
+ local k,v=e:match('^setvar%[([^,]+),([^%]]+)%]$');if k then sim.vars[k]=v:match('^`(.*)`$')or assert(tonumber(v));return 1 end
  local state=e:match('^vtsetmetastate%[(.-)%]$');if state then sim.state=state;return 1 end
  local setting,value=e:match('^vtsetsetting%[([^,]+),([^%]]+)%]$');if setting then sim.settings[setting]=tonumber(value);return 1 end
  error('Unexpected expression '..e)
@@ -43,6 +45,7 @@ end
 local mods={['rynth.ai']=ai,filesystem={GetData=function()return fs end,GetScript=function()return {ReadText=function()return indexText end}end},json={encode=function(v)return encodeNative(v)end,decode=function(s)return decodeNative(s)end},rynthlua={DataFolder='C:\\Test\\RynthLua\\Data\\TerrainSurvey'}}
 require=function(n)return assert(mods[n],n)end
 clock=function()return sim.time*1000 end
+chat=function(s)sim.logs[#sim.logs+1]=s end
 print=function(s)sim.logs[#sim.logs+1]=s end
 game={State='InGame',ServerName='DreamWeave',Character={Name='Samm',InPortalSpace=false},World={OnChatText={Add=function(f)sim.chat=f end}},OnTick={Add=function(f)sim.tick=f end},RegisterCommand=function(n,f)sim.request=f end}
 function step(n)

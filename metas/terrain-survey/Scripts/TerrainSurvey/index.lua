@@ -1,4 +1,4 @@
--- TerrainSurvey v0.2. Stock RynthLua/RynthAi only; streamed local diagnostics.
+-- TerrainSurvey v0.3. Stock RynthLua/RynthAi only; streamed local diagnostics.
 local ai,fsmod,json,info=require('rynth.ai'),require('filesystem'),require('json'),require('rynthlua')
 local fs=fsmod.GetData()
 local META='Terrain Access Survey'
@@ -11,6 +11,12 @@ local requests,events={},{}
 local errorText=''
 local repairAttempts=0
 local repairAt=0
+local movement=nil
+local quietUntil=0
+local stableSince=0
+local lastPosition=nil
+local transport=nil
+local lootUntil=0
 local settings={FollowNavMin=0.5,NavResumeNearest=0,StopMacroOnDeath=0,DeathRecallMode=0,LootOwnCorpse=1,TravelToOwnCorpse=1,EnableLooting=1,EnableMeta=1}
 local zones={[0]=275,[1]=180,[2]=225}
 local planned={}
@@ -27,7 +33,7 @@ local function owns()
  local n=tostring(val('vtgetmeta[]')):gsub('\\','/'):match('([^/]+)$') or ''
  return n:gsub('%.[aA][fF]$',''):lower()==META:lower()
 end
-local function notice(s)print('[TerrainSurvey] '..s)end
+local function notice(s)print('[TerrainSurvey] '..s);if chat then chat('[TerrainSurvey] '..s)end end
 local function safeKey(server,character)
  local s=server..'|'..character;local h=7
  for i=1,#s do h=(h*131+s:byte(i))%2147483647 end
@@ -85,7 +91,7 @@ local function applySettings()
  for n,v in pairs(settings)do assert(ai.SetSetting(n,v),'Cannot set '..n)end
 end
 local function begin(fresh)
- errorText=''
+ errorText='';movement=nil;transport=nil;stableSince=0
  if game.State~='InGame' or game.Character.InPortalSpace or not ai.Available then notice('Wait until logged in and out of portal space.');return end
  if ai.MacroRunning and not owns()then notice('Stop the other macro/controller first.');return end
  local t=num('getunixtime[]')
@@ -96,11 +102,11 @@ local function begin(fresh)
   -- An explicit new run replaces this character's previous bounded diagnostic set.
   for i=1,SLOTS do local ok,err=fs.WriteText('diagnostics-'..key..'-'..i..'.jsonl','');assert(ok,tostring(err))end
  elseif cp.stage>=3 or cp.completed then notice('Survey complete. Use /terrainsurvey new for another pass.');return end
- cp.active=true;cp.completed=false;save();log(fresh and 'new_run' or 'resume_requested',{server=cp.server,character=cp.character})
- if not fresh and owns() and ai.MacroRunning and num('getvar[te_logger_schema]')==2 then
+ cp.recorderVersion=3;cp.active=true;cp.completed=false;save();ai.Command('/rnav avoid portals on');log(fresh and 'new_run' or 'resume_requested',{server=cp.server,character=cp.character})
+ if not fresh and owns() and ai.MacroRunning and num('getvar[te_logger_schema]')==3 then
   -- Rejoin the live survey without stopping native corpse travel.
   applySettings()
-  for n,v in pairs({te_logger_schema=2,te_logger_active=1,te_logger_heartbeat=t,te_stage=cp.stage,te_probe=cp.probe,te_attempt=cp.attempt,te_seq=cp.sequence,te_commit=0,te_finish=0,te_finish_ack=0,te_recovery_busy=1})do set(n,v)end
+  for n,v in pairs({te_logger_schema=3,te_logger_active=1,te_logger_heartbeat=t,te_stage=cp.stage,te_probe=cp.probe,te_attempt=cp.attempt,te_seq=cp.sequence,te_commit=0,te_finish=0,te_finish_ack=0,te_recovery_busy=1,te_movement_fail=0,te_can_travel=0,te_location_stable=0,te_transport_timeout=0,te_transport_generation=0})do set(n,v)end
   val('vtsetsetting[EnableNavigation,0]');val('vtsetmetastate[RECOVERY_WAIT]');phase='arm';deadline=t+15;return
  end
  if owns() and ai.MacroRunning then ai.Stop()end
@@ -116,6 +122,20 @@ local function readCheckpoint()
  assert(type(d.probe)=='number' and d.probe>=1 and d.probe<=13 and d.probe%1==0,'Invalid saved probe')
  assert(d.attempt==0 or d.attempt==1,'Invalid saved retry')
  assert(type(d.sequence)=='number' and type(d.results)=='table','Invalid saved progress')
+ if d.recorderVersion~=3 then
+  -- v0.2's one-shot monitor could misclassify combat/buffing as no progress.
+  -- Keep the old evidence but recheck its unresolved points rather than crediting it.
+  local stages={[275]=0,[180]=1,[225]=2};local earliest=d.stage*100+d.probe
+  for id,r in pairs(d.results)do
+   if (r.outcome=='unresolved' or r.outcome=='hub_retry')and r.reason=='no_progress'then
+    r.priorOutcome=r.outcome;r.outcome='unverified_v02';r.needs_recheck=true;d.completed=false
+    local z,i=id:match('^(%d+)_(%d+)$');local st=stages[tonumber(z)]
+    if st then earliest=math.min(earliest,st*100+tonumber(i))end
+   end
+  end
+  if earliest<d.stage*100+d.probe then d.stage=math.floor(earliest/100);d.probe=earliest%100;d.attempt=0 end
+  d.recorderVersion=3
+ end
  return d
 end
 local function snapshot()
@@ -125,9 +145,12 @@ local function snapshot()
  local zone=zones[cp.stage];local id=zone and (zone..'_'..string.format('%02d',cp.probe))or''
  local target=planned[id];local dist=nil
  if a and b and target then dist=math.sqrt((a-target.approach.north)^2+(b-target.approach.east)^2)*240 end
- return {coordinates=coords,north=a,east=b,world_height=c and c*240 or nil,cell=num('getplayerlandcell[]'),target=id,distance_yards=dist,targets=num('ratargetcount[]'),busy=num('getbusystate[]'),buffs_due=num('rabuffsdue[0]'),hp=num('getcharvital_current[1]'),state=tostring(val('vtgetmetastate[]')),macro_running=ai.MacroRunning,portaling=game.Character.InPortalSpace}
+ local ok,nav=pcall(function()return json.decode(tostring(val('ranav[]')))end)
+ local container=game.World.OpenContainer
+ return {transport_generation=num('getvar[te_transport_generation]'),nav=ok and nav or {},open_container=container and tonumber(container.Id)or 0,coordinates=coords,north=a,east=b,world_height=c and c*240 or nil,cell=num('getplayerlandcell[]'),target=id,distance_yards=dist,targets=num('ratargetcount[]'),busy=num('getbusystate[]'),buffs_due=num('rabuffsdue[0]'),hp=num('getcharvital_current[1]'),state=tostring(val('vtgetmetastate[]')),macro_running=ai.MacroRunning,portaling=game.Character.InPortalSpace}
 end
 local function startRecovery(t,reason)
+ movement=nil;transport=nil
  if cp.recovery then return end
  cp.recovery={started=t,reason=reason,settleUntil=t+8,statusWaitSince=t,queryAt=0,status='',statusAt=0,sentGo=false,done=false,ended=false}
  if reason=='death'then cp.deaths=cp.deaths+1 end
@@ -141,6 +164,7 @@ local function drainEvents(t)
   local s=e.message
   if s then
    if not cp.recovery and s:find('^%[RynthAi%] Your corpse is at ') and not s:find(', died ',1,true) then startRecovery(t,'death')end
+   if s:find('^%[RynthAi%] Loot')or s:find('^%[RynthAi%] Nothing on Corpse')then lootUntil=t+15 end
    log('native_diagnostic',{message=s})
    if cp.recovery then
     local r=cp.recovery
@@ -196,6 +220,61 @@ local function commit(t,state)
  end
  set('te_commit',seq)
 end
+local function travelReadiness(t,s)
+ local buff=ai.GetSetting('EnableBuffing')
+ local reason=s.hp<=0 and 'death' or s.portaling and 'portal' or s.targets>0 and 'combat' or s.busy>0 and 'native_busy' or ((buff==nil or buff==true or buff==1)and s.buffs_due>0)and 'buffing' or (s.open_container~=0 or t<lootUntil)and 'looting' or nil
+ if reason then quietUntil=t+8 end
+ local jumped=lastPosition and s.north and s.east and math.sqrt((s.north-lastPosition.north)^2+(s.east-lastPosition.east)^2)*240>80
+ if s.portaling or s.hp<=0 or not s.north or not s.east then stableSince=0 elseif stableSince==0 or jumped then stableSince=t end
+ if s.north and s.east then lastPosition={north=s.north,east=s.east}end
+ set('te_location_stable',stableSince>0 and t-stableSince>=3 and 1 or 0)
+ set('te_can_travel',not reason and t>=quietUntil and 1 or 0)
+ return reason or (t<quietUntil and 'settling' or nil)
+end
+local function monitor(t,s,pause)
+ if s.state=='HUB_WAIT' or s.state:match('^LAND_%d+$')then
+  if not transport or transport.state~=s.state or transport.generation~=s.transport_generation then transport={state=s.state,generation=s.transport_generation,elapsed=0,last=t}end
+  if not pause then transport.elapsed=transport.elapsed+math.min(2,math.max(0,t-transport.last))end
+  transport.last=t;set('te_transport_timeout',transport.elapsed>=(s.state=='HUB_WAIT'and 45 or 90)and 1 or 0)
+ else transport=nil;set('te_transport_timeout',0)end
+ if not s.state:match('^WAIT_%d+_%d+$') or not s.north or not s.east then movement=nil;return end
+ -- A different known camp while surveying Plateau is a misroute, not a cliff failure.
+ if cp.stage==0 and not s.portaling then
+  for _,at in ipairs({{43.5416666667,-85.4083333333,20.005},{53.5283333458,-79.802500025,72.005}})do
+   if math.sqrt((s.north-at[1])^2+(s.east-at[2])^2)*240<100 and math.abs(s.world_height-at[3])<15 then
+    if not movement or not movement.wrongArea then
+     movement={state=s.state,wrongArea=true};log('unexpected_camp',{coordinates=s.coordinates,target=s.target});save();val('vtsetsetting[EnableNavigation,0]')
+    end
+    if not pause then log('misroute_hub_recovery',{target=s.target});save();val('vtsetmetastate[RESUME]');movement=nil end
+    return
+   end
+  end
+ end
+ if not movement or movement.state~=s.state then movement={state=s.state,last=t,elapsed=0,stationary=0,at=s,trace={},sampleAt=t+6,index=s.nav.index}end
+ local m=movement;local dt=math.min(2,math.max(0,t-m.last));m.last=t
+ if pause then
+  if m.pause~=pause then log('movement_paused',{reason=pause,state=s.state})end
+  m.pause=pause;m.stationary=0;m.at=s;m.trace={};m.sampleAt=t+6;m.index=s.nav.index;return
+ end
+ if m.pause then log('movement_resumed',{prior=m.pause,state=s.state});m.pause=nil;m.at=s;m.stationary=0;dt=0 end
+ m.elapsed=m.elapsed+dt
+ local distance=math.sqrt((s.north-m.at.north)^2+(s.east-m.at.east)^2)*240
+ if distance>=2 or s.nav.index~=m.index then if s.nav.index~=m.index then m.trace={}end;m.at=s;m.stationary=0;m.index=s.nav.index else m.stationary=m.stationary+dt end
+ local reason=nil
+ if m.stationary>=40 then reason='no_progress' elseif m.elapsed>=300 then reason='active_travel_budget' end
+ if t>=m.sampleAt then
+  local repeats=0
+  for _,p in ipairs(m.trace)do if math.sqrt((s.north-p.north)^2+(s.east-p.east)^2)*240<3 then repeats=repeats+1 end end
+  if repeats>=3 then reason=reason or 'oscillation'end
+  if #m.trace>=12 then table.remove(m.trace,1)end
+  m.trace[#m.trace+1]={north=s.north,east=s.east};m.sampleAt=t+6
+ end
+ if reason and not m.reported then
+  m.reported=true;log('movement_failure',{reason=reason,coordinates=s.coordinates,target=s.target,active_seconds=m.elapsed,stationary_seconds=m.stationary,nav=s.nav});save()
+  -- Fixed strings only; no chat/player text is evaluated.
+  val('setvar[te_reason,`'..reason..'`]');set('te_movement_fail',1)
+ end
+end
 local function tick()
  if clock()/1000<nextPoll then return end
  nextPoll=clock()/1000+1
@@ -230,7 +309,7 @@ local function tick()
   if t>deadline then deactivate('Survey meta did not load; check the install folder');return end
   if owns() and not ai.MacroRunning then
    applySettings()
-   for n,v in pairs({te_logger_schema=2,te_logger_active=1,te_logger_heartbeat=t,te_stage=cp.stage,te_probe=cp.probe,te_attempt=cp.attempt,te_seq=cp.sequence,te_commit=0,te_finish=0,te_finish_ack=0,te_recovery_busy=1})do set(n,v)end
+   for n,v in pairs({te_logger_schema=3,te_logger_active=1,te_logger_heartbeat=t,te_stage=cp.stage,te_probe=cp.probe,te_attempt=cp.attempt,te_seq=cp.sequence,te_commit=0,te_finish=0,te_finish_ack=0,te_recovery_busy=1,te_movement_fail=0,te_can_travel=0,te_location_stable=0,te_transport_timeout=0,te_transport_generation=0})do set(n,v)end
    val('vtsetmetastate[RECOVERY_WAIT]');ai.Command('/ra start');phase='arm';deadline=t+15
   end
   return
@@ -247,6 +326,8 @@ local function tick()
  end
  drainEvents(t)
  local s=snapshot();local state=s.state
+ local pause=travelReadiness(t,s);s.pause_reason=pause
+ if not cp.recovery then monitor(t,s,pause)end
  if t>=nextSample or state~=previousState then
   log(state~=previousState and 'state_change' or 'sample',s);nextSample=t+SAMPLE_SECONDS;previousState=state;cp.lastSample=s;save()
  end
@@ -267,6 +348,7 @@ local function tick()
  if stage~=cp.stage or probe~=cp.probe or attempt~=cp.attempt then cp.stage=stage;cp.probe=probe;cp.attempt=attempt;save()end
 end
 local function recorderFailure(err)
+ pcall(function()log('recorder_interrupted',{error=tostring(err):sub(1,600)})end)
  errorText=tostring(err);repairAttempts=0;repairAt=clock()/1000+15;phase='repair'
  notice('Recorder interrupted: '..errorText..'. Survey movement paused; automatic repair will retry.')
  if ai.Available then pcall(function()if owns()then set('te_logger_active',0);val('vtsetsetting[EnableNavigation,0]')end end)end
@@ -287,7 +369,9 @@ local function guardedTick()
     healthy,why=fs.AppendText('recorder-health-'..key..'.txt','append ok\n');assert(healthy,tostring(why))
     -- Discard any in-memory change whose durable commit failed. Never credit it.
     local restored=readCheckpoint();assert(restored,'No valid durable checkpoint to resume')
-    cp=restored;errorText='';log('recorder_repaired',{attempts=repairAttempts});save()
+    cp=restored;errorText=''
+    local tail=fs.ReadText('diagnostics-'..key..'-'..(cp.logSlot or 1)..'.jsonl');if tail then cp.logChars=#tail end
+    log('recorder_repaired',{attempts=repairAttempts});save()
     phase='rejoin';deadline=num('getunixtime[]')+2
    end)
    if not ok then
@@ -313,13 +397,14 @@ local function guardedTick()
 end
 game.RegisterCommand('/terrainsurvey',function(args)
  local r=tostring(args or ''):lower():match('^%s*(%S+)')or'status'
+ if r=='status'then notice((cp and cp.active and 'Active' or 'Stopped')..'; phase '..phase..'; '..(cp and ('zone '..tostring(zones[cp.stage])..', point '..cp.probe)or'no checkpoint')..'; logs: '..tostring(info.DataFolder));return end
  if #requests<4 then requests[#requests+1]=r end
 end)
 game.OnTick.Add(guardedTick)
 game.World.OnChatText.Add(function(e)
  if not cp or not cp.active or #events>=32 then return end
  local s=tostring(e.Message or '')
- if s:find('^%[RynthAi%] Own corpse:')or s:find('^%[RynthAi%] Your corpse is at ')or s:find('^%[RynthAi%] Recover My Corpse:')or s:find('^Terrain survey:')or s:find('^%[TERRAIN')or s:find('^Nav: ')or s:find('^%[RynthAi%] Nav:')or s=='You have retained all your items. You do not need to recover your corpse!'then
+ if s:find('^%[RynthAi%] Own corpse:')or s:find('^%[RynthAi%] Your corpse is at ')or s:find('^%[RynthAi%] Recover My Corpse:')or s:find('^Terrain survey:')or s:find('^%[TERRAIN')or s:find('^%[RynthAi%] Loot')or s:find('^%[RynthAi%] Nothing on Corpse')or s:find('^%[RynthNav%] avoid')or s:find('^Nav: ')or s:find('^%[RynthAi%] Nav:')or s=='You have retained all your items. You do not need to recover your corpse!'then
   events[#events+1]={message=s:sub(1,600)}
  end
 end)

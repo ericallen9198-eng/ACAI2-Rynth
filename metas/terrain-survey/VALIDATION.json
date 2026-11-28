@@ -1,5 +1,5 @@
 {
-  "pilot": "Terrain Access Survey v0.2 \u2014 recorded recovery pilot",
+  "pilot": "Terrain Access Survey v0.3 \u2014 combat/buff/loot-aware portal clearance fix",
   "live_game_tested": false,
   "upstream_rynth_suite_commit": "4602d9267d0892da7179cac9f70ea5622e3a1b7e",
   "navdata_release": "2026102103",
@@ -7,12 +7,12 @@
   "tile_integrity": "Selected entries checked against ZIP CRC and uncompressed length; entire archive was not downloaded or hash-verified.",
   "route_sources": "New Detour mesh corridors. Only Hub_to_180 and Hub_to_225 reuse established Marae hub connectors.",
   "genuine_upstream_parser": {
-    "rules": 1157,
+    "rules": 977,
     "states": 211,
-    "embedded_navs": 77,
-    "waypoints": 2348,
-    "portal_connections": 2,
-    "npc_waypoints": 0,
+    "navs": 77,
+    "refs": 77,
+    "points": 2528,
+    "portals": 2,
     "warnings": 0
   },
   "geometry": {
@@ -20,7 +20,7 @@
     "blocked": 0,
     "maxHeightError": 7.720006942749023
   },
-  "geometry_scope": "Flat centerline raycasts from native tight start-poly lookup, with raw waypoint targets; not a physics simulation. Nearest-poly height ambiguity reaches 7.72 world units at some corners. Probe arrival also checks actual height.",
+  "geometry_scope": "Original mesh checks retained for unchanged geometry; the seven replacement prefixes have additionally passed genuine mesh raycasts. Live game traversal remains unverified.",
   "targets": 36,
   "distinct_hub_retry_targets": 10,
   "planned_walking_yards": {
@@ -29,7 +29,7 @@
     "225": 3694
   },
   "runtime_limits": "Live game/Windows installer unverified. Native corpse travel requires Rynth to remember the death. Disk recording and AF watchdog use bounded automatic repair.",
-  "controlled_scenarios": 27,
+  "controlled_scenarios": 39,
   "logging": {
     "sample_seconds": 5,
     "ring_slots": 8,
@@ -48,5 +48,16 @@
     ],
     "manual_stop_respected": true,
     "native_corpse_trip_not_stopped_on_recorder_rejoin": true
-  }
+  },
+  "portal_clearance": {
+    "replanned_hub_approaches": 7,
+    "new_segments_raycast_checked": 187,
+    "exclusion_radius_yards": 12,
+    "center_ns": 45.1009859708,
+    "center_ew": -75.0757791208,
+    "mesh_tiles_crc_verified": 24,
+    "native_avoid_command": "/rnav avoid portals on",
+    "intentional_portals_preserved": 2
+  },
+  "monitor": "Recurring Lua tick; AF rules fire once per state entry. Combat, buffing, busy, container/loot activity and settling pause movement checks. Stable arrival gates hub/portal transitions."
 }

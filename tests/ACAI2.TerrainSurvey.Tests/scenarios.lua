@@ -2,7 +2,7 @@
 start();local c=cp();assert(c.active and c.stage==0 and c.probe==1)
 assert(countCommand('/ra owncorpse')>=1);assert(countCommand('/ra owncorpse go')==0)
 assert(sim.settings.StopMacroOnDeath==0 and sim.settings.TravelToOwnCorpse==1)
-assert(sim.vars.te_logger_schema==2 and sim.vars.te_logger_active==1)
+assert(sim.vars.te_logger_schema==3 and sim.vars.te_logger_active==1)
 -- SCENARIO reached point commits durably before AF acknowledgment
 start();report(1,1,1);local c=cp();assert(c.probe==2 and c.sequence==1 and c.results['275_01'].outcome=='reached');assert(sim.vars.te_commit==1)
 step();c=cp();assert(c.probe==2,'repeated commit must not increment twice')
@@ -30,7 +30,7 @@ start();require('rynth.ai').MacroRunning=false;step();assert(not cp().active);st
 start();send('[Allegiance] Someone says, "Private ordinary chat"');step();
 for i=1,2300 do sim.time=sim.time+4;step()end
 local n,total=0,0
-for name,text in pairs(sim.files)do if name:find('^diagnostics%-')then n=n+1;total=total+#text;assert(#text<530000);assert(not text:find('Private ordinary chat',1,true))end end
+for name,text in pairs(sim.files)do if name:find('^diagnostics%-')then n=n+1;total=total+#text;assert(#text<530000,name.." chars="..#text);assert(not text:find('Private ordinary chat',1,true))end end
 assert(n==8 and total<8*530000)
 -- SCENARIO log heartbeat remains valid throughout normal combat pauses
 start();sim.targets=3;sim.busy=1;step(100);assert(require('rynth.ai').MacroRunning);assert(sim.vars.te_logger_heartbeat>=sim.time-1)
@@ -77,3 +77,29 @@ start();sim.pvars.te_recorder_restarts=2;reloadScript();assert(sim.pvars.te_reco
 -- SCENARIO recorder reload during native corpse travel never stops its macro
 start();sim.hp=0;sim.rememberCorpse=true;sim.nativeRecovery=true;step();sim.hp=429;step(20)
 local n=countCommand('STOP');reloadScript();assert(countCommand('STOP')==n and sim.nativeRecovery and sim.state=='RECOVERY_WAIT')
+-- SCENARIO recurring monitor pauses through long combat and does not mark a terrain failure
+start();sim.targets=6;step(150);assert((sim.vars.te_movement_fail or 0)==0);sim.targets=0;step(15);assert((sim.vars.te_movement_fail or 0)==0)
+-- SCENARIO recurring monitor allows a full buff cycle and grace between casts
+start();sim.buffs=16;step(180);assert((sim.vars.te_movement_fail or 0)==0);sim.buffs=0;step(15);assert((sim.vars.te_movement_fail or 0)==0)
+-- SCENARIO looting pauses movement checks while a corpse is open
+start();game.World.OpenContainer={Id=123};step(120);assert((sim.vars.te_movement_fail or 0)==0);game.World.OpenContainer=nil;step(15);assert((sim.vars.te_movement_fail or 0)==0)
+-- SCENARIO genuine idle lack of progress still triggers after activity ends
+start();sim.targets=3;step(80);sim.targets=0;step(60);assert(sim.vars.te_movement_fail==1)
+-- SCENARIO advancing route points counts as progress despite close positions
+start();for i=1,80 do sim.navIndex=i;step()end;assert((sim.vars.te_movement_fail or 0)==0)
+-- SCENARIO moving for longer than one old AF sample interval is repeatedly observed
+start();for i=1,100 do sim.coords=tostring(45.2+i*.005)..'|-75.1|0.38';step()end;assert((sim.vars.te_movement_fail or 0)==0)
+-- SCENARIO accidental 180 arrival preserves the Plateau point rather than crediting cliff failure
+start();sim.targets=2;sim.coords='43.5416666667|-85.4083333333|0.0833541667';step(10);assert(cp().probe==1 and sim.vars.te_movement_fail==0 and sim.settings.EnableNavigation==0)
+sim.targets=0;step(15);assert(cp().probe==1 and sim.state=='WAIT_275_01')
+-- SCENARIO current status appears in the user-facing chat even while recording is repairing
+start();sim.failWrites=true;report(1,1,1);local n=#sim.logs;sim.request('status');assert(#sim.logs>n)
+-- SCENARIO old one-shot no-progress outcomes are preserved as unverified and scheduled for recheck
+start();report(1,1,1);sim.vars.te_probe=2;sim.vars.te_reason='no_progress';report(3,2,2);local c,n=cp();c.recorderVersion=nil;sim.files[n]=encodeNative(c);reloadScript();local d=cp();assert(d.results['275_01'].outcome=='reached'and d.results['275_02'].outcome=='unverified_v02'and d.probe==2)
+-- SCENARIO survey requests native portal avoidance without disabling intentional hub portals
+start();assert(sim.avoidPortals and countCommand('/rnav avoid portals on')>=1)
+-- SCENARIO buffing does not consume hub-arrival timeout
+start();sim.state='HUB_WAIT';sim.buffs=16;step(120);assert(sim.vars.te_transport_timeout==0);sim.buffs=0;step(15);assert(sim.vars.te_transport_timeout==0)
+-- SCENARIO repeated recall in the same sampled wait state gets a fresh transport budget
+start();sim.state='HUB_WAIT';sim.vars.te_transport_generation=1;step(50);assert(sim.vars.te_transport_timeout==1)
+sim.vars.te_transport_generation=2;sim.vars.te_transport_timeout=0;step();assert(sim.vars.te_transport_timeout==0)

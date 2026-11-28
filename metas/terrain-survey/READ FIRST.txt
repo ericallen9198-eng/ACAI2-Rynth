@@ -1,4 +1,10 @@
-TERRAIN ACCESS SURVEY v0.2 — RECORDED OVERNIGHT PILOT
+TERRAIN ACCESS SURVEY v0.3 — RECORDED OVERNIGHT PILOT
+
+UPDATING FROM v0.2
+Run /terrainsurvey stop, then /lua stop TerrainSurvey. Install the new files.
+Run /lua start TerrainSurvey and /terrainsurvey resume. Keep the Data folder;
+use Resume to preserve the run. Old v0.2 no-progress failures are retained as
+unverified evidence and queued for recheck. Confirmed reached points stay reached.
 
 WHAT IT DOES
 Tests 36 new cliff/elevation approaches, using /ls to Plateau and the two known
@@ -50,6 +56,23 @@ Right-click that TerrainSurvey DATA folder, compress it to a ZIP, and send it.
 It contains checkpoint-<character key>.json, planned-<character key>.json,
 and up to eight matching diagnostic JSONL files per character. Send the folder before starting a new pass, because
 New intentionally replaces that character's previous diagnostic set.
+
+COMBAT, BUFFING, LOOTING AND PORTALS
+Movement checks now run in Lua's recurring tick. Rynth's AF rules fire once per
+state entry, so the old AF-based repeated timer resets were insufficient.
+Combat, native busy actions, buffing and an open corpse/container pause the
+movement budget and stall checks, followed by an 8-second settling grace.
+Loot diagnostic activity also supplies a short looting grace. Recall/travel
+checks wait for those activities and for the portal transition to settle.
+
+The survey enables native /rnav avoid portals on without changing your avoidance
+radius. This setting remains on afterward. The seven affected hub approaches
+are also replanned around a 12-yard exclusion centred on the known shared camp
+portal staging point. Fixed waypoint paths need this geometric clearance too;
+turning on a planner setting alone does not redraw an already embedded route.
+The two intentional named portal connections remain included and usable.
+
+Status output now appears in game chat as well as the Lua console.
 
 WHAT IS RECORDED
 UTC timestamps; coordinates and world height; landcell; intended inspection;
