@@ -1,8 +1,0 @@
-{
-  "radius_yards": 15,
-  "nearby_positions": 5,
-  "paths_replanned": 14,
-  "new_segments_raycast_checked": 1271,
-  "minimum_planned_clearance_yards": 15.46266884015875,
-  "exact_portal_centers": false
-}
