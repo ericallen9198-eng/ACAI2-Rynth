@@ -13,6 +13,7 @@ try {
     Copy-Item scripts\Start-Keyfer-Bridge.cmd (Join-Path $Output 'Start-Keyfer-Bridge.cmd')
     Copy-Item scripts\Start-Keyfer-Luna.cmd (Join-Path $Output 'Start-Keyfer-Luna.cmd')
     Copy-Item docs\KEYFER-LUNA-UPDATE.md $Output
+    Copy-Item docs\KEYFER-CONVERSATION-AUDIT.md $Output
     New-Item -ItemType Directory (Join-Path $Output 'Lua') -Force | Out-Null
     Copy-Item lua/* (Join-Path $Output 'Lua') -Recurse -Force
     Copy-Item keyfer.example.json $Output

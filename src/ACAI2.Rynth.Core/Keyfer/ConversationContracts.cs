@@ -15,6 +15,10 @@ namespace ACAI2.Protocol
     }
     public sealed class ChatObservation
     {
+        public string ObservationKind { get; set; } = "";
+        public string ObservationId { get; set; } = "";
+        public DateTime ObservedUtc { get; set; }
+
         public string InstanceId { get; set; }
         public string Server { get; set; }
         public string Character { get; set; }

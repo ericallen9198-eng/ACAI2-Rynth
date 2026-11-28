@@ -1,9 +1,13 @@
-# Keyfer behavior reference — plugin v0.3.5 / Bridge v0.19
+# Keyfer behavior reference — plugin v0.3.6 / Bridge v0.20.4
 
 These are source defaults and enforced rules. Your existing keyfer.json, saved
 quiet/owner/exclusion settings and Bridge behavior files can change the configured
 options; this package preserves them. This guide does not claim to have read the
 current settings on your PC.
+
+See [KEYFER-CONVERSATION-AUDIT.md](KEYFER-CONVERSATION-AUDIT.md) for the v0.3.6
+warmth/banter guidance, silence handling, public awareness and native absorption
+capture. The existing moderation rules below remain in effect.
 
 ## Existing player behavior retained
 

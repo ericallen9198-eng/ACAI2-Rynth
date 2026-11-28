@@ -169,6 +169,25 @@ namespace ACAI2.Rynth.Core.Keyfer
                 " | DW event alerts " + (config.keyferWorldEvents && server.Equals("DreamWeave", StringComparison.OrdinalIgnoreCase) ? "ON" : "OFF") + " | loot keeps " + ownLoot.Snapshot(config.UtcNow).ConfirmedKeepPickups + " | pending " + pending;
         }
 
+        private void QueueAbsorption(ChatObservation notice)
+        {
+            if (Interlocked.Increment(ref pending) > 16) { Interlocked.Decrement(ref pending); return; }
+            Task.Run(async () =>
+            {
+                bool acquired=false;
+                try
+                {
+                    await requests.WaitAsync(config.SessionToken).ConfigureAwait(false); acquired=true;
+                    if (stopped || config.SessionToken.IsCancellationRequested) return;
+                    await PostAsync("/v1/keyfer/chat", notice).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) { }
+                catch { deliveries.Enqueue(new Delivery { Server=notice.Server, Character=notice.Character, LocalOnly=true,
+                    Text="[ACAI2] Avatar observation could not reach the Bridge." }); }
+                finally { if (acquired) requests.Release(); Interlocked.Decrement(ref pending); }
+            });
+        }
+
         public void Capture(string raw, string instance, string server, string character)
         {
             if (stopped || config.SessionToken.IsCancellationRequested || !Enabled(server, character)) return;
@@ -202,6 +221,13 @@ namespace ACAI2.Rynth.Core.Keyfer
                 }
             if (config.treasureEnabled) treasure.Capture(raw, instance, server, character);
             if(ownLoot.Observe(raw,config.UtcNow))return;
+            if (server.Equals("DreamWeave", StringComparison.OrdinalIgnoreCase) && AvatarAbsorptionParser.Parse(raw) != null)
+            {
+                QueueAbsorption(new ChatObservation { InstanceId=instance, Server=server, Character=character, Channel="Allegiance",
+                    Speaker=AvatarAbsorptionParser.Speaker, Message=raw, ObservationKind=AvatarAbsorptionParser.Kind,
+                    ObservationId=Guid.NewGuid().ToString("N"), ObservedUtc=config.UtcNow });
+                return;
+            }
             ChatObservation chat = GameChat.Parse(raw);
             if (chat == null || chat.Speaker.Equals("You", StringComparison.OrdinalIgnoreCase) ||
                 chat.Speaker.Equals(character, StringComparison.OrdinalIgnoreCase)) return;

@@ -3,6 +3,7 @@
     <TargetFramework>net10.0-windows</TargetFramework>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <PlatformTarget>x86</PlatformTarget>
+    <Version>0.3.6</Version>
     <RuntimeIdentifier>win-x86</RuntimeIdentifier>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <PublishAot>false</PublishAot>

@@ -185,3 +185,10 @@ native action boundaries. Update provider compatibility across chat/wiki, memory
 and arena requests. Controlled tests use fake HTTP only; do not send real player
 conversations or use provider credentials in tests. A Bridge-only Windows package
 may be released; no client plugin, Combat or Rynth engine changes are needed.
+
+The user authorized auditing/restoring Keyfer's playful conversational voice and
+awareness, including the supplied bare native avatar-absorption announcement.
+Typed passive capture may use the existing bounded observation queue/route; no AI
+request or automatic game echo per announcement. Keep native evidence separate
+from quoted player reports, preserve private/guild audiences and session identity,
+and bound in-memory retention. No new game actions or relaxed command safeguards.

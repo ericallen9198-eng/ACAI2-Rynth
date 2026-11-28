@@ -23,7 +23,7 @@ public sealed class ReadOnlyBridgeClient : IDisposable
         var s = frame.Snapshot; var identity = s.Identity;
         if (frame.Session.InstanceId != s.InstanceId || frame.Session.Identity != identity) throw new InvalidDataException("Telemetry session mismatch.");
         var register = new ClientRegistration { ProtocolVersion = "2", InstanceId = s.InstanceId, Server = identity.Server, Character = identity.Character,
-            RuntimeId = identity.RuntimeId, PluginVersion = "ACAI2.Rynth/0.3.3", StartedUtc = s.StartedUtc.ToString("O") };
+            RuntimeId = identity.RuntimeId, PluginVersion = "ACAI2.Rynth/0.3.6", StartedUtc = s.StartedUtc.ToString("O") };
         await PostAsync("v1/client/register",register,PilotJson.Default.ClientRegistration,deadline.Token);
         deadline.Token.ThrowIfCancellationRequested();
         var heartbeat = new ClientHeartbeat { ProtocolVersion = "2", InstanceId = s.InstanceId, Server = identity.Server, Character = identity.Character,

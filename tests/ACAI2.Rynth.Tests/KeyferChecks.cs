@@ -80,6 +80,16 @@ internal static class KeyferChecks
             client.Capture("[General] Other says, \"Nice weather.\"",1,DateTime.UtcNow);client.Pump(sent.Add,local.Add);
             await Until(()=>fake.Calls.Any(x=>x.Path.EndsWith("/chat")));
             check(fake.Calls.Count(x=>x.Path.EndsWith("/ask"))==asks,"unaddressed General speech is observation only, without an AI ask");
+            const string absorbLine="Tronk's Avatar (level 1) has been absorbed into this allegiance's Avatar, adding 0 Avatar XP.";
+            client.Capture(absorbLine,1,DateTime.UtcNow);client.Pump(sent.Add,local.Add);
+            await Until(()=>fake.Calls.Any(x=>x.Path.EndsWith("/chat")&&x.Json.Contains("AvatarAbsorption")));
+            using(var notice=JsonDocument.Parse(fake.Calls.Last(x=>x.Path.EndsWith("/chat")&&x.Json.Contains("AvatarAbsorption")).Json))
+                check(notice.RootElement.GetProperty("Message").GetString()==absorbLine&&
+                    notice.RootElement.GetProperty("Channel").GetString()=="Allegiance"&&
+                    Guid.TryParse(notice.RootElement.GetProperty("ObservationId").GetString(),out _),
+                    "bare absorption announcement reaches the observation route with session identity and a unique receipt");
+            check(fake.Calls.Count(x=>x.Path.EndsWith("/ask"))==asks&&!sent.Any(x=>x.Contains("Avatar XP")),
+                "absorption capture is observation only, without an AI request or automatic game echo");
             fake.Answer=new(){Ok=true,Answer="Detailed answer.",ReplyChannel="Tell",GeneralNotice="Let's take this to tells.",NoticeChannel="General"};
             clock=clock.AddSeconds(3);client.Capture("[General] Other says, \"Keyfer explain that?\"",1,DateTime.UtcNow);client.Pump(sent.Add,local.Add);
             await Until(()=>fake.Calls.Count(x=>x.Path.EndsWith("/ask"))==asks+1);await Until(()=>{client.Pump(sent.Add,local.Add);return sent.LastOrDefault()=="/cg Let's take this to tells.";});

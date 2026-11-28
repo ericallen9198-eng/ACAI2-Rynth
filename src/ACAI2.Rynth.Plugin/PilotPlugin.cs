@@ -9,7 +9,7 @@ namespace ACAI2.Rynth.Plugin;
 
 public sealed partial class PilotPlugin : RynthPluginBase
 {
-    public const string Version = "0.3.5";
+    public const string Version = "0.3.6";
     private readonly object sessionGate=new();
     private KeyferSession? keyfer;
     private KeyferSettings keyferSettings=new();

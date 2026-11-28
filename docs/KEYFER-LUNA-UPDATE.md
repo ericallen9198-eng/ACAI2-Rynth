@@ -1,4 +1,4 @@
-# Keyfer Luna trial — Bridge v0.20.3
+# Keyfer Luna trial — Bridge v0.20.4
 
 This update switches the Bridge's default model from GPT-5 mini to GPT-6 Luna.
 It keeps your existing personality files, memories, chat history, moderation,
@@ -63,7 +63,7 @@ method rolls back or clears your memories. Do not leave the retiring model selec
 This is a Bridge-only update. Scrollwork, Threads, Marae, Combat and the Keyfer
 client plugin are not replaced. The Bridge remains shared by game and Discord.
 
-## v0.20.3 diagnostics
+## v0.20.4 diagnostics
 
 If a request fails, copy the new `[KEYFER] Request failed:` or `[MEMORY] Review
 unavailable:` line from the Bridge console. It now reports the HTTP status and
@@ -76,7 +76,7 @@ not a claim that any one cause has already been confirmed on your PC.
 The `[LEADERBOARDS] No recognized output` lines concern native /top capture;
 they are separate from AI provider failures.
 
-## v0.20.3 personal loot conversations
+## v0.20.4 personal loot conversations
 
 Personal weapon preferences and questions about Keyfer's own chest pickups now use
 his existing typed loot observations without a wiki lookup. A failed optional wiki
@@ -85,7 +85,7 @@ questions still require evidence. Missing/stale loot is reported honestly; this
 change does not invent historical pickups or recover unrecorded items. Existing
 client loot capture, bounded notable-find files and identity/privacy checks remain.
 
-## v0.20.3 game chat punctuation
+## v0.20.4 game chat punctuation
 
 Conversation replies and treasure banter convert smart apostrophes and quotes to
 straight punctuation, ellipses to three dots, common dashes to plain punctuation,

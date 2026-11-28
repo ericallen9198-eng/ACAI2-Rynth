@@ -198,6 +198,7 @@ await BridgeLootChecks.Run(Check);
 await ModelMigrationChecks.Run(Check);
 await ProviderHttpChecks.Run(Check);
 await WikiFallbackChecks.Run(Check);
+await ConversationContextChecks.Run(Check);
 Check(ACAI2.Bridge.KeyferService.NormalizeReply("Yari\u2019s reach") == "Yari's reach", "game punctuation fixes the reported smart apostrophe");
 Check(ACAI2.Bridge.KeyferService.NormalizeReply("\u201cYari\u201d\u2026") == "\"Yari\"...", "game punctuation preserves quoted meaning and ellipsis");
 Check(ACAI2.Bridge.KeyferService.NormalizeReply("2\u00a0items\u202f- frost\u2013fire") == "2 items - frost-fire", "game punctuation normalizes nonbreaking spaces and short dashes");
