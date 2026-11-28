@@ -74,7 +74,7 @@
   "directed_portal_links": 6,
   "idle_container_hold": "Bounded 15-second opening/progress grace; no hold when ordinary looting is off; nothing-matched completion clears the grace.",
   "already_at_hub": "Stable live Plateau hub arrival dispatches before the travel-ready recall gate.",
-  "mesh_policy_checks": 16,
+  "mesh_policy_checks": 17,
   "runtime_mesh_checks": {
     "passed": 12,
     "cases": [

@@ -20,6 +20,7 @@ Check(MeshPlan.Build(a,b,0,Direct,(_,_)=>true,[new(a.X+50,a.Y+16,a.Z)]).Length==
 Refused(()=>MeshPlan.Build(a,b,0,(_,_)=>[a,new(double.NaN,1,1),b],(_,_)=>true,[]),"invalid corner refused");
 Refused(()=>MeshPlan.Build(a,b,5,Direct,(_,_)=>true,[]),"unbounded side approaches refused");
 Refused(()=>MeshPlan.Build(a,new(a.X+601,a.Y,a.Z),0,Direct,(_,_)=>true,[]),"overlong request refused");
+Refused(()=>MeshPlan.Build(new(a.X,a.Y,120),new(b.X,b.Y,64),0,Direct,(_,_)=>true,[new(a.X+50,a.Y,92)]),"sloping segment crossing a portal height band refused");
 Check(MeshPlan.Serialize(Make()).Split('\n')[0]=="uTank2 NAV 1.2","native route header");
 File.WriteAllText(args.Length>0?args[0]:Path.Combine(Path.GetTempPath(),"terrain-mesh-test.nav"),MeshPlan.Serialize(Make(1)));
 Console.WriteLine($"PASS {checks} mesh policy checks; fake path provider only (not live navigation).");

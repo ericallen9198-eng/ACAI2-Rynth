@@ -35,7 +35,7 @@ public static class MeshPlan
             var a=result[i-1];var b=result[i];distance+=a.Flat(b);
             if(!clear(a,b))throw new InvalidDataException("Mesh raycast blocked a planned segment");
             foreach(var portal in portals)
-                if(Math.Abs(a.Z-portal.Z)<15||Math.Abs(b.Z-portal.Z)<15)
+                if(portal.Z>=Math.Min(a.Z,b.Z)-15&&portal.Z<=Math.Max(a.Z,b.Z)+15)
                     if(SegmentDistance(portal,a,b)<15)
                         throw new InvalidDataException("Planned path enters a camp portal exclusion");
         }
