@@ -1,4 +1,5 @@
--- TerrainSurvey v0.3.3. Stock RynthLua/RynthAi only; streamed local diagnostics.
+-- TerrainSurvey v0.3.4. Stock RynthLua/RynthAi only; streamed local diagnostics.
+TerrainSurveyVersion='0.3.4' -- readable through /lua execin for support
 local ai,fsmod,json,info=require('rynth.ai'),require('filesystem'),require('json'),require('rynthlua')
 local fs=fsmod.GetData()
 local META='Terrain Access Survey'
@@ -17,6 +18,9 @@ local stableSince=0
 local lastPosition=nil
 local transport=nil
 local lootUntil=0
+local observedContainer=0
+local containerOpenedAt=-1000000000
+local lootDoneAt=-1000000000
 local avoidanceRequested=false
 local settings={FollowNavMin=0.5,NavResumeNearest=0,StopMacroOnDeath=0,DeathRecallMode=0,LootOwnCorpse=1,TravelToOwnCorpse=1,EnableMeta=1}
 local zones={[0]=275,[1]=180,[2]=225}
@@ -52,7 +56,7 @@ local function save()
 end
 local function log(kind,data)
  if not cp then return end
- data=data or {};data.software='0.3.3';data.event=kind;data.utc_unix=num('getunixtime[]');data.run=cp.run
+ data=data or {};data.software='0.3.4';data.event=kind;data.utc_unix=num('getunixtime[]');data.run=cp.run
  data.stage=cp.stage;data.probe=cp.probe;data.attempt=cp.attempt
  local line=json.encode(data)..'\n'
  cp.logSlot=cp.logSlot or 1;cp.logChars=cp.logChars or 0
@@ -189,7 +193,8 @@ local function drainEvents(t)
    local metres=tonumber(s:match('^%[RynthNav%] avoid: portals on, ([%d%.]+) m'))
    if metres and metres<10 and not avoidanceRequested then avoidanceRequested=true;ai.Command('/rnav avoid portals 10');log('native_portal_clearance_requested',{previous_metres=metres,new_metres=10})end
    if not cp.recovery and s:find('^%[RynthAi%] Your corpse is at ') and not s:find(', died ',1,true) then startRecovery(t,'death')end
-   if s:find('^%[RynthAi%] Loot')or s:find('^%[RynthAi%] Nothing on Corpse')then lootUntil=t+15 end
+   if s:find('^%[RynthAi%] Nothing on Corpse')then lootUntil=0;lootDoneAt=t
+   elseif s:find('^%[RynthAi%] Loot')then lootUntil=t+15 end
    log('native_diagnostic',{message=s})
    if cp.recovery then
     local r=cp.recovery
@@ -248,7 +253,10 @@ local function commit(t,state)
 end
 local function travelReadiness(t,s)
  local buff=ai.GetSetting('EnableBuffing')
- local reason=s.hp<=0 and 'death' or s.portaling and 'portal' or s.targets>0 and 'combat' or s.busy>0 and 'native_busy' or ((buff==nil or buff==true or buff==1)and s.buffs_due>0)and 'buffing' or (s.open_container~=0 or t<lootUntil)and 'looting' or nil
+ local loot=ai.GetSetting('EnableLooting');local lootEnabled=loot~=false and loot~=0
+ if s.open_container~=observedContainer then observedContainer=s.open_container;containerOpenedAt=t end
+ local recentContainer=s.open_container~=0 and containerOpenedAt>lootDoneAt and t-containerOpenedAt<15
+ local reason=s.hp<=0 and 'death' or s.portaling and 'portal' or s.targets>0 and 'combat' or s.busy>0 and 'native_busy' or ((buff==nil or buff==true or buff==1)and s.buffs_due>0)and 'buffing' or (lootEnabled and (recentContainer or t<lootUntil))and 'looting' or nil
  if reason then quietUntil=t+8 end
  local jumped=lastPosition and s.north and s.east and math.sqrt((s.north-lastPosition.north)^2+(s.east-lastPosition.east)^2)*240>80
  if s.portaling or s.hp<=0 or not s.north or not s.east then stableSince=0 elseif stableSince==0 or jumped then stableSince=t end
@@ -449,7 +457,7 @@ local function guardedTick()
 end
 game.RegisterCommand('/terrainsurvey',function(args)
  local r=tostring(args or ''):lower():match('^%s*(%S+)')or'status'
- if r=='status'then local last=cp and cp.lastSample or {};notice('v0.3.3; state '..tostring(last.state or phase)..'; wait '..tostring(last.pause_reason or 'none')..'; '..(cp and cp.active and 'Active' or 'Stopped')..'; phase '..phase..'; '..(cp and ('zone '..tostring(zones[cp.stage])..', point '..cp.probe)or'no checkpoint')..'; logs: '..tostring(info.DataFolder));return end
+ if r=='status'then local last=cp and cp.lastSample or {};notice('v0.3.4; state '..tostring(last.state or phase)..'; wait '..tostring(last.pause_reason or 'none')..'; '..(cp and cp.active and 'Active' or 'Stopped')..'; phase '..phase..'; '..(cp and ('zone '..tostring(zones[cp.stage])..', point '..cp.probe)or'no checkpoint')..'; logs: '..tostring(info.DataFolder));return end
  if #requests<4 then requests[#requests+1]=r end
 end)
 game.OnTick.Add(guardedTick)
@@ -460,4 +468,4 @@ game.World.OnChatText.Add(function(e)
   events[#events+1]={message=s:sub(1,600)}
  end
 end)
-notice('Ready. /terrainsurvey new starts a recorded pass; /terrainsurvey resume continues. Logs: '..tostring(info.DataFolder))
+notice('v0.3.4 ready. /terrainsurvey new starts a recorded pass; /terrainsurvey resume continues. Logs: '..tostring(info.DataFolder))

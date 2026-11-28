@@ -1,4 +1,4 @@
-TERRAIN ACCESS SURVEY v0.3.3 — RECORDED OVERNIGHT PILOT
+TERRAIN ACCESS SURVEY v0.3.4 — RECORDED OVERNIGHT PILOT
 
 UPDATING FROM AN EARLIER SURVEY
 Run /terrainsurvey stop, then /lua stop TerrainSurvey. Install the new files.
@@ -18,6 +18,17 @@ after portal/location settling. It no longer waits for the nav end flag. This
 prevents combat displacement after reaching a target from losing the arrival.
 The result is still saved before the next inspection begins. Resume keeps the
 current saved cursor; no run reset or new terrain blacklist is introduced.
+
+v0.3.4 fixes recall waiting behind an idle open-container window. An open
+container supplies a bounded 15-second looting grace, extended by native loot
+progress; a nothing-matched completion ends that grace. With ordinary looting
+off, the container and loot grace do not hold survey travel. Genuine busy,
+combat, buffing and portal transitions still pause as before.
+If already at the confirmed Plateau hub, the meta dispatches directly to the
+selected area instead of waiting for another /ls. This only prepares the route;
+Rynth still owns its native combat/buff/loot priority. Startup/status now show
+v0.3.4; a short version check is:
+/lua execin TerrainSurvey chat(TerrainSurveyVersion or 'older')
 
 WHAT IT DOES
 Tests 36 new cliff/elevation approaches, using /ls to Plateau and the two known

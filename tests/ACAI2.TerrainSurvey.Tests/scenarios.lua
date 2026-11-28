@@ -81,8 +81,10 @@ local n=countCommand('STOP');reloadScript();assert(countCommand('STOP')==n and s
 start();sim.targets=6;step(150);assert((sim.vars.te_movement_fail or 0)==0);sim.targets=0;step(15);assert((sim.vars.te_movement_fail or 0)==0)
 -- SCENARIO recurring monitor allows a full buff cycle and grace between casts
 start();sim.buffs=16;step(180);assert((sim.vars.te_movement_fail or 0)==0);sim.buffs=0;step(15);assert((sim.vars.te_movement_fail or 0)==0)
--- SCENARIO looting pauses movement checks while a corpse is open
-start();game.World.OpenContainer={Id=123};step(120);assert((sim.vars.te_movement_fail or 0)==0);game.World.OpenContainer=nil;step(15);assert((sim.vars.te_movement_fail or 0)==0)
+-- SCENARIO active looting refreshes its bounded grace while the corpse is open
+start();sim.settings.EnableLooting=1;game.World.OpenContainer={Id=123}
+for i=1,12 do send('[RynthAi] Looted [Keep] Gold Pea');step(10)end
+assert((sim.vars.te_movement_fail or 0)==0);game.World.OpenContainer=nil;step(15);assert((sim.vars.te_movement_fail or 0)==0)
 -- SCENARIO genuine idle lack of progress still triggers after activity ends
 start();sim.targets=3;step(80);sim.targets=0;step(60);assert(sim.vars.te_movement_fail==1)
 -- SCENARIO advancing route points counts as progress despite close positions
@@ -124,3 +126,12 @@ start();assert(sim.avoidRadius==10 and countCommand('/rnav avoid portals 10')==1
 sim.avoidRadius=14;start();assert(sim.avoidRadius==14 and countCommand('/rnav avoid portals 10')==0)
 -- SCENARIO a lower floor under a survey route is recovered without serializing infinity
 start();sim.navName='<embedded:Hub_275_01>';sim.coords='45.20794|-75.06323|0.01';sim.targets=2;step(3);assert(cp().probe==1 and sim.settings.EnableNavigation==0)
+-- SCENARIO an idle open container cannot block travel when ordinary looting is disabled
+start();sim.settings.EnableLooting=0;game.World.OpenContainer={Id=123};step(12);assert(sim.vars.te_can_travel==1)
+
+-- SCENARIO a stale open container stops holding travel after the bounded grace
+start();sim.settings.EnableLooting=1;game.World.OpenContainer={Id=123};step(35);assert(sim.vars.te_can_travel==1)
+-- SCENARIO nothing-matched loot completion does not continually extend the grace
+start();sim.settings.EnableLooting=1;game.World.OpenContainer={Id=123};step();for i=1,20 do send('[RynthAi] Nothing on Corpse of Siberite Fragment matches the loot profile.');step()end;assert(sim.vars.te_can_travel==1)
+-- SCENARIO the running recorder exposes its exact version for short diagnostics
+assert(TerrainSurveyVersion=='0.3.4')

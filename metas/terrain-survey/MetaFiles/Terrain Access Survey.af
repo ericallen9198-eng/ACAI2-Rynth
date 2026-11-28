@@ -51,6 +51,11 @@ STATE: {RECALL} ~~ {
 	IF: Expr {getvar[te_recovery_busy]==1}
 		DO: DoAll
 				SetState {RECOVERY_WAIT}
+	IF: Expr {getvar[te_location_stable]==1 && getcharvital_current[1]>0 && coordinatedistanceflat[getplayercoordinates[],`45.2079477958333|-75.0632305458333|0.3833541875`]<15 && abs[coordinategetz[getplayercoordinates[]]*240-92.005]<8}
+		DO: DoAll
+				SetOpt {EnableNav} {False}
+				DoExpr {echo[`[TerrainSurvey] Already at the Plateau hub; continuing to the selected area.`]}
+				SetState {DISPATCH}
 	IF: Expr {getvar[te_can_travel]==1}
 		DO: DoAll
 				SetOpt {EnableNav} {False}

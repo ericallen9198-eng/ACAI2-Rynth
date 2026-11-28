@@ -1,5 +1,5 @@
 {
-  "pilot": "Terrain Access Survey v0.3.3 \u2014 portal clearance at all camps and route recovery in every sector",
+  "pilot": "Terrain Access Survey v0.3.4 \u2014 bounded container hold and already-at-hub dispatch",
   "live_game_tested": false,
   "upstream_rynth_suite_commit": "4602d9267d0892da7179cac9f70ea5622e3a1b7e",
   "navdata_release": "2026102103",
@@ -7,7 +7,7 @@
   "tile_integrity": "Selected entries checked against ZIP CRC and uncompressed length; entire archive was not downloaded or hash-verified.",
   "route_sources": "New Detour mesh corridors. Only Hub_to_180 and Hub_to_225 reuse established Marae hub connectors.",
   "genuine_upstream_parser": {
-    "rules": 977,
+    "rules": 978,
     "states": 211,
     "navs": 77,
     "refs": 77,
@@ -29,7 +29,7 @@
     "225": 3694
   },
   "runtime_limits": "Live game/Windows installer unverified. Nearby portal standing positions are conservative exclusion anchors, not exact portal centres. Native corpse travel requires Rynth to remember the death.",
-  "controlled_scenarios": 48,
+  "controlled_scenarios": 52,
   "logging": {
     "sample_seconds": 5,
     "ring_slots": 8,
@@ -71,5 +71,7 @@
     "recovery_attempts_per_point": 3,
     "after_limit": "defer point without classifying terrain impassable"
   },
-  "directed_portal_links": 6
+  "directed_portal_links": 6,
+  "idle_container_hold": "Bounded 15-second opening/progress grace; no hold when ordinary looting is off; nothing-matched completion clears the grace.",
+  "already_at_hub": "Stable live Plateau hub arrival dispatches before the travel-ready recall gate."
 }
