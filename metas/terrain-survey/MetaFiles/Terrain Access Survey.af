@@ -323,8 +323,6 @@ STATE: {WAIT_275_01} ~~ {
 		DO: DoAll
 				SetState {RECOVERY_WAIT}
 	IF: All
-			SecsInStateGE 3
-			NavEmpty
 			Expr {getvar[te_location_stable]==1 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],`44.318050130208|-73.933333333333|0.351086870829`]<3 && abs[coordinategetz[getplayercoordinates[]]*240-84.26084899902344]<4}
 		DO: DoAll
 				SetOpt {EnableNav} {False}
@@ -453,8 +451,6 @@ STATE: {WAIT_275_02} ~~ {
 		DO: DoAll
 				SetState {RECOVERY_WAIT}
 	IF: All
-			SecsInStateGE 3
-			NavEmpty
 			Expr {getvar[te_location_stable]==1 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],`43.774788411458|-74.447705078125|0.334718100230`]<3 && abs[coordinategetz[getplayercoordinates[]]*240-80.33234405517578]<4}
 		DO: DoAll
 				SetOpt {EnableNav} {False}
@@ -583,8 +579,6 @@ STATE: {WAIT_275_03} ~~ {
 		DO: DoAll
 				SetState {RECOVERY_WAIT}
 	IF: All
-			SecsInStateGE 3
-			NavEmpty
 			Expr {getvar[te_location_stable]==1 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],`43.336279296875|-74.463191731771|0.322027492523`]<3 && abs[coordinategetz[getplayercoordinates[]]*240-77.2865982055664]<4}
 		DO: DoAll
 				SetOpt {EnableNav} {False}
@@ -713,8 +707,6 @@ STATE: {WAIT_275_04} ~~ {
 		DO: DoAll
 				SetState {RECOVERY_WAIT}
 	IF: All
-			SecsInStateGE 3
-			NavEmpty
 			Expr {getvar[te_location_stable]==1 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],`42.593538411458|-74.692919921875|0.285387325287`]<3 && abs[coordinategetz[getplayercoordinates[]]*240-68.49295806884766]<4}
 		DO: DoAll
 				SetOpt {EnableNav} {False}
@@ -843,8 +835,6 @@ STATE: {WAIT_275_05} ~~ {
 		DO: DoAll
 				SetState {RECOVERY_WAIT}
 	IF: All
-			SecsInStateGE 3
-			NavEmpty
 			Expr {getvar[te_location_stable]==1 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],`42.385205078125|-74.323746744792|0.276765696208`]<3 && abs[coordinategetz[getplayercoordinates[]]*240-66.42376708984375]<4}
 		DO: DoAll
 				SetOpt {EnableNav} {False}
@@ -973,8 +963,6 @@ STATE: {WAIT_275_06} ~~ {
 		DO: DoAll
 				SetState {RECOVERY_WAIT}
 	IF: All
-			SecsInStateGE 3
-			NavEmpty
 			Expr {getvar[te_location_stable]==1 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],`42.635416666667|-73.668750000000|0.320649401347`]<3 && abs[coordinategetz[getplayercoordinates[]]*240-76.95585632324219]<4}
 		DO: DoAll
 				SetOpt {EnableNav} {False}
@@ -1103,8 +1091,6 @@ STATE: {WAIT_275_07} ~~ {
 		DO: DoAll
 				SetState {RECOVERY_WAIT}
 	IF: All
-			SecsInStateGE 3
-			NavEmpty
 			Expr {getvar[te_location_stable]==1 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],`42.584554036458|-75.208854166667|0.287799040476`]<3 && abs[coordinategetz[getplayercoordinates[]]*240-69.07176971435547]<4}
 		DO: DoAll
 				SetOpt {EnableNav} {False}
@@ -1233,8 +1219,6 @@ STATE: {WAIT_275_08} ~~ {
 		DO: DoAll
 				SetState {RECOVERY_WAIT}
 	IF: All
-			SecsInStateGE 3
-			NavEmpty
 			Expr {getvar[te_location_stable]==1 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],`42.315966796875|-75.771354166667|0.331849670410`]<3 && abs[coordinategetz[getplayercoordinates[]]*240-79.6439208984375]<4}
 		DO: DoAll
 				SetOpt {EnableNav} {False}
@@ -1363,8 +1347,6 @@ STATE: {WAIT_275_09} ~~ {
 		DO: DoAll
 				SetState {RECOVERY_WAIT}
 	IF: All
-			SecsInStateGE 3
-			NavEmpty
 			Expr {getvar[te_location_stable]==1 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],`44.325781250000|-77.618750000000|0.381847763062`]<3 && abs[coordinategetz[getplayercoordinates[]]*240-91.64346313476562]<4}
 		DO: DoAll
 				SetOpt {EnableNav} {False}
@@ -1493,8 +1475,6 @@ STATE: {WAIT_275_10} ~~ {
 		DO: DoAll
 				SetState {RECOVERY_WAIT}
 	IF: All
-			SecsInStateGE 3
-			NavEmpty
 			Expr {getvar[te_location_stable]==1 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],`44.668750000000|-77.991316731771|0.379253673553`]<3 && abs[coordinategetz[getplayercoordinates[]]*240-91.02088165283203]<4}
 		DO: DoAll
 				SetOpt {EnableNav} {False}
@@ -1623,8 +1603,6 @@ STATE: {WAIT_275_11} ~~ {
 		DO: DoAll
 				SetState {RECOVERY_WAIT}
 	IF: All
-			SecsInStateGE 3
-			NavEmpty
 			Expr {getvar[te_location_stable]==1 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],`43.888199869792|-73.400000000000|0.342866166433`]<3 && abs[coordinategetz[getplayercoordinates[]]*240-82.28787994384766]<4}
 		DO: DoAll
 				SetOpt {EnableNav} {False}
@@ -1753,8 +1731,6 @@ STATE: {WAIT_275_12} ~~ {
 		DO: DoAll
 				SetState {RECOVERY_WAIT}
 	IF: All
-			SecsInStateGE 3
-			NavEmpty
 			Expr {getvar[te_location_stable]==1 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],`43.576041666667|-73.042708333333|0.344583956401`]<3 && abs[coordinategetz[getplayercoordinates[]]*240-82.70014953613281]<4}
 		DO: DoAll
 				SetOpt {EnableNav} {False}
@@ -1973,8 +1949,6 @@ STATE: {WAIT_180_01} ~~ {
 		DO: DoAll
 				SetState {RECOVERY_WAIT}
 	IF: All
-			SecsInStateGE 3
-			NavEmpty
 			Expr {getvar[te_location_stable]==1 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],`43.494612630208|-83.036979166667|0.095158584913`]<3 && abs[coordinategetz[getplayercoordinates[]]*240-22.83806037902832]<4}
 		DO: DoAll
 				SetOpt {EnableNav} {False}
@@ -2103,8 +2077,6 @@ STATE: {WAIT_180_02} ~~ {
 		DO: DoAll
 				SetState {RECOVERY_WAIT}
 	IF: All
-			SecsInStateGE 3
-			NavEmpty
 			Expr {getvar[te_location_stable]==1 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],`43.974658203125|-83.062329101562|0.092897844315`]<3 && abs[coordinategetz[getplayercoordinates[]]*240-22.295482635498047]<4}
 		DO: DoAll
 				SetOpt {EnableNav} {False}
@@ -2233,8 +2205,6 @@ STATE: {WAIT_180_03} ~~ {
 		DO: DoAll
 				SetState {RECOVERY_WAIT}
 	IF: All
-			SecsInStateGE 3
-			NavEmpty
 			Expr {getvar[te_location_stable]==1 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],`44.509554036458|-83.214754231771|0.084684713682`]<3 && abs[coordinategetz[getplayercoordinates[]]*240-20.324331283569336]<4}
 		DO: DoAll
 				SetOpt {EnableNav} {False}
@@ -2363,8 +2333,6 @@ STATE: {WAIT_180_04} ~~ {
 		DO: DoAll
 				SetState {RECOVERY_WAIT}
 	IF: All
-			SecsInStateGE 3
-			NavEmpty
 			Expr {getvar[te_location_stable]==1 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],`45.690625000000|-82.787711588542|0.097886220614`]<3 && abs[coordinategetz[getplayercoordinates[]]*240-23.492692947387695]<4}
 		DO: DoAll
 				SetOpt {EnableNav} {False}
@@ -2493,8 +2461,6 @@ STATE: {WAIT_180_05} ~~ {
 		DO: DoAll
 				SetState {RECOVERY_WAIT}
 	IF: All
-			SecsInStateGE 3
-			NavEmpty
 			Expr {getvar[te_location_stable]==1 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],`46.238199869792|-82.359545898438|0.144370555878`]<3 && abs[coordinategetz[getplayercoordinates[]]*240-34.64893341064453]<4}
 		DO: DoAll
 				SetOpt {EnableNav} {False}
@@ -2623,8 +2589,6 @@ STATE: {WAIT_180_06} ~~ {
 		DO: DoAll
 				SetState {RECOVERY_WAIT}
 	IF: All
-			SecsInStateGE 3
-			NavEmpty
 			Expr {getvar[te_location_stable]==1 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],`46.621875000000|-82.105558268229|0.154380512238`]<3 && abs[coordinategetz[getplayercoordinates[]]*240-37.05132293701172]<4}
 		DO: DoAll
 				SetOpt {EnableNav} {False}
@@ -2753,8 +2717,6 @@ STATE: {WAIT_180_07} ~~ {
 		DO: DoAll
 				SetState {RECOVERY_WAIT}
 	IF: All
-			SecsInStateGE 3
-			NavEmpty
 			Expr {getvar[te_location_stable]==1 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],`47.450000000000|-82.510066731771|0.093016974131`]<3 && abs[coordinategetz[getplayercoordinates[]]*240-22.324073791503906]<4}
 		DO: DoAll
 				SetOpt {EnableNav} {False}
@@ -2883,8 +2845,6 @@ STATE: {WAIT_180_08} ~~ {
 		DO: DoAll
 				SetState {RECOVERY_WAIT}
 	IF: All
-			SecsInStateGE 3
-			NavEmpty
 			Expr {getvar[te_location_stable]==1 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],`47.850260416667|-82.692708333333|0.097873353958`]<3 && abs[coordinategetz[getplayercoordinates[]]*240-23.489604949951172]<4}
 		DO: DoAll
 				SetOpt {EnableNav} {False}
@@ -3013,8 +2973,6 @@ STATE: {WAIT_180_09} ~~ {
 		DO: DoAll
 				SetState {RECOVERY_WAIT}
 	IF: All
-			SecsInStateGE 3
-			NavEmpty
 			Expr {getvar[te_location_stable]==1 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],`43.012500000000|-82.899373372396|0.127167940140`]<3 && abs[coordinategetz[getplayercoordinates[]]*240-30.520305633544922]<4}
 		DO: DoAll
 				SetOpt {EnableNav} {False}
@@ -3143,8 +3101,6 @@ STATE: {WAIT_180_10} ~~ {
 		DO: DoAll
 				SetState {RECOVERY_WAIT}
 	IF: All
-			SecsInStateGE 3
-			NavEmpty
 			Expr {getvar[te_location_stable]==1 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],`42.631949869792|-82.668400065104|0.137824106216`]<3 && abs[coordinategetz[getplayercoordinates[]]*240-33.07778549194336]<4}
 		DO: DoAll
 				SetOpt {EnableNav} {False}
@@ -3273,8 +3229,6 @@ STATE: {WAIT_180_11} ~~ {
 		DO: DoAll
 				SetState {RECOVERY_WAIT}
 	IF: All
-			SecsInStateGE 3
-			NavEmpty
 			Expr {getvar[te_location_stable]==1 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],`42.631250000000|-82.231599934896|0.162545712789`]<3 && abs[coordinategetz[getplayercoordinates[]]*240-39.01097106933594]<4}
 		DO: DoAll
 				SetOpt {EnableNav} {False}
@@ -3403,8 +3357,6 @@ STATE: {WAIT_180_12} ~~ {
 		DO: DoAll
 				SetState {RECOVERY_WAIT}
 	IF: All
-			SecsInStateGE 3
-			NavEmpty
 			Expr {getvar[te_location_stable]==1 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],`42.717919921875|-81.821459960938|0.139420827230`]<3 && abs[coordinategetz[getplayercoordinates[]]*240-33.46099853515625]<4}
 		DO: DoAll
 				SetOpt {EnableNav} {False}
@@ -3623,8 +3575,6 @@ STATE: {WAIT_225_01} ~~ {
 		DO: DoAll
 				SetState {RECOVERY_WAIT}
 	IF: All
-			SecsInStateGE 3
-			NavEmpty
 			Expr {getvar[te_location_stable]==1 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],`52.311881510417|-79.666666666667|0.099269302686`]<3 && abs[coordinategetz[getplayercoordinates[]]*240-23.82463264465332]<4}
 		DO: DoAll
 				SetOpt {EnableNav} {False}
@@ -3753,8 +3703,6 @@ STATE: {WAIT_225_02} ~~ {
 		DO: DoAll
 				SetState {RECOVERY_WAIT}
 	IF: All
-			SecsInStateGE 3
-			NavEmpty
 			Expr {getvar[te_location_stable]==1 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],`52.329866536458|-79.127083333333|0.104961903890`]<3 && abs[coordinategetz[getplayercoordinates[]]*240-25.19085693359375]<4}
 		DO: DoAll
 				SetOpt {EnableNav} {False}
@@ -3883,8 +3831,6 @@ STATE: {WAIT_225_03} ~~ {
 		DO: DoAll
 				SetState {RECOVERY_WAIT}
 	IF: All
-			SecsInStateGE 3
-			NavEmpty
 			Expr {getvar[te_location_stable]==1 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],`52.685074869792|-78.806250000000|0.095853853226`]<3 && abs[coordinategetz[getplayercoordinates[]]*240-23.004924774169922]<4}
 		DO: DoAll
 				SetOpt {EnableNav} {False}
@@ -4013,8 +3959,6 @@ STATE: {WAIT_225_04} ~~ {
 		DO: DoAll
 				SetState {RECOVERY_WAIT}
 	IF: All
-			SecsInStateGE 3
-			NavEmpty
 			Expr {getvar[te_location_stable]==1 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],`53.106038411458|-78.604996744792|0.111452205976`]<3 && abs[coordinategetz[getplayercoordinates[]]*240-26.7485294342041]<4}
 		DO: DoAll
 				SetOpt {EnableNav} {False}
@@ -4143,8 +4087,6 @@ STATE: {WAIT_225_05} ~~ {
 		DO: DoAll
 				SetState {RECOVERY_WAIT}
 	IF: All
-			SecsInStateGE 3
-			NavEmpty
 			Expr {getvar[te_location_stable]==1 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],`53.683854166667|-77.978645833333|0.095582787196`]<3 && abs[coordinategetz[getplayercoordinates[]]*240-22.939868927001953]<4}
 		DO: DoAll
 				SetOpt {EnableNav} {False}
@@ -4273,8 +4215,6 @@ STATE: {WAIT_225_06} ~~ {
 		DO: DoAll
 				SetState {RECOVERY_WAIT}
 	IF: All
-			SecsInStateGE 3
-			NavEmpty
 			Expr {getvar[te_location_stable]==1 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],`53.794970703125|-77.576733398437|0.106291699409`]<3 && abs[coordinategetz[getplayercoordinates[]]*240-25.510007858276367]<4}
 		DO: DoAll
 				SetOpt {EnableNav} {False}
@@ -4403,8 +4343,6 @@ STATE: {WAIT_225_07} ~~ {
 		DO: DoAll
 				SetState {RECOVERY_WAIT}
 	IF: All
-			SecsInStateGE 3
-			NavEmpty
 			Expr {getvar[te_location_stable]==1 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],`53.787711588542|-77.107706705729|0.123989176750`]<3 && abs[coordinategetz[getplayercoordinates[]]*240-29.757402420043945]<4}
 		DO: DoAll
 				SetOpt {EnableNav} {False}
@@ -4533,8 +4471,6 @@ STATE: {WAIT_225_08} ~~ {
 		DO: DoAll
 				SetState {RECOVERY_WAIT}
 	IF: All
-			SecsInStateGE 3
-			NavEmpty
 			Expr {getvar[te_location_stable]==1 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],`53.875000000000|-76.454793294271|0.155168326696`]<3 && abs[coordinategetz[getplayercoordinates[]]*240-37.24039840698242]<4}
 		DO: DoAll
 				SetOpt {EnableNav} {False}
@@ -4663,8 +4599,6 @@ STATE: {WAIT_225_09} ~~ {
 		DO: DoAll
 				SetState {RECOVERY_WAIT}
 	IF: All
-			SecsInStateGE 3
-			NavEmpty
 			Expr {getvar[te_location_stable]==1 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],`53.805550130208|-76.005900065104|0.116180268923`]<3 && abs[coordinategetz[getplayercoordinates[]]*240-27.883264541625977]<4}
 		DO: DoAll
 				SetOpt {EnableNav} {False}
@@ -4793,8 +4727,6 @@ STATE: {WAIT_225_10} ~~ {
 		DO: DoAll
 				SetState {RECOVERY_WAIT}
 	IF: All
-			SecsInStateGE 3
-			NavEmpty
 			Expr {getvar[te_location_stable]==1 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],`51.995052083333|-80.219791666667|0.114613095919`]<3 && abs[coordinategetz[getplayercoordinates[]]*240-27.507143020629883]<4}
 		DO: DoAll
 				SetOpt {EnableNav} {False}
@@ -4923,8 +4855,6 @@ STATE: {WAIT_225_11} ~~ {
 		DO: DoAll
 				SetState {RECOVERY_WAIT}
 	IF: All
-			SecsInStateGE 3
-			NavEmpty
 			Expr {getvar[te_location_stable]==1 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],`51.529166666667|-80.792537434896|0.103910366694`]<3 && abs[coordinategetz[getplayercoordinates[]]*240-24.938488006591797]<4}
 		DO: DoAll
 				SetOpt {EnableNav} {False}
@@ -5053,8 +4983,6 @@ STATE: {WAIT_225_12} ~~ {
 		DO: DoAll
 				SetState {RECOVERY_WAIT}
 	IF: All
-			SecsInStateGE 3
-			NavEmpty
 			Expr {getvar[te_location_stable]==1 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],`51.064241536458|-80.868400065104|0.183501847585`]<3 && abs[coordinategetz[getplayercoordinates[]]*240-44.040443420410156]<4}
 		DO: DoAll
 				SetOpt {EnableNav} {False}

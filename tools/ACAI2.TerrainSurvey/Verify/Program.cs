@@ -6,6 +6,7 @@ var states=meta.DeclaredStates.ToHashSet();int portals=0,points=0,refs=0;
 void Check(MetaRule r){
  if(r.Action==MetaActionType.SetMetaState&&!states.Contains(r.ActionData))throw new Exception("Undefined state "+r.ActionData);
  if(r.Action==MetaActionType.EmbeddedNavRoute){if(!meta.EmbeddedNavs.ContainsKey(r.ActionData))throw new Exception("Undefined embedded nav");refs++;}
+ if(r.State.StartsWith("WAIT_")&&r.Condition==MetaConditionType.NavrouteEmpty)throw new Exception("Inspection arrival must not wait for route exhaustion");
  if(r.State.StartsWith("WAIT_")&&r.ActionData.Contains("te_last_progress"))throw new Exception("One-shot movement timer returned");
  foreach(var c in r.Children.Concat(r.ActionChildren))Check(c);
 }

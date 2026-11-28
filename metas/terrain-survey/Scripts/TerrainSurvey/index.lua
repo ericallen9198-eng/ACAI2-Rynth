@@ -1,4 +1,4 @@
--- TerrainSurvey v0.3.1. Stock RynthLua/RynthAi only; streamed local diagnostics.
+-- TerrainSurvey v0.3.2. Stock RynthLua/RynthAi only; streamed local diagnostics.
 local ai,fsmod,json,info=require('rynth.ai'),require('filesystem'),require('json'),require('rynthlua')
 local fs=fsmod.GetData()
 local META='Terrain Access Survey'
@@ -415,7 +415,7 @@ local function guardedTick()
 end
 game.RegisterCommand('/terrainsurvey',function(args)
  local r=tostring(args or ''):lower():match('^%s*(%S+)')or'status'
- if r=='status'then local last=cp and cp.lastSample or {};notice('v0.3.1; state '..tostring(last.state or phase)..'; wait '..tostring(last.pause_reason or 'none')..'; '..(cp and cp.active and 'Active' or 'Stopped')..'; phase '..phase..'; '..(cp and ('zone '..tostring(zones[cp.stage])..', point '..cp.probe)or'no checkpoint')..'; logs: '..tostring(info.DataFolder));return end
+ if r=='status'then local last=cp and cp.lastSample or {};notice('v0.3.2; state '..tostring(last.state or phase)..'; wait '..tostring(last.pause_reason or 'none')..'; '..(cp and cp.active and 'Active' or 'Stopped')..'; phase '..phase..'; '..(cp and ('zone '..tostring(zones[cp.stage])..', point '..cp.probe)or'no checkpoint')..'; logs: '..tostring(info.DataFolder));return end
  if #requests<4 then requests[#requests+1]=r end
 end)
 game.OnTick.Add(guardedTick)

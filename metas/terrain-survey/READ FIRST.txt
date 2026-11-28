@@ -1,4 +1,4 @@
-TERRAIN ACCESS SURVEY v0.3.1 — RECORDED OVERNIGHT PILOT
+TERRAIN ACCESS SURVEY v0.3.2 — RECORDED OVERNIGHT PILOT
 
 UPDATING FROM v0.2 OR v0.3
 Run /terrainsurvey stop, then /lua stop TerrainSurvey. Install the new files.
@@ -11,6 +11,13 @@ positions/results are already recorded automatically by the recorder and meta.
 Your ordinary Enable Looting choice is now preserved across starts/resumes.
 If looting is off, it is temporarily enabled only for native own-corpse recovery,
 then restored. Hub recalls now print their reason; status includes state/wait.
+
+v0.3.2 confirms arrival as soon as the live position is within 3 yards of the
+inspection point and within 4 world height units of its expected elevation,
+after portal/location settling. It no longer waits for the nav end flag. This
+prevents combat displacement after reaching a target from losing the arrival.
+The result is still saved before the next inspection begins. Resume keeps the
+current saved cursor; no run reset or new terrain blacklist is introduced.
 
 WHAT IT DOES
 Tests 36 new cliff/elevation approaches, using /ls to Plateau and the two known

@@ -1,5 +1,5 @@
 {
-  "pilot": "Terrain Access Survey v0.3.1 \u2014 continuous inspection and loot preference fix",
+  "pilot": "Terrain Access Survey v0.3.2 \u2014 confirm arrival before combat displacement",
   "live_game_tested": false,
   "upstream_rynth_suite_commit": "4602d9267d0892da7179cac9f70ea5622e3a1b7e",
   "navdata_release": "2026102103",
@@ -61,5 +61,5 @@
   },
   "monitor": "Recurring Lua tick; AF rules fire once per state entry. Combat, buffing, busy, container/loot activity and settling pause movement checks. Stable arrival gates hub/portal transitions.",
   "loot_setting": "Ordinary EnableLooting preserved; temporarily enable only for native own-corpse recovery, then restore.",
-  "inspection": "No coordinate-echo/chat or pause waypoints in embedded inspection paths; positions/results still recorded and committed."
+  "inspection": "Stable live position within 3 horizontal yards and 4 world height units is saved immediately; no waiting for NavEmpty or trailing action/pause points."
 }

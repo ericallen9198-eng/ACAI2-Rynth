@@ -52,7 +52,7 @@ for z in [275,180,225]:
   S(f'PROBE_{z}_{i}',D+R('Expr {getvar[te_entry_hub]==1}',[f'EmbedNav Hub_{ident} {{once}}']+reset)+A([f'EmbedNav Leg_{ident} {{once}}']+reset))
   done=['SetOpt {EnableNav} {False}',E('setvar[te_report,1]'),E('setvar[te_commit,0]'),E('setvar[te_seq,getvar[te_seq]+1]'),E('setvar[te_report_coords,getplayercoordinates[]]'),f'SetState {{COMMIT_REACHED_{ident}}}']
   S('COMMIT_REACHED_'+ident,D+R('Expr {getvar[te_commit]==getvar[te_seq]}',[E('setvar[te_probe,getvar[te_probe]+1]'),E('setvar[te_attempt,0]'),f'SetState {{SELECT_{z}}}']))
-  body=D+'\tIF: All\n\t\t\tSecsInStateGE 3\n\t\t\tNavEmpty\n\t\t\tExpr {getvar[te_location_stable]==1 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],`'+coord(approach)+'`]<3 && abs[coordinategetz[getplayercoordinates[]]*240-'+str(approach['z'])+']<4}\n\t\tDO: DoAll\n'+''.join('\t\t\t\t'+x+'\n' for x in done)
+  body=D+'\tIF: All\n\t\t\tExpr {getvar[te_location_stable]==1 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],`'+coord(approach)+'`]<3 && abs[coordinategetz[getplayercoordinates[]]*240-'+str(approach['z'])+']<4}\n\t\tDO: DoAll\n'+''.join('\t\t\t\t'+x+'\n' for x in done)
   body+=R('Expr {getvar[te_movement_fail]==1}',[f'SetState {{FAILED_{ident}}}'])
   S('WAIT_'+ident,body)
   failure=[]
