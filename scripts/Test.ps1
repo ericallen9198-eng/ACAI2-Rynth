@@ -9,4 +9,6 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Controlled tests failed.' }
     dotnet run --project tests\ACAI2.KeyferChest.Lua.Tests -c Release -- lua\KeyferChest\index.lua
     if ($LASTEXITCODE -ne 0) { throw 'Keyfer chest Lua checks failed.' }
+    dotnet run --project tests\ACAI2.TerrainSurvey.Tests -c Release -- metas\terrain-survey\Scripts\TerrainSurvey\index.lua
+    if ($LASTEXITCODE -ne 0) { throw 'Terrain survey Lua checks failed.' }
 } finally { Pop-Location }

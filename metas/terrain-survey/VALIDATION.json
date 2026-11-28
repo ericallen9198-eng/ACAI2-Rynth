@@ -1,0 +1,52 @@
+{
+  "pilot": "Terrain Access Survey v0.2 \u2014 recorded recovery pilot",
+  "live_game_tested": false,
+  "upstream_rynth_suite_commit": "4602d9267d0892da7179cac9f70ea5622e3a1b7e",
+  "navdata_release": "2026102103",
+  "navdata_tiles": 581,
+  "tile_integrity": "Selected entries checked against ZIP CRC and uncompressed length; entire archive was not downloaded or hash-verified.",
+  "route_sources": "New Detour mesh corridors. Only Hub_to_180 and Hub_to_225 reuse established Marae hub connectors.",
+  "genuine_upstream_parser": {
+    "rules": 1157,
+    "states": 211,
+    "embedded_navs": 77,
+    "waypoints": 2348,
+    "portal_connections": 2,
+    "npc_waypoints": 0,
+    "warnings": 0
+  },
+  "geometry": {
+    "segments": 2125,
+    "blocked": 0,
+    "maxHeightError": 7.720006942749023
+  },
+  "geometry_scope": "Flat centerline raycasts from native tight start-poly lookup, with raw waypoint targets; not a physics simulation. Nearest-poly height ambiguity reaches 7.72 world units at some corners. Probe arrival also checks actual height.",
+  "targets": 36,
+  "distinct_hub_retry_targets": 10,
+  "planned_walking_yards": {
+    "275": 4581,
+    "180": 4404,
+    "225": 3694
+  },
+  "runtime_limits": "Live game/Windows installer unverified. Native corpse travel requires Rynth to remember the death. Disk recording and AF watchdog use bounded automatic repair.",
+  "controlled_scenarios": 27,
+  "logging": {
+    "sample_seconds": 5,
+    "ring_slots": 8,
+    "maximum_utf8_mb_approx": 16,
+    "checkpoint_before_advance": true,
+    "ordinary_chat_recorded": false
+  },
+  "watchdog": {
+    "heartbeat_timeout_seconds": 20,
+    "restart_limit_per_30min": 3,
+    "retry_wait_seconds": 60,
+    "file_health_retry_delays_seconds": [
+      15,
+      30,
+      60
+    ],
+    "manual_stop_respected": true,
+    "native_corpse_trip_not_stopped_on_recorder_rejoin": true
+  }
+}

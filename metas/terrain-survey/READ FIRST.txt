@@ -1,0 +1,115 @@
+TERRAIN ACCESS SURVEY v0.2 — RECORDED OVERNIGHT PILOT
+
+WHAT IT DOES
+Tests 36 new cliff/elevation approaches, using /ls to Plateau and the two known
+camp portals for 180/225. It follows newly planned mesh paths, not the existing
+hunting circuits. Native RynthAi handles combat, buffs, ordinary loot and corpse
+recovery. This survey does not use treasure maps or talk to quest NPCs.
+
+INSTALL
+1. Stop the Marae run and any other app that controls your meta/navigation.
+2. Extract the whole ZIP into a folder, then double-click Install.cmd.
+3. Press Enter for the suggested folders if they are your active installation.
+   Otherwise paste your actual RynthAi MetaFiles and RynthLua Scripts paths.
+   Other drives and custom folders are supported. No DLL patch is installed.
+4. In game, run:
+   /lua start TerrainSurvey
+   /lua autostart TerrainSurvey character
+   /terrainsurvey new
+
+The Lua script loads the survey meta and starts recording before travel begins.
+The autostart command makes the recorder start again after login/client restart.
+Your Rynth auto-relog setting handles the client/character reconnect; this script does not
+enter account passwords or manage the launcher.
+
+MANUAL INSTALL IF YOU PREFER
+Copy MetaFiles\Terrain Access Survey.af into the active RynthAi MetaFiles folder.
+Copy the WHOLE Scripts\TerrainSurvey folder into RynthLua\Scripts, so that
+RynthLua\Scripts\TerrainSurvey\index.lua and probe-index.json are together.
+Then use the three commands above. Do not put these files in Lua's root folder.
+The separate NavProfiles are optional visual/manual previews; the meta embeds
+all routes and handles travel automatically.
+
+CONTROLS
+/terrainsurvey status  — show current zone/point and the exact diagnostic folder
+/terrainsurvey stop    — stop, save progress and restore owned native settings
+/terrainsurvey resume  — continue the saved unfinished point
+/terrainsurvey new     — explicitly erase this character's previous survey pass
+                         and start a new one, including a fresh diagnostic set
+
+For a normal pause, use /terrainsurvey stop rather than stopping the Lua script.
+Manual RynthAi Stop is respected. Starting the recorder after an unexpected
+script/client restart resumes a previously active pass. It will not resume a
+pass you explicitly stopped or a completed pass.
+
+AFTER SLEEPING: SEND THE DATA
+You do not have to watch chat or copy diagnostic messages during the run.
+Run /terrainsurvey status to see the full path. With your usual installation:
+C:\Games\RynthSuite\RynthLua\Data\TerrainSurvey
+Right-click that TerrainSurvey DATA folder, compress it to a ZIP, and send it.
+It contains checkpoint-<character key>.json, planned-<character key>.json,
+and up to eight matching diagnostic JSONL files per character. Send the folder before starting a new pass, because
+New intentionally replaces that character's previous diagnostic set.
+
+WHAT IS RECORDED
+UTC timestamps; coordinates and world height; landcell; intended inspection;
+distance to the target; meta states; combat/busy/buff context; reached and
+unresolved outcomes; alternative hub retries; death, native recovery and
+reconnect events. No ordinary player conversations are recorded.
+
+A position sample is written every 5 seconds, with additional state/event
+records. Logs rotate through 8 files (up to about 16 MB per character); samples
+are not accumulated in RAM. The bounded checkpoint keeps the latest sample,
+progress/settings, and at most 36 inspection results. Each outcome is written
+to disk before the meta is allowed to advance to its next point.
+
+DEATH AND RECONNECT
+The unfinished point and all completed points are preserved. The macro keeps
+running so native Rynth can return to and loot your corpse. The survey waits
+for native recovery to settle, then uses the hub and correct portal to rebuild
+the unfinished point's approach. Death is not a terrain failure or a full reset.
+Reaching the corpse's location is not treated as confirmation of recovering its
+items. A failed/expired native recovery is logged as unconfirmed, and the survey
+continues after native travel ends. It does not claim missing items recovered.
+
+If an entire client restart makes Rynth forget the death/corpse location, that
+limitation is logged. The survey checkpoint still survives and the survey
+continues; automatic travel to that forgotten corpse cannot be guaranteed.
+
+NATIVE SETTINGS WHILE RUNNING
+The recorder saves original values before applying:
+- FollowNavMin = 0.5 yd; Go To Closest Waypoint / NavResumeNearest = off
+- Stop Macro On Death = off; extra Death Recall Mode = off
+- Recover My Corpse = on; Travel Back To My Corpse = on
+- Enable Looting = on; Enable Meta = on
+Your existing combat, buffs and loot profile remain in use. Original values
+are restored on an owned normal completion/stop, provided those settings still
+have the survey's values. If another controller changes a value, it is left
+alone. Do not run multiple navigation/meta controllers alongside the survey.
+
+BOUNDS AND REAL STOP REASONS
+Ordinary failed terrain approaches are retried through a distinct hub approach
+when available, or marked unresolved so the run can continue. Native recovery
+is given its own bounded window. A missing recorder heartbeat pauses survey movement and the AF tries
+/lua start TerrainSurvey automatically, up to three starts per 30 minutes.
+The budget survives automatic recorder reloads; explicit Resume resets it.
+Transient file errors also get automatic write/append health checks after
+15, 30 and 60 seconds. Recovery resumes from the last durable checkpoint,
+without crediting an outcome whose write failed. Native combat remains available
+while survey movement is held. A recorder restart also preserves ongoing
+native corpse travel.
+
+Persistent recording failures after those retries, unreadable native recovery
+status, two failed /ls arrivals, an explicit stop, or a native safety stop
+ends the run with progress retained. The
+pass also ends after the 36 points or its 14-hour wall-clock window.
+
+This remains an in-game-unverified terrain pilot. The parser and mesh checks
+are offline checks, not proof that AC collision permits every planned segment.
+The first pass is intended to produce the evidence for improving those routes.
+No permanent terrain blacklist is created from a failed attempt.
+
+CREDITS
+Soot: original Marae travel/nav work and established hub portal connectors.
+New mesh-based terrain approaches and recorded survey prepared for Samm's
+terrain research using stock RynthAi, RynthLua, RynthNav and DotRecast.

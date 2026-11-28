@@ -16,3 +16,5 @@ dotnet build src/ACAI2.Rynth.Plugin/ACAI2.Rynth.Plugin.csproj -c Release
 dotnet run --project tests/ACAI2.Rynth.Tests -c Release -- src/ACAI2.Rynth.Plugin/bin/Release/net10.0-windows/win-x86/ACAI2.Rynth.Plugin.dll
 
 dotnet run --project tests/ACAI2.KeyferChest.Lua.Tests -c Release -- lua/KeyferChest/index.lua
+
+dotnet run --project tests/ACAI2.TerrainSurvey.Tests -c Release -- metas/terrain-survey/Scripts/TerrainSurvey/index.lua
