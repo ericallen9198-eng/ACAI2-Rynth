@@ -18,7 +18,7 @@ internal sealed unsafe class NativePath(RynthCoreHost host)
         int flags=RynthNavPathApiV1.PathAvoidPortals|RynthNavPathApiV1.PathWallClearance|RynthNavPathApiV1.PathQuiet;
         int result=t->FindPathEx(a.X,a.Y,a.Z,b.X,b.Y,b.Z,flags,25,points,128,&count,info);
         if(result!=RynthNavPathApiV1.ResultOk||count is <2 or >128||info[1]!=0)
-            throw new InvalidDataException("No complete mesh path (partial/straight fallback refused)");
+            throw new InvalidDataException($"No complete mesh path (result {result}, corners {count}; partial/straight fallback refused)");
         var path=new Ground[count];
         for(int i=0;i<count;i++)path[i]=new(points[3*i],points[3*i+1],points[3*i+2]);
         return path;

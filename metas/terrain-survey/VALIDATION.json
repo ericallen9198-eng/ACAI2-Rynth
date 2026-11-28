@@ -1,5 +1,5 @@
 {
-  "pilot": "Terrain Access Survey v0.4.0 - checked runtime mesh companion",
+  "pilot": "Terrain Access Survey v0.4.1 - active return, bounded final recall and route evidence",
   "live_game_tested": false,
   "upstream_rynth_suite_commit": "4602d9267d0892da7179cac9f70ea5622e3a1b7e",
   "navdata_release": "2026102103",
@@ -7,8 +7,8 @@
   "tile_integrity": "Selected entries checked against ZIP CRC and uncompressed length; entire archive was not downloaded or hash-verified.",
   "route_sources": "Terrain-only planned corridors select inspection goals/elevations. Stock runtime mesh plans actual walking steps. Established hub portal connectors remain native.",
   "genuine_upstream_parser": {
-    "rules": 978,
-    "states": 211,
+    "rules": 983,
+    "states": 212,
     "navs": 77,
     "refs": 77,
     "points": 3632,
@@ -29,13 +29,16 @@
     "225": 3694
   },
   "runtime_limits": "Live game unverified. Windows release requires genuine publish, x86 load and installer checks. Native mesh cannot guarantee every landscape obstacle; portal anchor positions are conservative, not exact portal centers.",
-  "controlled_scenarios": 63,
+  "controlled_scenarios": 82,
   "logging": {
     "sample_seconds": 5,
     "ring_slots": 8,
     "maximum_utf8_mb_approx": 16,
     "checkpoint_before_advance": true,
-    "ordinary_chat_recorded": false
+    "ordinary_chat_recorded": false,
+    "routine_checkpoint_seconds": 60,
+    "route_geometry": "Once per accepted request, labeled planned; observed poses and endpoint confirmations separately labeled.",
+    "loot_chatter": "Readiness updated immediately; only minute counter summaries are persisted."
   },
   "watchdog": {
     "heartbeat_timeout_seconds": 20,
@@ -69,12 +72,13 @@
     "flat_tolerance_yards": 55,
     "height_tolerance_world_units": 15,
     "recovery_attempts_per_point": 3,
-    "after_limit": "defer point without classifying terrain impassable"
+    "after_limit": "defer point without classifying terrain impassable",
+    "accepts_current_checked_runtime_detour": true
   },
   "directed_portal_links": 6,
   "idle_container_hold": "Bounded 15-second opening/progress grace; no hold when ordinary looting is off; nothing-matched completion clears the grace.",
   "already_at_hub": "Stable live Plateau hub arrival dispatches before the travel-ready recall gate.",
-  "mesh_policy_checks": 17,
+  "mesh_policy_checks": 19,
   "runtime_mesh_checks": {
     "passed": 12,
     "cases": [
@@ -173,7 +177,7 @@
   },
   "runtime_mesh": {
     "interface": "Stock RynthNav.Path v2, complete paths only; no custom engine DLL",
-    "planner_companion": "ACAI2.Terrain v0.4.0; genuine pinned RynthCore SDK",
+    "planner_companion": "ACAI2.Terrain v0.4.1; genuine pinned RynthCore SDK",
     "live_segment_checks_per_second": 4,
     "stationary_replan_seconds": 12,
     "side_approaches_yards": [
@@ -189,6 +193,42 @@
     "request_ack_before_enable_navigation": true,
     "runtime_route_files_per_character": 2,
     "disconnect_and_character_identity_bound": true,
-    "windows_publish": "Required; release workflow blocks on publish, x86 load and installer check failures."
+    "windows_publish": "Required; release workflow blocks on publish, x86 load and installer check failures.",
+    "geometry_protocol": 2,
+    "geometry_max_corners": 256,
+    "geometry_max_characters": 12000,
+    "geometry_record_maximum_corners": 256,
+    "geometry_record_maximum_characters": 12000
+  },
+  "final_return": {
+    "requires_live_position_and_elevation_confirmation": true,
+    "max_recall_attempts": 2,
+    "wait_budget_active_seconds_per_attempt": 45,
+    "attempts_checkpointed_before_dispatch": true,
+    "resume_stage_3_finishing": true,
+    "failed_return_is_recorded_unconfirmed": true
+  },
+  "resource_housekeeping": {
+    "checkpoint_routine_seconds": 60,
+    "critical_journals_immediate": true,
+    "geometry_points_maximum": 256,
+    "geometry_payload_characters_maximum": 12000,
+    "retained_runtime_geometries": 1,
+    "route_history_accumulates": false,
+    "loot_summary_seconds": 60,
+    "log_slots": 8,
+    "log_slot_characters": 524288,
+    "total_live_client_resource_usage_measured": false
+  },
+  "housekeeping": {
+    "routine_checkpoint_seconds": 60,
+    "critical_changes_save_immediately": true,
+    "loot_summary_interval_seconds": 60,
+    "in_memory_geometry": "One active accepted route; no growing path history",
+    "disk_log_slots": 8,
+    "log_slot_maximum_characters": 524288,
+    "client_total_resource_use": "Not measured by controlled checks",
+    "client_resource_sample_seconds": 60,
+    "resource_scope": "Whole client managed heap, private/virtual bytes and cumulative process CPU; not isolated survey consumption"
   }
 }

@@ -1,10 +1,15 @@
--- TerrainSurvey v0.4.0. Stock RynthLua/RynthAi only; streamed local diagnostics.
-TerrainSurveyVersion='0.4.0' -- readable through /lua execin for support
+-- TerrainSurvey v0.4.1. Stock RynthLua/RynthAi only; streamed local diagnostics.
+TerrainSurveyVersion='0.4.1' -- readable through /lua execin for support
 local ai,fsmod,json,info=require('rynth.ai'),require('filesystem'),require('json'),require('rynthlua')
 local fs=fsmod.GetData()
 local META='Terrain Access Survey'
 local VERSION=2
 local SAMPLE_SECONDS=5
+local CHECKPOINT_SECONDS=60
+local lastCheckpointAt=0
+local returning=nil
+local lootActivity={count=0,nextFlush=0}
+local nextResourceSample=0
 local LOG_CHARS=512*1024 -- eight ring slots; worst-case UTF-8 stays bounded
 local SLOTS=8
 local cp,key,phase,deadline,nextPoll,nextSample,previousState,wasInGame=nil,nil,'',0,0,0,'',false
@@ -55,22 +60,25 @@ local function save()
  cp.updated=num('getunixtime[]')
  local ok,err=fs.WriteText(checkpointFile(),json.encode(cp,true))
  if not ok then error('Checkpoint write failed: '..tostring(err)) end
+ lastCheckpointAt=cp.updated
 end
 local function log(kind,data)
  if not cp then return end
- data=data or {};data.software='0.4.0';data.event=kind;data.utc_unix=num('getunixtime[]');data.run=cp.run
+ data=data or {};data.software='0.4.1';data.event=kind;data.utc_unix=num('getunixtime[]');data.run=cp.run
  data.stage=cp.stage;data.probe=cp.probe;data.attempt=cp.attempt
  local line=json.encode(data)..'\n'
  cp.logSlot=cp.logSlot or 1;cp.logChars=cp.logChars or 0
  local filename='diagnostics-'..key..'-'..cp.logSlot..'.jsonl'
+ local rotated=false
  if cp.logChars+#line>LOG_CHARS then
-  cp.logSlot=cp.logSlot%SLOTS+1;cp.logChars=0
+  cp.logSlot=cp.logSlot%SLOTS+1;cp.logChars=0;rotated=true
   filename='diagnostics-'..key..'-'..cp.logSlot..'.jsonl'
   local ok,err=fs.WriteText(filename,'');if not ok then error('Log rotation failed: '..tostring(err))end
  end
  local ok,err=fs.AppendText(filename,line)
  if not ok then error('Diagnostic append failed: '..tostring(err))end
  cp.logChars=cp.logChars+#line
+ if rotated then save()end
 end
 local function enableRecoveryLoot()
  if not cp or not cp.recovery then return end
@@ -119,10 +127,11 @@ local function applySettings()
  for n,v in pairs(settings)do assert(ai.SetSetting(n,v),'Cannot set '..n)end
 end
 local function begin(fresh)
- errorText='';movement=nil;mesh=nil;meshMissingAt=nil;transport=nil;stableSince=0;avoidanceRequested=false
+ errorText='';movement=nil;mesh=nil;meshMissingAt=nil;transport=nil;returning=nil;stableSince=0;avoidanceRequested=false
  if game.State~='InGame' or game.Character.InPortalSpace or not ai.Available then notice('Wait until logged in and out of portal space.');return end
  if ai.MacroRunning and not owns()then notice('Stop the other macro/controller first.');return end
  local t=num('getunixtime[]')
+ lootActivity={count=0,nextFlush=t+60}
  local priorSettings=cp and cp.oldSettings
  local priorMeshGeneration=cp and cp.meshGeneration or 0
  if fresh or not cp then
@@ -130,13 +139,14 @@ local function begin(fresh)
   local copied,copyErr=fs.WriteText('planned-'..key..'.json',raw);assert(copied,tostring(copyErr))
   -- An explicit new run replaces this character's previous bounded diagnostic set.
   for i=1,SLOTS do local ok,err=fs.WriteText('diagnostics-'..key..'-'..i..'.jsonl','');assert(ok,tostring(err))end
- elseif cp.stage>=3 or cp.completed then notice('Survey complete. Use /terrainsurvey new for another pass.');return end
+ elseif cp.completed or (cp.stage>=3 and not cp.finishing)then notice('Survey complete. Use /terrainsurvey new for another pass.');return end
  local copied,copyErr=fs.WriteText('corridors-'..key..'.json',corridorText);assert(copied,tostring(copyErr))
+ if cp.home then cp.home.last=t end
  cp.recorderVersion=3;cp.active=true;cp.completed=false;save();ai.Command('/rnav avoid portals on');log(fresh and 'new_run' or 'resume_requested',{server=cp.server,character=cp.character})
- if not fresh and owns() and ai.MacroRunning and num('getvar[te_logger_schema]')==3 and num('getvar[te_controller_revision]')==4 then
+ if not fresh and owns() and ai.MacroRunning and num('getvar[te_logger_schema]')==3 and num('getvar[te_controller_revision]')==5 then
   -- Rejoin the live survey without stopping native corpse travel.
   applySettings()
-  for n,v in pairs({te_controller_revision=4,te_mesh_request=0,te_mesh_walking=0,te_mesh_ack=0,te_mesh_status=0,te_logger_schema=3,te_logger_active=1,te_logger_heartbeat=t,te_stage=cp.stage,te_probe=cp.probe,te_attempt=cp.attempt,te_seq=cp.sequence,te_commit=0,te_finish=0,te_finish_ack=0,te_recovery_busy=1,te_movement_fail=0,te_can_travel=0,te_location_stable=0,te_transport_timeout=0,te_transport_generation=0})do set(n,v)end
+  for n,v in pairs({te_controller_revision=5,te_return_timeout=0,te_mesh_request=0,te_mesh_walking=0,te_mesh_ack=0,te_mesh_status=0,te_logger_schema=3,te_logger_active=1,te_logger_heartbeat=t,te_stage=cp.stage,te_probe=cp.probe,te_attempt=cp.attempt,te_seq=cp.sequence,te_commit=0,te_finish=0,te_finish_ack=0,te_recovery_busy=1,te_movement_fail=0,te_can_travel=0,te_location_stable=0,te_transport_timeout=0,te_transport_generation=0})do set(n,v)end
   val('vtsetsetting[EnableNavigation,0]');val('vtsetmetastate[RECOVERY_WAIT]');phase='arm';deadline=t+15;return
  end
  if owns() and ai.MacroRunning then ai.Stop()end
@@ -152,6 +162,10 @@ local function readCheckpoint()
  assert(type(d.probe)=='number' and d.probe>=1 and d.probe<=13 and d.probe%1==0,'Invalid saved probe')
  assert(d.attempt==0 or d.attempt==1,'Invalid saved retry')
  assert(type(d.sequence)=='number' and type(d.results)=='table','Invalid saved progress')
+ if d.home then
+  assert(type(d.home)=='table'and type(d.home.attempts)=='number'and d.home.attempts>=0 and d.home.attempts<=2 and d.home.attempts%1==0,'Invalid saved home-return attempts')
+  assert(type(d.home.elapsed)=='number'and d.home.elapsed>=0 and d.home.elapsed<=47,'Invalid saved home-return timer')
+ end
  if d.recorderVersion~=3 then
   -- v0.2's one-shot monitor could misclassify combat/buffing as no progress.
   -- Keep the old evidence but recheck its unresolved points rather than crediting it.
@@ -166,6 +180,8 @@ local function readCheckpoint()
   if earliest<d.stage*100+d.probe then d.stage=math.floor(earliest/100);d.probe=earliest%100;d.attempt=0 end
   d.recorderVersion=3
  end
+ local tail=fs.ReadText('diagnostics-'..key..'-'..(d.logSlot or 1)..'.jsonl')
+ if tail then assert(#tail<=LOG_CHARS,'Diagnostic slot exceeds its bound');d.logChars=#tail end
  return d
 end
 local function snapshot()
@@ -190,6 +206,7 @@ local function startRecovery(t,reason)
 end
 local function drainEvents(t)
  local q=events;events={}
+ if lootActivity.count>0 and t>=lootActivity.nextFlush then log('loot_activity_summary',{messages=lootActivity.count});lootActivity.count=0;lootActivity.nextFlush=t+60 end
  for _,e in ipairs(q)do
   local s=e.message
   if s then
@@ -198,7 +215,7 @@ local function drainEvents(t)
    if not cp.recovery and s:find('^%[RynthAi%] Your corpse is at ') and not s:find(', died ',1,true) then startRecovery(t,'death')end
    if s:find('^%[RynthAi%] Nothing on Corpse')then lootUntil=0;lootDoneAt=t
    elseif s:find('^%[RynthAi%] Loot')then lootUntil=t+15 end
-   log('native_diagnostic',{message=s})
+   if s:find('^%[RynthAi%] Loot')or s:find('^%[RynthAi%] Nothing on Corpse')then lootActivity.count=lootActivity.count+1 else log('native_diagnostic',{message=s})end
    if cp.recovery then
     local r=cp.recovery
     if s:find('^%[RynthAi%] Your corpse is at ') and not s:find(', recovered',1,true) and not s:find('nothing dropped',1,true) then enableRecoveryLoot()end
@@ -273,22 +290,34 @@ local function corridorDistance(s)
  if not corridors[name]then name=tostring(s.nav.name or ''):match('^<embedded:(.-)>$')or tostring(s.nav.name or '')end
  local points=corridors[name];if not points or #points<2 then return nil end
  local best=math.huge;local closest=math.huge
- for i=2,#points do
-  local a,b=points[i-1],points[i]
-  local dx=(b.east-a.east)*240;local dy=(b.north-a.north)*240
-  local ax=(s.east-a.east)*240;local ay=(s.north-a.north)*240
-  local length=dx*dx+dy*dy
-  local f=length>0 and math.max(0,math.min(1,(ax*dx+ay*dy)/length))or 0
-  local flat=math.sqrt((ax-dx*f)^2+(ay-dy*f)^2)
-  closest=math.min(closest,flat)
-  local height=a.z+(b.z-a.z)*f
-  -- Keep levels apart; a lower path under a cliff is not the same corridor.
-  if math.abs(s.world_height-height)<=15 then best=math.min(best,flat)end
+ local sx,sy=s.east*240+24468,s.north*240+24468
+ local function measure(path,world)
+  for i=2,#path do
+   local a,b=path[i-1],path[i]
+   local x,y,z,bx,by,bz
+   if world then x,y,z,bx,by,bz=a[1],a[2],a[3],b[1],b[2],b[3]
+   else x,y,z,bx,by,bz=a.east*240+24468,a.north*240+24468,a.z,b.east*240+24468,b.north*240+24468,b.z end
+   local dx,dy,ax,ay=bx-x,by-y,sx-x,sy-y
+   local length=dx*dx+dy*dy
+   local f=length>0 and math.max(0,math.min(1,(ax*dx+ay*dy)/length))or 0
+   local flat=math.sqrt((ax-dx*f)^2+(ay-dy*f)^2)
+   closest=math.min(closest,flat)
+   if math.abs(s.world_height-(z+(bz-z)*f))<=15 then best=math.min(best,flat)end
+  end
  end
+ measure(points,false)
+ -- A valid live detour may leave the original predicted corridor. Keep only
+ -- this state's current accepted plan, never a growing route history.
+ if mesh and mesh.state==s.state and mesh.geometry then measure(mesh.geometry,true)end
  return best==math.huge and closest or best,best==math.huge
 end
 local meshTick
 local function monitor(t,s,pause,meshPause)
+ if s.state:match('^RETURN_WAIT_')then
+  if not returning or returning.state~=s.state then returning={state=s.state,last=t,elapsed=0}end
+  if not pause and not meshPause then returning.elapsed=returning.elapsed+math.min(2,math.max(0,t-returning.last))end
+  returning.last=t;set('te_return_timeout',returning.elapsed>=120 and 1 or 0)
+ else returning=nil;set('te_return_timeout',0)end
  if s.state=='HUB_WAIT' or s.state:match('^LAND_%d+$')then
   if not transport or transport.state~=s.state or transport.generation~=s.transport_generation then transport={state=s.state,generation=s.transport_generation,elapsed=0,last=t}end
   if not pause then transport.elapsed=transport.elapsed+math.min(2,math.max(0,t-transport.last))end
@@ -355,18 +384,19 @@ meshTick=function(t,s,pause)
  local points=corridors[name]
  if not points then
   val('vtsetsetting[EnableNavigation,0]')
-  deactivate('Survey controller is older than v0.4.0; install both the meta and Lua files, then Resume');return 'controller_mismatch'
+  deactivate('Survey controller is older than v0.4.1; install both the meta and Lua files, then Resume');return 'controller_mismatch'
  end
  local age=t-num('getvar[te_mesh_heartbeat]')
- local fresh=num('getvar[te_mesh_schema]')==1 and age<=5 and age>=-5
+ local fresh=num('getvar[te_mesh_schema]')==2 and age<=5 and age>=-5
  if not fresh then
   val('vtsetsetting[EnableNavigation,0]');set('te_mesh_walking',0)
   if mesh then mesh.phase='idle';mesh.goal=nil end;set('te_mesh_request',0)
   meshMissingAt=meshMissingAt or t
-  if t-meshMissingAt>=15 then deactivate('TerrainMesh companion is unavailable; enable ACAI2.Terrain in RynthCore Plugins and Resume')end
+  if t-meshMissingAt>=15 then deactivate('TerrainMesh v0.4.1 companion is unavailable; install the complete update, enable ACAI2.Terrain and Resume')end
   return 'waiting_for_mesh_companion'
  end
  meshMissingAt=nil
+ if num('getvar[te_external_nav]')==1 then deactivate('Another native navigation trip is active; survey progress retained');return 'external_navigation'end
  if not s.north or not s.east or not s.world_height then return 'waiting_for_pose'end
  local function flat(p)return math.sqrt((s.north-p.north)^2+(s.east-p.east)^2)*240 end
  if not mesh or mesh.state~=s.state or mesh.corridor~=name then
@@ -393,7 +423,7 @@ meshTick=function(t,s,pause)
  local away,wrongLevel=corridorDistance(s)
  if (away and (away>55 or wrongLevel))or(movement and movement.wrongArea)then val('vtsetsetting[EnableNavigation,0]');set('te_mesh_request',0);set('te_mesh_walking',0);return 'outside_corridor'end
  if mesh.goal and flat(mesh.goal)<=2 and math.abs(s.world_height-mesh.goal.z)<4 then
-  log('mesh_step_reached',{coordinates=s.coordinates,goal=mesh.goal,variant=mesh.variant})
+  log('mesh_step_reached',{request=mesh.generation,coordinates=s.coordinates,start=mesh.start,goal=mesh.goal,variant=mesh.variant,evidence='observed_endpoint_arrival'})
   mesh.cursor=math.min(#points,mesh.goalIndex+1);mesh.goal=nil;mesh.phase='idle';mesh.variant=0
   val('vtsetsetting[EnableNavigation,0]');set('te_mesh_walking',0);set('te_mesh_request',0)
  end
@@ -415,6 +445,15 @@ meshTick=function(t,s,pause)
    local expected=tostring(val('getvar[te_mesh_name]'))
    if s.nav.name~=expected or (s.nav.points or 0)<2 then retry('route_load_mismatch',true);return 'mesh_replanning'end
    if math.sqrt((s.north-mesh.start.north)^2+(s.east-mesh.start.east)^2)*240>3 or math.abs(s.world_height-mesh.start.z)>4 then retry('moved_while_planning',false);return 'mesh_replanning'end
+   local encoded=tostring(val('getvar[te_mesh_geometry]'))
+   local ok,geometry=pcall(function()assert(#encoded<=12288);return json.decode(encoded)end)
+   if not ok or type(geometry)~='table' or geometry.schema~=1 or geometry.request~=mesh.generation or geometry.instance~=mesh.instance or geometry.units~='world_yards' or type(geometry.points)~='table' or #geometry.points<2 or #geometry.points>256 then retry('geometry_ack_mismatch',true);return 'mesh_replanning'end
+   for _,p in ipairs(geometry.points)do
+    if type(p)~='table'or #p~=3 then retry('invalid_mesh_geometry',true);return 'mesh_replanning'end
+    for _,v in ipairs(p)do if type(v)~='number'or v~=v or math.abs(v)>100000 then retry('invalid_mesh_geometry',true);return 'mesh_replanning'end end
+   end
+   log('mesh_route_geometry',{request=mesh.generation,instance=mesh.instance,variant=mesh.variant,units='world_yards',points=geometry.points,evidence='planned_mesh_not_proof_of_traversal'})
+   mesh.geometry=geometry.points
    mesh.phase='walking';set('te_mesh_walking',1);val('vtsetsetting[EnableNavigation,1]')
    log('mesh_route_accepted',{request=mesh.generation,variant=mesh.variant,goal=mesh.goal,corners=num('getvar[te_mesh_points]'),route=expected})
   elseif t-mesh.requested>=8 then retry('planner_ack_timeout',true);return 'mesh_replanning'
@@ -448,6 +487,35 @@ meshTick=function(t,s,pause)
   return 'mesh_planning'
  end
 end
+local function finalHomeTick(t,s,pause)
+ if num('getvar[te_external_nav]')==1 then deactivate('Another native navigation trip is active; final return remains saved');return end
+ cp.finishing=true;cp.stage=3;cp.probe=1
+ if not cp.home then cp.home={attempts=0,elapsed=0,last=t,status='preparing'};save()end
+ local h=cp.home
+ if s.hp>0 and not s.portaling and s.north and s.east and s.world_height and num('getvar[te_location_stable]')==1
+  and math.sqrt((s.north-45.2079477958333)^2+(s.east+75.0632305458333)^2)*240<15 and math.abs(s.world_height-92.005)<8 then
+  h.status='confirmed';h.coordinates=s.coordinates;h.confirmed_at=t;h.last=t
+  log('home_return_confirmed',{coordinates=s.coordinates,attempts=h.attempts});save()
+  val('vtsetmetastate[FINISH]');return
+ end
+ local dt=math.min(2,math.max(0,t-(h.last or t)));h.last=t
+ if h.status=='awaiting'then
+  if not pause then h.elapsed=h.elapsed+dt end
+  if h.elapsed<45 then if t-lastCheckpointAt>=CHECKPOINT_SECONDS then save()end;return end
+  log('home_return_timeout',{attempt=h.attempts,active_seconds=h.elapsed,coordinates=s.coordinates})
+  h.status='preparing';save()
+ end
+ if pause then return end
+ if h.attempts>=2 then
+  h.status='unconfirmed';h.coordinates=s.coordinates
+  log('home_return_unconfirmed',{attempts=h.attempts,coordinates=s.coordinates});save()
+  notice('Inspection pass ended, but two /ls attempts did not confirm the Plateau hub. Results retained.')
+  val('vtsetmetastate[FINISH]');return
+ end
+ h.attempts=h.attempts+1;h.elapsed=0;h.last=t;h.sent_at=t;h.status='awaiting'
+ log('home_return_requested',{attempt=h.attempts,coordinates=s.coordinates});save() -- durable attempt before dispatch
+ ai.Command('/ls')
+end
 local function tick()
  if clock()/1000<nextPoll then return end
  nextPoll=clock()/1000+1
@@ -457,7 +525,8 @@ local function tick()
  end
  local newKey=safeKey(game.ServerName,game.Character.Name)
  if newKey~=key then
-  key=newKey;cp=readCheckpoint();phase='';previousState='';events={};errorText=''
+  key=newKey;cp=nil;mesh=nil;movement=nil;lastPosition=nil;lootActivity={count=0,nextFlush=0}
+  cp=readCheckpoint();phase='';previousState='';events={};errorText=''
   if cp and cp.active then phase='rejoin';deadline=num('getunixtime[]')+8 end
  elseif not wasInGame and cp and cp.active then phase='rejoin';deadline=num('getunixtime[]')+8 end
  wasInGame=true
@@ -482,7 +551,7 @@ local function tick()
   if t>deadline then deactivate('Survey meta did not load; check the install folder');return end
   if owns() and not ai.MacroRunning then
    applySettings()
-   for n,v in pairs({te_controller_revision=4,te_mesh_request=0,te_mesh_walking=0,te_mesh_ack=0,te_mesh_status=0,te_logger_schema=3,te_logger_active=1,te_logger_heartbeat=t,te_stage=cp.stage,te_probe=cp.probe,te_attempt=cp.attempt,te_seq=cp.sequence,te_commit=0,te_finish=0,te_finish_ack=0,te_recovery_busy=1,te_movement_fail=0,te_can_travel=0,te_location_stable=0,te_transport_timeout=0,te_transport_generation=0})do set(n,v)end
+   for n,v in pairs({te_controller_revision=5,te_return_timeout=0,te_mesh_request=0,te_mesh_walking=0,te_mesh_ack=0,te_mesh_status=0,te_logger_schema=3,te_logger_active=1,te_logger_heartbeat=t,te_stage=cp.stage,te_probe=cp.probe,te_attempt=cp.attempt,te_seq=cp.sequence,te_commit=0,te_finish=0,te_finish_ack=0,te_recovery_busy=1,te_movement_fail=0,te_can_travel=0,te_location_stable=0,te_transport_timeout=0,te_transport_generation=0})do set(n,v)end
    val('vtsetmetastate[RECOVERY_WAIT]');ai.Command('/ra start');phase='arm';deadline=t+15
   end
   return
@@ -498,12 +567,28 @@ local function tick()
   return
  end
  drainEvents(t)
+ if t>=nextResourceSample then
+  nextResourceSample=t+60
+  local encoded=tostring(val('getvar[te_resources]'))
+  if #encoded<=2048 then
+   local ok,resource=pcall(function()return json.decode(encoded)end)
+   if ok and type(resource)=='table'and resource.schema==1 and resource.scope=='whole_client'and type(resource.utc_unix)=='number'and math.abs(t-resource.utc_unix)<=120 then
+    local valid=true
+    for _,k in ipairs({'managed_heap_bytes','private_bytes','virtual_bytes','cpu_seconds'})do
+     local v=resource[k];if type(v)~='number'or v~=v or v<0 or v>1e15 then valid=false end
+    end
+    if valid then resource.sampled_at=resource.utc_unix;log('client_resources',resource)end
+   end
+  end
+ end
  local s=snapshot();local state=s.state
  s.mesh_phase=mesh and mesh.phase or '';s.mesh_variant=mesh and mesh.variant or 0;s.mesh_request=num('getvar[te_mesh_request]')
  local pause=travelReadiness(t,s);s.pause_reason=pause
  if not cp.recovery then local meshPause=meshTick(t,s,pause);if not cp.active then return end;monitor(t,s,pause,meshPause)end
  if t>=nextSample or state~=previousState then
-  log(state~=previousState and 'state_change' or 'sample',s);nextSample=t+SAMPLE_SECONDS;previousState=state;cp.lastSample=s;save()
+  local changed=state~=previousState;s.evidence='observed_pose_only'
+  log(changed and 'state_change' or 'sample',s);nextSample=t+SAMPLE_SECONDS;previousState=state;cp.lastSample=s
+  if changed or t-lastCheckpointAt>=CHECKPOINT_SECONDS then save()end
  end
  if s.hp<=0 and not cp.recovery then startRecovery(t,'death')end
  if cp.recovery then recoveryTick(t,s);return end
@@ -511,21 +596,22 @@ local function tick()
  if state=='LOGGER_LOST' or state=='RECORDER_WINDOW' or state=='RECORDER_RETRY' or state=='RECORDER_AWAIT' then log('watchdog_rejoined');save();begin(false);return end
  if state=='RECORDER_STOPPED'or state=='RECORDER_FAILED'then deactivate('Recorder restart budget exhausted; progress retained');return end
  if not ai.MacroRunning then deactivate('Macro stopped by player or native safety setting');return end
+ if state=='HOME_RETURN'then finalHomeTick(t,s,pause);return end
  if state:find('^COMMIT_')then commit(t,state);return end
  if state=='FINISH_COMMIT'then
   cp.stage=num('getvar[te_stage]');cp.probe=num('getvar[te_probe]')
-  cp.completed=cp.stage>=3;cp.active=false;log('survey_ended',{completed=cp.completed});save();set('te_finish_ack',1)
+  cp.completed=cp.stage>=3;cp.finishing=false;cp.active=false;log('survey_ended',{completed=cp.completed,home=cp.home and cp.home.status or 'not_requested'});save();set('te_finish_ack',1)
   -- AF will stop itself on its next pulse; restore settings on the following tick.
   phase='finish';deadline=t+5;return
  end
  local stage,probe,attempt=num('getvar[te_stage]'),num('getvar[te_probe]'),num('getvar[te_attempt]')
- if stage~=cp.stage or probe~=cp.probe or attempt~=cp.attempt then cp.stage=stage;cp.probe=probe;cp.attempt=attempt;save()end
+ if stage~=cp.stage or probe~=cp.probe or attempt~=cp.attempt then cp.stage=stage;cp.probe=probe;cp.attempt=attempt;if stage>=3 then cp.finishing=true end;save()end
 end
 local function recorderFailure(err)
  pcall(function()log('recorder_interrupted',{error=tostring(err):sub(1,600)})end)
  errorText=tostring(err);repairAttempts=0;repairAt=clock()/1000+15;phase='repair'
  notice('Recorder interrupted: '..errorText..'. Survey movement paused; automatic repair will retry.')
- if ai.Available then pcall(function()if owns()then set('te_logger_active',0);val('vtsetsetting[EnableNavigation,0]')end end)end
+ if cp and ai.Available and cp.server==game.ServerName and cp.character==game.Character.Name then pcall(function()if owns()then set('te_logger_active',0);val('vtsetsetting[EnableNavigation,0]')end end)end
 end
 local function guardedTick()
  if cp and game.State=='InGame' and safeKey(game.ServerName,game.Character.Name)==key then
@@ -552,7 +638,7 @@ local function guardedTick()
     errorText=tostring(err)
     if repairAttempts>=3 then
      notice('Recorder repair failed three times: '..errorText..'. Progress retained for manual resume.')
-     if ai.Available then pcall(function()if owns()then set('te_logger_active',0);ai.Stop()end end)end
+     if cp and ai.Available and cp.server==game.ServerName and cp.character==game.Character.Name then pcall(function()if owns()then set('te_logger_active',0);ai.Stop()end end)end
      if cp then cp.active=false;pcall(save)end
      phase='';return
     end
@@ -563,7 +649,7 @@ local function guardedTick()
  end
  if phase=='finish' and cp and not cp.active then
   if ai.Available and not owns()then phase='';return end
-  if ai.Available and (not ai.MacroRunning or num('getunixtime[]')>=deadline)then if ai.MacroRunning then ai.Stop()end;restoreSettings();save();phase='';notice('Survey ended. Logs and checkpoint: '..tostring(info.DataFolder))end
+  if ai.Available and (not ai.MacroRunning or num('getunixtime[]')>=deadline)then if ai.MacroRunning then ai.Stop()end;restoreSettings();save();phase='';notice('Survey ended; home '..tostring(cp.home and cp.home.status or 'not requested')..'. Logs and checkpoint: '..tostring(info.DataFolder))end
   return
  end
  local ok,err=pcall(tick)
@@ -571,7 +657,7 @@ local function guardedTick()
 end
 game.RegisterCommand('/terrainsurvey',function(args)
  local r=tostring(args or ''):lower():match('^%s*(%S+)')or'status'
- if r=='status'then local last=cp and cp.lastSample or {};notice('v0.4.0; state '..tostring(last.state or phase)..'; mesh '..tostring(last.mesh_phase or 'waiting')..'; wait '..tostring(last.pause_reason or 'none')..'; '..(cp and cp.active and 'Active' or 'Stopped')..'; phase '..phase..'; '..(cp and ('zone '..tostring(zones[cp.stage])..', point '..cp.probe)or'no checkpoint')..'; logs: '..tostring(info.DataFolder));return end
+ if r=='status'then local last=cp and cp.lastSample or {};notice('v0.4.1; state '..tostring(last.state or phase)..'; mesh '..tostring(last.mesh_phase or 'waiting')..'; wait '..tostring(last.pause_reason or 'none')..'; '..(cp and cp.active and 'Active' or 'Stopped')..'; phase '..phase..'; '..(cp and ('zone '..tostring(zones[cp.stage])..', point '..cp.probe)or'no checkpoint')..'; logs: '..tostring(info.DataFolder));return end
  if #requests<4 then requests[#requests+1]=r end
 end)
 game.OnTick.Add(guardedTick)
@@ -582,4 +668,4 @@ game.World.OnChatText.Add(function(e)
   events[#events+1]={message=s:sub(1,600)}
  end
 end)
-notice('v0.4.0 ready. /terrainsurvey new starts a recorded pass; /terrainsurvey resume continues. Logs: '..tostring(info.DataFolder))
+notice('v0.4.1 ready. /terrainsurvey new starts a recorded pass; /terrainsurvey resume continues. Logs: '..tostring(info.DataFolder))

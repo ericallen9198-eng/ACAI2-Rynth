@@ -134,7 +134,7 @@ start();sim.settings.EnableLooting=1;game.World.OpenContainer={Id=123};step(35);
 -- SCENARIO nothing-matched loot completion does not continually extend the grace
 start();sim.settings.EnableLooting=1;game.World.OpenContainer={Id=123};step();for i=1,20 do send('[RynthAi] Nothing on Corpse of Siberite Fragment matches the loot profile.');step()end;assert(sim.vars.te_can_travel==1)
 -- SCENARIO the running recorder exposes its exact version for short diagnostics
-assert(TerrainSurveyVersion=='0.4.0')
+assert(TerrainSurveyVersion=='0.4.1')
 -- SCENARIO runtime mesh route needs a fresh companion and exact request acknowledgment
 start();sim.ignoreMesh=true;sim.vars.te_mesh_request=0;sim.targets=2;step(3);sim.targets=0;step(10)
 assert(sim.settings.EnableNavigation==0);local req=sim.vars.te_mesh_request;assert(req>0)
@@ -161,9 +161,77 @@ start();step(5);local first=sim.vars.te_mesh_request;reloadScript();step(5)
 assert(sim.vars.te_mesh_request>first and cp().meshGeneration>=sim.vars.te_mesh_request)
 -- SCENARIO legacy controller revision is reloaded rather than adopting fixed paths
 start();sim.vars.te_controller_revision=0;local n=countCommand('/ra meta load Terrain Access Survey.af');request('resume');step(20)
-assert(countCommand('/ra meta load Terrain Access Survey.af')==n+1 and sim.vars.te_controller_revision==4)
+assert(countCommand('/ra meta load Terrain Access Survey.af')==n+1 and sim.vars.te_controller_revision==5)
 -- SCENARIO companion reload forces a fresh checked request rather than adopting stale ownership
 start();freshMesh();local n=sim.vars.te_mesh_request;sim.vars.te_mesh_instance=22;step(4)
 assert(sim.vars.te_mesh_request>n and sim.vars.te_mesh_walking==1)
 -- SCENARIO New retains increasing mesh generations while replacing survey results
 start();local n=cp().meshGeneration;request('new');step(20);assert(cp().meshGeneration>n)
+-- SCENARIO local return active budget pauses for combat and buffing
+start();sim.state='RETURN_WAIT_275';sim.vars.te_corridor='Return_275';sim.targets=2;step(150);assert(sim.vars.te_return_timeout==0)
+sim.targets=0;sim.buffs=12;step(150);assert(sim.vars.te_return_timeout==0)
+sim.buffs=0;step(20);assert(sim.vars.te_return_timeout==0)
+-- SCENARIO local return eventually expires its active travel budget
+start();sim.state='RETURN_WAIT_275';sim.vars.te_corridor='Return_275';step(180);assert(sim.vars.te_return_timeout==1)
+-- SCENARIO final return confirms the live Plateau position before finishing
+start();sim.vars.te_stage=3;sim.vars.te_probe=1;sim.state='HOME_RETURN';step(10)
+assert(cp().completed and cp().home.status=='confirmed'and countCommand('/ls')==0)
+-- SCENARIO final return journals and sends one recall then verifies its landing
+start();sim.coords='51.074|-80.875|0.1754';sim.vars.te_stage=3;sim.state='HOME_RETURN';step(15)
+assert(cp().completed and cp().home.status=='confirmed'and countCommand('/ls')==1)
+-- SCENARIO final recall waits through native buffing
+start();sim.coords='51.074|-80.875|0.1754';sim.vars.te_stage=3;sim.state='HOME_RETURN';sim.buffs=12;step(90)
+assert(countCommand('/ls')==0 and cp().active and cp().finishing)
+sim.buffs=0;step(20);assert(countCommand('/ls')==1 and cp().completed)
+-- SCENARIO final return failures exhaust two attempts instead of looping or claiming arrival
+start();sim.ignoreHomeRecall=true;sim.coords='51.074|-80.875|0.1754';sim.vars.te_stage=3;sim.state='HOME_RETURN';step(120)
+assert(countCommand('/ls')==2 and cp().completed and cp().home.status=='unconfirmed')
+-- SCENARIO home recall attempt survives a script restart without immediate replay
+start();sim.ignoreHomeRecall=true;sim.coords='51.074|-80.875|0.1754';sim.vars.te_stage=3;sim.state='HOME_RETURN';step(3)
+assert(countCommand('/ls')==1 and cp().home.attempts==1)
+reloadScript();assert(cp().active and cp().finishing and countCommand('/ls')==1)
+step(90);assert(countCommand('/ls')==2 and cp().home.status=='unconfirmed')
+-- SCENARIO a failed home journal cannot dispatch a recall
+start();sim.coords='51.074|-80.875|0.1754';sim.vars.te_stage=3;sim.state='HOME_RETURN';sim.failWrites=true;step(4)
+assert(countCommand('/ls')==0 and sim.settings.EnableNavigation==0)
+-- SCENARIO planned geometry logs once per accepted request with distinct observed evidence
+start();freshMesh();local req=sim.vars.te_mesh_request;step(3);local geometry,arrivals=0,0
+for name,text in pairs(sim.files)do if name:find('^diagnostics%-')then for line in text:gmatch('[^\n]+')do local d=decodeNative(line)
+ if d.event=='mesh_route_geometry'and d.request==req then geometry=geometry+1;assert(#d.points==2 and d.evidence=='planned_mesh_not_proof_of_traversal')end
+ if d.event=='mesh_step_reached'and d.request==req then arrivals=arrivals+1 end
+end end end
+assert(geometry==1 and arrivals==0)
+-- SCENARIO wrong-generation geometry acknowledgment never enables movement
+sim.geometryOverride='{"schema":1,"request":999,"instance":0,"units":"world_yards","points":[[1,2,3],[4,5,6]]}'
+start();step(30);assert(sim.settings.EnableNavigation==0 and sim.vars.te_movement_fail==1)
+-- SCENARIO ordinary loot chatter is aggregated instead of recording every corpse or item name
+start();sim.targets=3
+for i=1,100 do send('[RynthAi] Nothing on Corpse of private-name matches the loot profile.');step()end
+local summaries=0
+for name,text in pairs(sim.files)do if name:find('^diagnostics%-')then assert(not text:find('private%-name'));for line in text:gmatch('[^\n]+')do if decodeNative(line).event=='loot_activity_summary'then summaries=summaries+1 end end end end
+assert(summaries>=1 and summaries<=3)
+-- SCENARIO unchanged combat samples checkpoint at most once a minute
+start();sim.targets=3;step(10);local initial=sim.writes;step(120);assert(sim.writes-initial<=3,'unnecessary checkpoint writes: '..(sim.writes-initial))
+-- SCENARIO old companion protocol is rejected rather than silently losing geometry
+start();sim.noMeshCompanion=true;sim.vars.te_mesh_schema=1;step(25);assert(not cp().active and cp().probe==1)
+-- SCENARIO another native navigation trip stops survey dispatch without stopping that trip
+start();freshMesh();sim.vars.te_external_nav=1;step();assert(not cp().active and sim.vars.te_external_nav==1 and countCommand('/rnav stop')==0)
+-- SCENARIO final return never recalls over another native navigation trip
+start();sim.coords='51.074|-80.875|0.1754';sim.vars.te_stage=3;sim.state='HOME_RETURN';sim.vars.te_external_nav=1;step(5)
+assert(not cp().active and countCommand('/ls')==0)
+-- SCENARIO corrupted other-character checkpoint cannot inherit the previous character run
+start();local c=cp();game.Character.Name='Other';local h=7;local name='DreamWeave|Other';for i=1,#name do h=(h*131+name:byte(i))%2147483647 end
+local path='checkpoint-Other-'..string.format('%08x',h)..'.json';sim.files[path]='invalid json';step(3)
+assert(sim.files[path]=='invalid json','another character checkpoint must not be overwritten with Samm progress')
+-- SCENARIO a checked runtime detour outside the predicted corridor is not mistaken for a wrong camp
+start();local n,e,h=45.8,-75.4,91.2
+sim.geometryFactory=function(request,instance)return encodeNative({schema=1,request=request,instance=instance,units='world_yards',points={{6444,35316,91.2},{e*240+24468,n*240+24468,h},{sim.vars.te_mesh_east*240+24468,sim.vars.te_mesh_north*240+24468,sim.vars.te_mesh_height}}})end
+freshMesh();sim.coords=n..'|'..e..'|'..(h/240);sim.targets=1;step(5)
+assert(cp().active and cp().probe==1 and not cp().routeRecoveries)
+-- SCENARIO whole-client resource samples are bounded and do not gate navigation
+start();sim.targets=3;sim.vars.te_resources=encodeNative({schema=1,utc_unix=sim.time,scope='whole_client',managed_heap_bytes=900000000,private_bytes=1700000000,virtual_bytes=3000000000,cpu_seconds=100})
+step(110);assert(cp().active);local count=0
+for name,text in pairs(sim.files)do if name:find('^diagnostics%-')then for line in text:gmatch('[^\n]+')do if decodeNative(line).event=='client_resources'then count=count+1 end end end end
+assert(count>=1 and count<=2 and sim.vars.te_movement_fail==0)
+-- SCENARIO malformed optional resource telemetry never fails the recorder
+start();sim.vars.te_resources='broken json';sim.targets=3;step(70);assert(cp().active and sim.vars.te_logger_active==1)

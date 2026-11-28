@@ -1,4 +1,4 @@
-TERRAIN ACCESS SURVEY v0.4.0 — RUNTIME MESH PILOT
+TERRAIN ACCESS SURVEY v0.4.1 — RUNTIME MESH PILOT
 
 UPDATING YOUR RUN
 1. In game: /terrainsurvey stop
@@ -18,8 +18,39 @@ Use Resume to keep your existing inspection results and checkpoint. Only a
 first-ever run, or an intentional replacement of the old run, uses:
 /terrainsurvey new
 
-WHAT CHANGED
-The earlier survey followed fixed waypoints prepared from mesh data. This
+WHAT CHANGED IN 0.4.1
+The local return's 120-second budget now counts active travel only. Combat,
+buffs, loot activity, native busy actions and mesh planning pause it. After
+all sectors, the survey attempts /ls and verifies the live Plateau position
+and elevation before stopping. Two unsuccessful recalls exhaust this final
+return; the result is explicitly unconfirmed, with inspection data preserved.
+Final-return progress and attempt counts survive reconnect or script restart.
+
+Accepted runtime routes now write their actual mesh corners once to the
+rotating log. These are labeled planned geometry, not proof of a walked path.
+Five-second live position samples and endpoint arrivals are labeled separately.
+This lets us distinguish a blocked route from combat displacement later. The
+location guard also recognizes the current checked detour, so a valid mesh
+approach can leave the original predicted corridor without a false misroute.
+
+Resource housekeeping: eight rotating 512-Ki-character log slots (about 4 MiB
+ASCII; at most about 16 MiB of UTF-8), maximum 256 corners per accepted route,
+two temporary nav files per character and no growing in-memory route history.
+Routine checkpoints are once per minute; progress, final recall intent,
+recovery changes and log rotation are saved immediately. Repetitive ordinary
+loot messages are counted in minute summaries instead of logged individually.
+The companion does not maintain its own mesh-tile cache or increase Rynth's
+25-tile request limit. Whole-client memory and cumulative CPU are sampled once/minute for analysis.
+These optional samples do not force GC or automatically stop the client. They
+include all apps in the process, so they cannot isolate survey resource use.
+
+If already installed: update the COMPLETE package, then reload ACAI2.Terrain
+through RynthCore Plugins, or restart that client, so the new DLL is loaded.
+The new Lua helper requires the new companion protocol. A mixed installation
+stops clearly rather than walking without its required diagnostics.
+
+RUNTIME MESH BEHAVIOR
+The original survey followed fixed waypoints prepared from mesh data. This
 version asks your installed RynthNav to plan actual walking steps from your
 live position, using the intended target elevation. RynthAi follows the checked
 corners and remains responsible for combat, buffing, looting and corpse recovery.
@@ -87,8 +118,8 @@ replaces RynthAi, RynthNav, RynthLua, loot profiles or character runtime data.
 
 Logs rotate through eight bounded files. Samples are every five seconds plus
 state/outcome events. Ordinary chat is excluded. Results are written to disk
-before the next point is credited. A completed pass, or the 14-hour wall-clock
-limit, ends the survey. Zip the Data\TerrainSurvey folder afterward for analysis;
+before the next point is credited. A completed pass ends after the bounded final hub-return attempt. The
+14-hour wall-clock limit can also end it with progress saved. Zip the Data\TerrainSurvey folder afterward for analysis;
 it is not uploaded automatically. Do not publish player logs to the public repo.
 
 MANUAL INSTALL

@@ -33,6 +33,9 @@ STATE: {RESUME} ~~ {
 	IF: Expr {getvar[te_recovery_busy]==1}
 		DO: DoAll
 				SetState {RECOVERY_WAIT}
+	IF: Expr {getvar[te_stage]>=3}
+		DO: DoAll
+				SetState {HOME_RETURN}
 	IF: Always
 		DO: DoAll
 				DoExpr {setvar[te_return_reason,`resume_current_point`]}
@@ -1834,6 +1837,7 @@ STATE: {RETURN_275} ~~ {
 				SetState {RECOVERY_WAIT}
 	IF: Always
 		DO: DoAll
+				DoExpr {setvar[te_return_timeout,0]}
 				EmbedNav Return_275 {once}
 				DoExpr {setvar[te_corridor,`Return_275`]}
 				SetOpt {EnableNav} {False}
@@ -1850,12 +1854,12 @@ STATE: {RETURN_WAIT_275} ~~ {
 	IF: Expr {getvar[te_recovery_busy]==1}
 		DO: DoAll
 				SetState {RECOVERY_WAIT}
-	IF: Expr {getvar[te_location_stable]==1 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],`45.2079477958333|-75.0632305458333|0.3833541875`]<5}
+	IF: Expr {getvar[te_location_stable]==1 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],`45.2079477958333|-75.0632305458333|0.3833541875`]<5 && abs[coordinategetz[getplayercoordinates[]]*240-92.005]<8}
 		DO: DoAll
 				SetState {NEXT_SECTOR}
-	IF: SecsInStateGE 120
+	IF: Expr {getvar[te_return_timeout]==1}
 		DO: DoAll
-				DoExpr {echo[`Terrain survey: 275 local return did not finish; using the lifestone hub for the next sector.`]}
+				DoExpr {echo[`Terrain survey: 275 local return used its active travel budget; continuing through the lifestone hub.`]}
 				SetState {NEXT_SECTOR}
 ~~ }
 
@@ -3485,6 +3489,7 @@ STATE: {RETURN_180} ~~ {
 				SetState {RECOVERY_WAIT}
 	IF: Always
 		DO: DoAll
+				DoExpr {setvar[te_return_timeout,0]}
 				EmbedNav Return_180 {once}
 				DoExpr {setvar[te_corridor,`Return_180`]}
 				SetOpt {EnableNav} {False}
@@ -3501,12 +3506,12 @@ STATE: {RETURN_WAIT_180} ~~ {
 	IF: Expr {getvar[te_recovery_busy]==1}
 		DO: DoAll
 				SetState {RECOVERY_WAIT}
-	IF: Expr {getvar[te_location_stable]==1 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],`43.5416666666667|-85.4083333333333|0.0833541625`]<5}
+	IF: Expr {getvar[te_location_stable]==1 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],`43.5416666666667|-85.4083333333333|0.0833541625`]<5 && abs[coordinategetz[getplayercoordinates[]]*240-20.005]<8}
 		DO: DoAll
 				SetState {NEXT_SECTOR}
-	IF: SecsInStateGE 120
+	IF: Expr {getvar[te_return_timeout]==1}
 		DO: DoAll
-				DoExpr {echo[`Terrain survey: 180 local return did not finish; using the lifestone hub for the next sector.`]}
+				DoExpr {echo[`Terrain survey: 180 local return used its active travel budget; continuing through the lifestone hub.`]}
 				SetState {NEXT_SECTOR}
 ~~ }
 
@@ -5136,6 +5141,7 @@ STATE: {RETURN_225} ~~ {
 				SetState {RECOVERY_WAIT}
 	IF: Always
 		DO: DoAll
+				DoExpr {setvar[te_return_timeout,0]}
 				EmbedNav Return_225 {once}
 				DoExpr {setvar[te_corridor,`Return_225`]}
 				SetOpt {EnableNav} {False}
@@ -5152,12 +5158,12 @@ STATE: {RETURN_WAIT_225} ~~ {
 	IF: Expr {getvar[te_recovery_busy]==1}
 		DO: DoAll
 				SetState {RECOVERY_WAIT}
-	IF: Expr {getvar[te_location_stable]==1 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],`53.5283333458333|-79.802500025|0.3000208542`]<5}
+	IF: Expr {getvar[te_location_stable]==1 && strlen[getplayercoordinates[]]>0 && coordinatedistanceflat[getplayercoordinates[],`53.5283333458333|-79.802500025|0.3000208542`]<5 && abs[coordinategetz[getplayercoordinates[]]*240-72.005]<8}
 		DO: DoAll
 				SetState {NEXT_SECTOR}
-	IF: SecsInStateGE 120
+	IF: Expr {getvar[te_return_timeout]==1}
 		DO: DoAll
-				DoExpr {echo[`Terrain survey: 225 local return did not finish; using the lifestone hub for the next sector.`]}
+				DoExpr {echo[`Terrain survey: 225 local return used its active travel budget; continuing through the lifestone hub.`]}
 				SetState {NEXT_SECTOR}
 ~~ }
 
@@ -5186,10 +5192,25 @@ STATE: {NEXT_SECTOR} ~~ {
 STATE: {NEXT_CHECK} ~~ {
 	IF: Expr {getvar[te_stage]>=3}
 		DO: DoAll
-				SetState {FINISH}
+				SetState {HOME_RETURN}
 	IF: Always
 		DO: DoAll
 				SetState {RECALL}
+~~ }
+
+STATE: {HOME_RETURN} ~~ {
+	IF: Expr {getvar[te_logger_schema]!=3 || getvar[te_logger_active]!=1 || getunixtime[]-getvar[te_logger_heartbeat]>20}
+		DO: DoAll
+				SetState {LOGGER_LOST}
+	IF: Death
+		DO: DoAll
+				SetState {RECOVERY_WAIT}
+	IF: Expr {getvar[te_recovery_busy]==1}
+		DO: DoAll
+				SetState {RECOVERY_WAIT}
+	IF: Always
+		DO: DoAll
+				SetOpt {EnableNav} {False}
 ~~ }
 
 STATE: {RECOVERY_WAIT} ~~ {

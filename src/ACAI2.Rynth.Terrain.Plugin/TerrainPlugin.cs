@@ -11,7 +11,7 @@ namespace ACAI2.Rynth.Terrain.Plugin;
 // Native calls run exclusively on OnTick. Logout callbacks only set a flag.
 public sealed class TerrainPlugin:RynthPluginBase
 {
-    public const string Version="0.4.0";
+    public const string Version="0.4.1";
     public override uint MinimumApiVersion=>92;
     private volatile bool loggedOut;
     private int epoch,seenEpoch=-1;
@@ -19,6 +19,7 @@ public sealed class TerrainPlugin:RynthPluginBase
     private string identity="",fileKey="";
     private long handled=-1;
     private double nextTick;
+    private double nextResourceSample;
     private Pending? pending;
     private Ground[]? walking;
     private long walkingGeneration;
@@ -57,16 +58,33 @@ public sealed class TerrainPlugin:RynthPluginBase
                 fileKey=Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(live)))[..16];
             }
             bot=new(Host);
+            if(!bot.Running){pending=null;walking=null;nextTick=now+1;return;}
             string meta=bot.Eval("vtgetmeta[]").Replace('\\','/').Split('/').Last();
             if(!meta.Equals("Terrain Access Survey",StringComparison.OrdinalIgnoreCase)&&!meta.Equals("Terrain Access Survey.af",StringComparison.OrdinalIgnoreCase))
-            {pending=null;walking=null;return;}
-            Set(bot,"te_mesh_schema",1);Set(bot,"te_mesh_heartbeat",DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+            {pending=null;walking=null;nextTick=now+1;return;}
+            Set(bot,"te_mesh_schema",2);Set(bot,"te_mesh_heartbeat",DateTimeOffset.UtcNow.ToUnixTimeSeconds());
             Set(bot,"te_mesh_instance",instance);
+            if(now>=nextResourceSample)
+            {
+                nextResourceSample=now+60;
+                try
+                {
+                    using var process=System.Diagnostics.Process.GetCurrentProcess();
+                    string resources=JsonSerializer.Serialize(new{schema=1,utc_unix=DateTimeOffset.UtcNow.ToUnixTimeSeconds(),scope="whole_client",
+                        managed_heap_bytes=GC.GetTotalMemory(false),private_bytes=process.PrivateMemorySize64,
+                        virtual_bytes=process.VirtualMemorySize64,cpu_seconds=process.TotalProcessorTime.TotalSeconds});
+                    bot.Eval("setvar[te_resources,`"+resources+"`]");
+                }
+                catch { /* Optional telemetry must never fail a navigation request. */ }
+            }
+            using var navigation=JsonDocument.Parse(Host.GetPluginExportJson("RynthNav","RynthNavGetStatusJson")??"{}");
+            bool externalNav=navigation.RootElement.TryGetProperty("goto",out var go)&&(go.ValueKind==JsonValueKind.True||go.ValueKind==JsonValueKind.Number&&go.GetInt32()!=0);
+            Set(bot,"te_external_nav",externalNav?1:0);
             string state=bot.Eval("vtgetmetastate[]");
             generation=(long)Num(bot,"getvar[te_mesh_request]");
             bool fresh=Num(bot,"getvar[te_logger_active]")==1&&Math.Abs(DateTimeOffset.UtcNow.ToUnixTimeSeconds()-Num(bot,"getvar[te_logger_heartbeat]"))<=5;
             bool waiting=state.StartsWith("WAIT_",StringComparison.Ordinal)||state.StartsWith("RETURN_WAIT_",StringComparison.Ordinal);
-            bool ready=fresh&&waiting&&bot.Running&&Host.HasIsPortaling&&!Host.IsPortaling()&&Num(bot,"getcharvital_current[1]")>0&&Num(bot,"getvar[te_recovery_busy]")==0;
+            bool ready=fresh&&waiting&&!externalNav&&bot.Running&&Host.HasIsPortaling&&!Host.IsPortaling()&&Num(bot,"getcharvital_current[1]")>0&&Num(bot,"getvar[te_recovery_busy]")==0;
             if(!ready){pending=null;walking=null;return;}
             if(generation<=0){handled=-1;pending=null;walking=null;return;}
             var path=new NativePath(Host);
@@ -77,6 +95,9 @@ public sealed class TerrainPlugin:RynthPluginBase
                 if(pose.Flat(p.Start)>3||Math.Abs(pose.Z-p.Start.Z)>4){Fail(bot,generation,-2);pending=null;return;}
                 if(bot.Setting("CurrentNavPath").Equals(p.Path,StringComparison.OrdinalIgnoreCase))
                 {
+                    // Publish once per accepted request, never per tick or into a growing history.
+                    string geometry=MeshPlan.Geometry(p.Points,generation,instance);
+                    bot.Eval("setvar[te_mesh_geometry,`"+geometry+"`]");
                     walking=p.Points;walkingGeneration=generation;walkingPath=p.Path;blockedTicks=0;
                     Set(bot,"te_mesh_status",1);Set(bot,"te_mesh_points",p.Points.Length);Set(bot,"te_mesh_ack",generation);pending=null;
                 }

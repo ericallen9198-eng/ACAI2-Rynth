@@ -1,4 +1,4 @@
-Terrain Survey v0.4.0 adds a separate native planner companion to the stock AF/Lua survey. RynthAi remains the only walker/combat/buff/loot/corpse owner. No Rynth DLL is patched.
+Terrain Survey v0.4.1 adds a separate native planner companion to the stock AF/Lua survey. RynthAi remains the only walker/combat/buff/loot/corpse owner. No Rynth DLL is patched.
 
 `build_survey.py --data tools/ACAI2.TerrainSurvey/data --out metas/terrain-survey` regenerates the AF and planned corridors. The 75 inspection/return embedded routes are retained as corridor definitions but their states disable navigation before Lua requests a checked runtime step. The two intentional portal routes remain native.
 
@@ -9,3 +9,13 @@ Unmodified ABI source comes from RynthSuite `4602d9267d0892da7179cac9f70ea5622e3
 `tests/ACAI2.TerrainSurvey.Tests` exercises Lua recovery/ownership with genuine MoonSharp and fake native observations. `tests/ACAI2.TerrainMesh.Tests` exercises strict plan policy with fake paths. `RuntimeMeshCheck` links the unmodified upstream planner/raycaster and uses official CRC-checked camp tiles to check the first step at each camp and side approaches. `Verify` parses AF/navs using genuine upstream source. Windows CI publishes the companion with its native manifest, exercises actual x86 assembly loading and the custom-path installer, and releases the complete package. These checks do not prove live game behavior.
 
 The data folders contain planned geometry, not player exports. The optional `.nav` previews still follow fixed corridors; the survey itself now uses runtime mesh steps.
+
+0.4.1 adds protocol-2 geometry acknowledgments (maximum 256 world-coordinate triples / 12,000 characters), streamed once per accepted request and distinguished from sampled poses and confirmed endpoint arrivals. Runtime geometry is not placed into checkpoints or accumulated in a route history. The native expression adapter allows only a bounded 12,288-character expression so this generated numeric payload fits.
+
+Local-return timers count active travel only. Terminal HOME_RETURN is coordinated by Lua with live-position/elevation confirmation and at most two durably journaled /ls attempts, each bounded by 45 active wait seconds. Stage-3 finishing context resumes across reconnect/death; a completed old pass remains complete. End-of-pass success is distinct from the final return's confirmed/unconfirmed status. The AF retains one-shot actions only; recurrent timers stay in Lua.
+
+Routine checkpoint writes are at most once/minute unless a state change or critical journal/rotation requires one. Restart reads at most the current bounded log slot to recover its character count. Ordinary loot chatter contributes minute counters. Native RynthNav trips are detected read-only; survey dispatch yields without issuing a competing /rnav walker. The actual game's total resource use remains unmeasured by controlled tests.
+
+The displacement guard accepts the current checked runtime geometry as well as the intended terrain corridor (with elevation checks), preventing valid detours from being rejected solely for leaving an offline prediction. Only one such geometry is retained.
+
+The displacement guard accepts either the predicted corridor or the current accepted runtime mesh detour on the same height layer. This prevents a valid detour from being mistaken for a wrong camp. Only one accepted geometry is retained.

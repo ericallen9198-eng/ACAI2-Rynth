@@ -23,4 +23,9 @@ Refused(()=>MeshPlan.Build(a,new(a.X+601,a.Y,a.Z),0,Direct,(_,_)=>true,[]),"over
 Refused(()=>MeshPlan.Build(new(a.X,a.Y,120),new(b.X,b.Y,64),0,Direct,(_,_)=>true,[new(a.X+50,a.Y,92)]),"sloping segment crossing a portal height band refused");
 Check(MeshPlan.Serialize(Make()).Split('\n')[0]=="uTank2 NAV 1.2","native route header");
 File.WriteAllText(args.Length>0?args[0]:Path.Combine(Path.GetTempPath(),"terrain-mesh-test.nav"),MeshPlan.Serialize(Make(1)));
+var biggest=Enumerable.Range(0,256).Select(i=>new Ground(30000.12345+i,40000.98765+i,92.12345)).ToArray();
+using(var g=System.Text.Json.JsonDocument.Parse(MeshPlan.Geometry(biggest,123,456)))
+ Check(g.RootElement.GetProperty("points").GetArrayLength()==256&&g.RootElement.GetProperty("request").GetInt64()==123&&MeshPlan.Geometry(biggest,123,456).Length<12000,"maximum geometry record stays bounded and generation-tagged");
+Refused(()=>MeshPlan.Geometry(biggest.Concat(new[]{a}).ToArray(),1,1),"geometry refuses oversized history");
+
 Console.WriteLine($"PASS {checks} mesh policy checks; fake path provider only (not live navigation).");

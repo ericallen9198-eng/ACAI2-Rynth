@@ -15,7 +15,7 @@ internal sealed unsafe class NativeBot(RynthCoreHost host)
     }
     public string Eval(string expression)
     {
-        if(expression.Length>1024)throw new InvalidDataException("Expression too large");
+        if(expression.Length>12288)throw new InvalidDataException("Expression too large");
         byte[] data=Encoding.UTF8.GetBytes(expression+'\0');byte* result=null;var t=Table();
         fixed(byte* b=data)if(t->Evaluate(b,&result)!=1)throw new InvalidOperationException("RynthAi expression refused");
         return Marshal.PtrToStringUTF8((IntPtr)result)??"";

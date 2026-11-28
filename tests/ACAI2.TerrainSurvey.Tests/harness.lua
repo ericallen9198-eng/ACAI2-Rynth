@@ -2,7 +2,7 @@ sim={time=1000,files={},settings={FollowNavMin=1.5,NavResumeNearest=1,StopMacroO
 local fs={}
 fs.ReadText=function(n)return sim.files[n],sim.files[n]and nil or 'missing'end
 fs.FileExists=function(n)return sim.files[n]~=nil end
-fs.WriteText=function(n,s)if sim.failWrites then return false,'disk failure'end sim.files[n]=s;return true end
+fs.WriteText=function(n,s)sim.writes=(sim.writes or 0)+1;if sim.failWrites then return false,'disk failure'end sim.files[n]=s;return true end
 fs.AppendText=function(n,s)if sim.failWrites then return false,'disk failure'end sim.files[n]=(sim.files[n]or'')..s;return true end
 local ai={Available=true,MacroRunning=false}
 ai.GetSetting=function(n)return sim.settings[n]end
@@ -14,6 +14,9 @@ ai.Command=function(c)
  if c=='/ra meta load Terrain Access Survey.af'then if not sim.ignoreLoad then sim.meta='Terrain Access Survey' end
  elseif c=='/rnav avoid portals on'then sim.avoidPortals=true;emit('[RynthNav] avoid: portals on, '..(sim.avoidRadius or 4)..' m; walls off; corners reached at 2 m')
  elseif c=='/rnav avoid portals 10'then sim.avoidRadius=10;emit('[RynthNav] avoid: portals on, 10 m; walls off; corners reached at 2 m')
+ elseif c=='/ls'then
+  sim.homeSends=(sim.homeSends or 0)+1
+  if not sim.ignoreHomeRecall then sim.coords='45.2079477958333|-75.0632305458333|0.3833541875' end
  elseif c=='/ra start'then ai.MacroRunning=true
  elseif c=='/ra owncorpse'then
   if not sim.suppressStatus then
@@ -53,18 +56,22 @@ function step(n)
  for i=1,n or 1 do
   sim.time=sim.time+1
   if not sim.noMeshCompanion then
-   sim.vars.te_mesh_schema=1;sim.vars.te_mesh_heartbeat=sim.time
+   sim.vars.te_mesh_schema=2;sim.vars.te_mesh_heartbeat=sim.time
    local request=sim.vars.te_mesh_request or 0
    if request>0 and request~=(sim.meshHandled or -1)and not sim.ignoreMesh then
     sim.meshHandled=request
     sim.vars.te_mesh_name='Terrain_fake_'..request
     sim.navName=sim.vars.te_mesh_name;sim.navFinished=false
-    sim.vars.te_mesh_points=15;sim.vars.te_mesh_ack=request;sim.vars.te_mesh_status=sim.meshFailure or 1
+    sim.vars.te_mesh_points=2;sim.vars.te_mesh_ack=request;sim.vars.te_mesh_status=sim.meshFailure or 1
+    local n,e,z=sim.coords:match('([^|]+)|([^|]+)|([^|]+)');n,e,z=tonumber(n),tonumber(e),tonumber(z)
+    sim.vars.te_mesh_geometry=sim.geometryOverride or (sim.geometryFactory and sim.geometryFactory(request,sim.vars.te_mesh_instance or 0))or ('{"schema":1,"request":'..request..',"instance":'..(sim.vars.te_mesh_instance or 0)..',"units":"world_yards","points":[['..(e*240+24468)..','..(n*240+24468)..','..(z*240)..'],['..(sim.vars.te_mesh_east*240+24468)..','..(sim.vars.te_mesh_north*240+24468)..','..sim.vars.te_mesh_height..']]}')
    end
   end
   sim.tick()
   -- Minimal host macro lifecycle only. AF parsing/structure is checked separately.
+  if ai.MacroRunning and sim.state=='RESUME'and sim.vars.te_recovery_busy==0 and sim.vars.te_stage>=3 then sim.state='HOME_RETURN' end
   if ai.MacroRunning and sim.state=='RESUME'and sim.vars.te_recovery_busy==0 then if sim.onResumeCoords then sim.coords=sim.onResumeCoords;sim.onResumeCoords=nil end;sim.state='WAIT_'..({[0]=275,[1]=180,[2]=225})[sim.vars.te_stage]..'_'..string.format('%02d',sim.vars.te_probe);sim.vars.te_corridor='Hub_'..({[0]=275,[1]=180,[2]=225})[sim.vars.te_stage]..'_'..string.format('%02d',sim.vars.te_probe)end
+  if ai.MacroRunning and sim.state=='FINISH'then sim.state='FINISH_COMMIT'end
   if ai.MacroRunning and sim.state=='FINISH_COMMIT'and sim.vars.te_finish_ack==1 then ai.MacroRunning=false;sim.state='FINISHED'end
  end
 end

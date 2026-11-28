@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using System.Text.Json;
 
 namespace ACAI2.Rynth.Terrain.Plugin;
 
@@ -11,6 +12,14 @@ public readonly record struct Ground(double X,double Y,double Z)
 }
 public static class MeshPlan
 {
+    public static string Geometry(IReadOnlyList<Ground> points,long request,int instance)
+    {
+        if(points.Count is <2 or >256||points.Any(p=>!p.Finite))throw new InvalidDataException("Invalid geometry record");
+        string record=JsonSerializer.Serialize(new{schema=1,request,instance,units="world_yards",
+            points=points.Select(p=>new[]{Math.Round(p.X,3),Math.Round(p.Y,3),Math.Round(p.Z,3)}).ToArray()});
+        if(record.Length>12000)throw new InvalidDataException("Geometry record exceeds its bound");
+        return record;
+    }
     public static Ground[] Build(Ground start,Ground goal,int variant,
         Func<Ground,Ground,Ground[]> find,Func<Ground,Ground,bool> clear,IReadOnlyList<Ground> portals)
     {
