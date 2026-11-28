@@ -54,11 +54,11 @@ jobs:
           if find package -iname '.env' -o -iname 'keyfer.json' -o -iname '*.sqlite' -o -iname '*.jsonl' | grep -q .; then
             echo 'Unexpected runtime data in package'; exit 1
           fi
-          zip_name='ACAI2-Keyfer-Bridge-v0.20.2-Windows.zip'
+          zip_name='ACAI2-Keyfer-Bridge-v0.20.3-Windows.zip'
           (cd package && zip -qr "../$zip_name" .)
           sha256sum "$zip_name" > "$zip_name.sha256"
           cat > notes.md <<NOTES
-          Bridge v0.20.2 keeps personal weapon preferences and own-loot questions out of wiki fallback routing. Personal questions use existing loot evidence; optional empty lookups get a bounded conversational answer. Required game-reference evidence checks and safe provider diagnostics remain. GPT-6 Luna remains the default. Chat/wiki, memory review and arena commentary use compatible reasoning settings. The startup header displays the selected model. Behavior, moderation, memory paths and action permissions are unchanged.
+          Bridge v0.20.3 converts smart apostrophes, quotes, ellipses, nonbreaking spaces and common dash typography to plain game-compatible punctuation in conversation replies and treasure banter. This fixes the stray control-like marking in Yari’s. It also keeps personal weapon preferences and own-loot questions out of wiki fallback routing. Personal questions use existing loot evidence; optional empty lookups get a bounded conversational answer. Required game-reference evidence checks and safe provider diagnostics remain. GPT-6 Luna remains the default. Chat/wiki, memory review and arena commentary use compatible reasoning settings. The startup header displays the selected model. Behavior, moderation, memory paths and action permissions are unchanged.
 
           **Bridge-only trial update.** Keep the installed Keyfer client plugin. Stop the old Bridge, back up its Bridge folder and copy the ZIP's Bridge folder over that existing folder. Preserve your API key, Data, Knowledge, Config and custom startup settings. Start normally and confirm the header says gpt-6-luna. An optional Start-Keyfer-Luna.cmd selects Luna for that launch only. See KEYFER-LUNA-UPDATE.md inside.
 
@@ -66,4 +66,4 @@ jobs:
 
           No Rynth engine, RynthAi DLL, Combat, Threads, Scrollwork, Marae or Keyfer client plugin is included or replaced.
           NOTES
-          gh release create keyfer-bridge-v0.20.2 "$zip_name" "$zip_name.sha256" --prerelease --target "$SOURCE_SHA" --title 'Keyfer Bridge v0.20.2 — Personal loot conversations' --notes-file notes.md
+          gh release create keyfer-bridge-v0.20.3 "$zip_name" "$zip_name.sha256" --prerelease --target "$SOURCE_SHA" --title 'Keyfer Bridge v0.20.3 — Game chat punctuation' --notes-file notes.md

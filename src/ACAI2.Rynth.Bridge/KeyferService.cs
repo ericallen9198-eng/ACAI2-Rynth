@@ -100,7 +100,17 @@ internal sealed class KeyferService : IDisposable
     public void Dispose() { arena.Dispose(); memory.Dispose(); }
 
     internal const string WikiFallback = "I'm a marketplace mule and still learning that one. You can check the DreamWeave wiki: https://wiki.acdreamweave.com/";
-    internal static string NormalizeReply(string text) => Regex.Replace(text, @"\s*\u2014\s*", ", ").Trim();
+    internal static string NormalizeReply(string text)
+    {
+        // AC's legacy chat path can display Unicode smart punctuation as controls.
+        // Normalize typography, retaining names, accents, wording and source URLs.
+        text = text.Replace('\u2018', '\'').Replace('\u2019', '\'').Replace('\u201A', '\'')
+            .Replace('\u201B', '\'').Replace('\u02BC', '\'')
+            .Replace('\u201C', '"').Replace('\u201D', '"').Replace('\u201E', '"').Replace('\u201F', '"')
+            .Replace('\u2010', '-').Replace('\u2011', '-').Replace('\u2013', '-').Replace('\u2212', '-')
+            .Replace("\u2026", "...").Replace('\u00A0', ' ').Replace('\u202F', ' ');
+        return Regex.Replace(text, @"\s*\u2014\s*", ", ").Trim();
+    }
 
     internal static bool RequiresWikiEvidence(string question) =>
         Regex.IsMatch(question, @"\b(?:what(?:['’](?:s|re)| is| are| does)|wtf (?:is|are))\b", RegexOptions.IgnoreCase) &&

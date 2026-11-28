@@ -198,6 +198,13 @@ await BridgeLootChecks.Run(Check);
 await ModelMigrationChecks.Run(Check);
 await ProviderHttpChecks.Run(Check);
 await WikiFallbackChecks.Run(Check);
+Check(ACAI2.Bridge.KeyferService.NormalizeReply("Yari\u2019s reach") == "Yari's reach", "game punctuation fixes the reported smart apostrophe");
+Check(ACAI2.Bridge.KeyferService.NormalizeReply("\u201cYari\u201d\u2026") == "\"Yari\"...", "game punctuation preserves quoted meaning and ellipsis");
+Check(ACAI2.Bridge.KeyferService.NormalizeReply("2\u00a0items\u202f- frost\u2013fire") == "2 items - frost-fire", "game punctuation normalizes nonbreaking spaces and short dashes");
+Check(ACAI2.Bridge.KeyferService.NormalizeReply("hello\u2014world") == "hello, world", "game punctuation retains the existing em dash style");
+Check(ACAI2.Bridge.KeyferService.NormalizeReply("Éowyn's Yari") == "Éowyn's Yari", "game punctuation preserves accented names and existing plain punctuation");
+Check(ACAI2.Bridge.KeyferService.NormalizeReply("Wiki: https://wiki.acdreamweave.com/A_B?x=1&y=2") == "Wiki: https://wiki.acdreamweave.com/A_B?x=1&y=2", "game punctuation preserves source URLs exactly");
+
 Console.WriteLine($"All {count} checks passed. Only fake HTTP handlers were used; no AI, game chat or production Bridge calls.");
 
 record Call(string Path,string Json,string Method);

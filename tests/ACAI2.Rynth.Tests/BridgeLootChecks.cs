@@ -39,6 +39,11 @@ internal static class BridgeLootChecks
                     fake.Body.Contains("This is a personal conversation"),
                     "reported personal weapon/loot question uses existing findings without a wiki tool or referral");
             }
+            fake.Reply = "I like the Yari\u2019s reach and \u201cquick\u201d feel\u2026";
+            var punctuation = await service.AskAsync(new() { InstanceId="loot-test", Server="DreamWeave", Character="Keyfer Sutherland",
+                Speaker="Toe", SpeakerId="punctuation", Channel="Tell", Question="What is your favorite weapon lately?", LootObservation=ledger.Snapshot(DateTime.UtcNow) });
+            check(punctuation.Ok && punctuation.Answer == "I like the Yari's reach and \"quick\" feel...",
+                "real Bridge reply converts provider smart punctuation before returning game chat text");
             foreach(var channel in new[]{"General","Allegiance","Tell"})
             {
                 int calls=fake.Calls;
@@ -55,11 +60,11 @@ internal static class BridgeLootChecks
     }
     private sealed class Model:HttpMessageHandler
     {
-        internal int Calls;internal string Body="";
+        internal int Calls;internal string Body="";internal string Reply="I kept a Dolabra.";
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,CancellationToken ct)
         {
             Calls++;Body=await request.Content!.ReadAsStringAsync(ct);
-            return new(HttpStatusCode.OK){Content=new StringContent("{\"choices\":[{\"message\":{\"content\":\"I kept a Dolabra.\"}}]}",Encoding.UTF8,"application/json")};
+            return new(HttpStatusCode.OK){Content=new StringContent(JsonSerializer.Serialize(new { choices=new[] { new { message=new { content=Reply } } } }),Encoding.UTF8,"application/json")};
         }
     }
     private sealed class NoWiki:IDreamWeaveWiki
