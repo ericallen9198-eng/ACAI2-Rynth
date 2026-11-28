@@ -5,7 +5,7 @@
     <RynthSuiteRoot Condition="'$(RynthSuiteRoot)' == ''">/tmp/terrain-suite-latest</RynthSuiteRoot>
   </PropertyGroup>
   <ItemGroup>
-    
+
 
 
     <Compile Include="$(RynthSuiteRoot)/Plugins/RynthCore.Plugin.RynthAi/Meta/AfFileParser.cs" Link="AfFileParser.cs" />
